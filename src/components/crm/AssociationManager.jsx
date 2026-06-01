@@ -139,7 +139,7 @@ export default function AssociationManager({ subjectType, subjectId, targetType,
                   {getRoleLabel(r.label)}
                   {canWrite && (
                     <button onClick={() => removeAssociation(r)}
-                      className="text-ember/50 hover:text-red-400 ml-0.5">&times;</button>
+                      className="text-ember/50 hover:text-red-600 ml-0.5">&times;</button>
                   )}
                 </span>
               ))}

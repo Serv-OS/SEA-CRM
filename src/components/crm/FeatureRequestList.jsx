@@ -2,12 +2,12 @@ import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
 
 const STATUS_STYLES = {
-  new: 'bg-blue-500/20 text-blue-300',
-  under_review: 'bg-purple-500/20 text-purple-300',
-  planned: 'bg-orange-500/20 text-orange-300',
-  in_progress: 'bg-yellow-500/20 text-yellow-300',
-  shipped: 'bg-green-500/20 text-green-300',
-  declined: 'bg-red-500/20 text-red-300',
+  new: 'bg-blue-100 text-blue-700 border border-blue-200',
+  under_review: 'bg-purple-100 text-purple-700 border border-purple-200',
+  planned: 'bg-orange-100 text-orange-700 border border-orange-200',
+  in_progress: 'bg-amber-100 text-amber-700 border border-amber-200',
+  shipped: 'bg-emerald-100 text-emerald-700 border border-emerald-200',
+  declined: 'bg-red-100 text-red-700 border border-red-200',
 };
 const STATUS_LABELS = {
   new:'New', under_review:'Under Review', planned:'Planned',

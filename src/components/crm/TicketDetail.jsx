@@ -6,9 +6,9 @@ import ActivityTimeline from './ActivityTimeline.jsx';
 const STAGES = ['new','in_progress','waiting_on_customer','escalated','resolved','closed'];
 const STAGE_LABELS = { new:'New', in_progress:'In Progress', waiting_on_customer:'Waiting on Customer', escalated:'Escalated', resolved:'Resolved', closed:'Closed' };
 const STAGE_STYLES = {
-  new:'bg-blue-500/20 text-blue-300', in_progress:'bg-orange-500/20 text-orange-300',
-  waiting_on_customer:'bg-yellow-500/20 text-yellow-300', escalated:'bg-red-500/20 text-red-300',
-  resolved:'bg-green-500/20 text-green-300', closed:'bg-slate-500/20 text-slate-300',
+  new:'bg-blue-100 text-blue-700 border border-blue-200', in_progress:'bg-orange-100 text-orange-700 border border-orange-200',
+  waiting_on_customer:'bg-amber-100 text-amber-700 border border-amber-200', escalated:'bg-red-100 text-red-700 border border-red-200',
+  resolved:'bg-emerald-100 text-emerald-700 border border-emerald-200', closed:'bg-slate-100 text-slate-600 border border-slate-200',
 };
 
 export default function TicketDetail({ ticketId, profile, onClose, onNavigate }) {

@@ -2,11 +2,11 @@ import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
 
 const STATUS_STYLES = {
-  quoted: 'bg-slate-500/20 text-slate-300',
-  included: 'bg-blue-500/20 text-blue-300',
-  enabling: 'bg-orange-500/20 text-orange-300',
-  live: 'bg-green-500/20 text-green-300',
-  disabled: 'bg-red-500/20 text-red-300',
+  quoted: 'bg-slate-100 text-slate-600 border border-slate-200',
+  included: 'bg-blue-100 text-blue-700 border border-blue-200',
+  enabling: 'bg-orange-100 text-orange-700 border border-orange-200',
+  live: 'bg-emerald-100 text-emerald-700 border border-emerald-200',
+  disabled: 'bg-red-100 text-red-700 border border-red-200',
 };
 
 export default function ModulesPanel({ profile }) {

@@ -122,7 +122,7 @@ export default function ItemDetail({ itemId, profile, onClose }) {
             <button onClick={startEdit} className="px-3 py-1.5 bg-card border border-bdr rounded text-xs text-muted hover:text-paper">Edit</button>
           )}
           {canWrite && (
-            <button onClick={del} className="px-3 py-1.5 bg-card border border-red-500/30 rounded text-xs text-red-400 hover:bg-red-500/10">Delete</button>
+            <button onClick={del} className="px-3 py-1.5 bg-card border border-red-200 rounded text-xs text-red-600 hover:bg-red-50">Delete</button>
           )}
           <button onClick={onClose} className="text-muted hover:text-paper text-lg px-2">&#x00D7;</button>
         </div>

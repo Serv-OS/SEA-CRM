@@ -3,10 +3,10 @@ import { supabase } from '../../lib/supabase';
 
 const STATUS_OPTIONS = ['todo', 'in_progress', 'blocked', 'done'];
 const STATUS_STYLES = {
-  todo: 'bg-blue-500/20 text-blue-300',
-  in_progress: 'bg-orange-500/20 text-orange-300',
-  blocked: 'bg-red-500/20 text-red-300',
-  done: 'bg-green-500/20 text-green-300',
+  todo: 'bg-blue-100 text-blue-700 border border-blue-200',
+  in_progress: 'bg-orange-100 text-orange-700 border border-orange-200',
+  blocked: 'bg-red-100 text-red-700 border border-red-200',
+  done: 'bg-emerald-100 text-emerald-700 border border-emerald-200',
 };
 
 export default function TaskDetail({ taskId, profile, onClose }) {
@@ -116,7 +116,7 @@ export default function TaskDetail({ taskId, profile, onClose }) {
             </span>
             <span className="text-[10px] text-dim font-mono">{task.priority}</span>
             {task.due_date && (
-              <span className={`text-[10px] ${new Date(task.due_date) < new Date() && task.status !== 'done' ? 'text-red-400' : 'text-dim'}`}>
+              <span className={`text-[10px] ${new Date(task.due_date) < new Date() && task.status !== 'done' ? 'text-red-600' : 'text-dim'}`}>
                 Due {new Date(task.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
               </span>
             )}
@@ -132,7 +132,7 @@ export default function TaskDetail({ taskId, profile, onClose }) {
                 </button>
               ))}
               <button onClick={startEdit} className="px-2 py-1 text-xs text-muted border border-bdr rounded hover:text-paper">Edit</button>
-              <button onClick={deleteTask} className="px-2 py-1 text-xs text-red-400 border border-red-500/30 rounded hover:bg-red-500/10">Delete</button>
+              <button onClick={deleteTask} className="px-2 py-1 text-xs text-red-600 border border-red-200 rounded hover:bg-red-50">Delete</button>
             </>
           )}
         </div>
@@ -208,7 +208,7 @@ export default function TaskDetail({ taskId, profile, onClose }) {
                   {canWrite && (
                     <button onClick={() => toggleSubtask(st)}
                       className={`w-4 h-4 rounded border shrink-0 flex items-center justify-center text-[10px] ${
-                        st.status === 'done' ? 'bg-green-500/30 border-green-500 text-green-300' : 'border-bdr hover:border-ember'
+                        st.status === 'done' ? 'bg-green-500/30 border-green-500 text-emerald-600' : 'border-bdr hover:border-ember'
                       }`}>
                       {st.status === 'done' && '✓'}
                     </button>

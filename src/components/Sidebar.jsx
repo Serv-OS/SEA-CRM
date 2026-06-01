@@ -164,7 +164,7 @@ export default function Sidebar({ profile, projects, activeProject, setActivePro
                       Rename
                     </button>
                     <button onClick={() => deleteProject(p)}
-                      className="w-full px-3 py-2 text-left text-xs text-red-400 hover:bg-red-500/10 flex items-center gap-2 border-t border-bdr">
+                      className="w-full px-3 py-2 text-left text-xs text-red-600 hover:bg-red-500/10 flex items-center gap-2 border-t border-bdr">
                       Delete
                     </button>
                   </div>

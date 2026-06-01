@@ -2,9 +2,9 @@ import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
 
 const STATUS_STYLES = {
-  planned: 'bg-blue-500/20 text-blue-300',
-  in_dev: 'bg-orange-500/20 text-orange-300',
-  released: 'bg-green-500/20 text-green-300',
+  planned: 'bg-blue-100 text-blue-700 border border-blue-200',
+  in_dev: 'bg-orange-100 text-orange-700 border border-orange-200',
+  released: 'bg-emerald-100 text-emerald-700 border border-emerald-200',
 };
 
 export default function ReleaseList({ profile, onSelect }) {

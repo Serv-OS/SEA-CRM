@@ -146,8 +146,8 @@ export default function ReportingDashboard({ profile }) {
             <>
               <div className="grid grid-cols-4 gap-3">
                 <MetricCard label="Pipeline" value={salesMetrics.pipeline} sub={formatCurrency(salesMetrics.pipelineValue)} />
-                <MetricCard label="Won" value={salesMetrics.won} sub={formatCurrency(salesMetrics.wonValue)} color="text-green-400" />
-                <MetricCard label="Lost" value={salesMetrics.lost} color="text-red-400" />
+                <MetricCard label="Won" value={salesMetrics.won} sub={formatCurrency(salesMetrics.wonValue)} color="text-emerald-600" />
+                <MetricCard label="Lost" value={salesMetrics.lost} color="text-red-600" />
                 <MetricCard label="Win Rate" value={`${salesMetrics.winRate}%`} />
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -176,8 +176,8 @@ export default function ReportingDashboard({ profile }) {
             <>
               <div className="grid grid-cols-3 gap-3">
                 <MetricCard label="Total" value={obMetrics.total} />
-                <MetricCard label="Live" value={obMetrics.live} color="text-green-400" />
-                <MetricCard label="In Progress" value={obMetrics.total - obMetrics.live} color="text-orange-400" />
+                <MetricCard label="Live" value={obMetrics.live} color="text-emerald-600" />
+                <MetricCard label="In Progress" value={obMetrics.total - obMetrics.live} color="text-orange-600" />
               </div>
               <div className="glass-card rounded-2xl p-4">
                 <div className={label + ' mb-3'}>By Stage</div>
@@ -197,8 +197,8 @@ export default function ReportingDashboard({ profile }) {
             <>
               <div className="grid grid-cols-4 gap-3">
                 <MetricCard label="Open" value={ticketMetrics.open} />
-                <MetricCard label="Escalated" value={ticketMetrics.escalated} color="text-red-400" />
-                <MetricCard label="Resolved" value={ticketMetrics.resolved} color="text-green-400" />
+                <MetricCard label="Escalated" value={ticketMetrics.escalated} color="text-red-600" />
+                <MetricCard label="Resolved" value={ticketMetrics.resolved} color="text-emerald-600" />
                 <MetricCard label="Total" value={ticketMetrics.total} />
               </div>
               <div className="glass-card rounded-2xl p-4">
@@ -219,9 +219,9 @@ export default function ReportingDashboard({ profile }) {
             <>
               <div className="grid grid-cols-4 gap-3">
                 <MetricCard label="Total" value={taskMetrics.total} />
-                <MetricCard label="Done" value={taskMetrics.done} color="text-green-400" />
-                <MetricCard label="Overdue" value={taskMetrics.overdue} color="text-red-400" />
-                <MetricCard label="Blocked" value={taskMetrics.blocked} color="text-orange-400" />
+                <MetricCard label="Done" value={taskMetrics.done} color="text-emerald-600" />
+                <MetricCard label="Overdue" value={taskMetrics.overdue} color="text-red-600" />
+                <MetricCard label="Blocked" value={taskMetrics.blocked} color="text-orange-600" />
               </div>
               <button onClick={() => exportCSV(
                 ['Title','Status','Priority','Assignee','Due Date','Project','Created'],
@@ -258,7 +258,7 @@ export default function ReportingDashboard({ profile }) {
               <div className="grid grid-cols-4 gap-3">
                 <MetricCard label="Companies" value={companies.length} />
                 <MetricCard label="Locations" value={locations.length} />
-                <MetricCard label="Live" value={locations.filter(l => l.status === 'live').length} color="text-green-400" />
+                <MetricCard label="Live" value={locations.filter(l => l.status === 'live').length} color="text-emerald-600" />
                 <MetricCard label="Contacts" value={contacts.length} />
               </div>
               <div className="grid grid-cols-2 gap-4">

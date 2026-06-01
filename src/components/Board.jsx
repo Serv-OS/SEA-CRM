@@ -2,10 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabase';
 
 const PRIORITY_STYLES = {
-  P0: 'bg-red-500/20 text-red-300 border-red-500/30',
-  P1: 'bg-orange-500/20 text-orange-300 border-orange-500/30',
-  P2: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
-  P3: 'bg-slate-500/20 text-slate-300 border-slate-500/30',
+  P0: 'bg-red-100 text-red-700 border border-red-200 border-red-500/30',
+  P1: 'bg-orange-100 text-orange-700 border border-orange-200 border-orange-500/30',
+  P2: 'bg-blue-100 text-blue-700 border border-blue-200 border-blue-500/30',
+  P3: 'bg-slate-100 text-slate-600 border border-slate-200 border-slate-500/30',
 };
 const TYPE_ICON = { feature:'✨', bug:'🐛', task:'📋', chore:'🧹' };
 
@@ -290,7 +290,7 @@ function BucketColumn({ bucket, items, members, features, canWrite, onAddItem, o
       onClick={() => setMenuOpen(false)}>
       <div className="px-3 py-2.5 border-b border-bdr flex items-center gap-2 relative" style={{ borderLeft: `3px solid ${bucket.color}` }}>
         <div className="text-xs font-bold uppercase tracking-wide text-paper">{bucket.name}</div>
-        {bucket.is_done && <span className="text-[9px] px-1 py-0.5 bg-green-500/20 text-green-400 rounded font-mono">DONE</span>}
+        {bucket.is_done && <span className="text-[9px] px-1 py-0.5 bg-emerald-100 text-emerald-700 rounded font-mono">DONE</span>}
         <div className="text-xs text-dim">{items.length}</div>
         {canWrite && (
           <>
@@ -320,7 +320,7 @@ function BucketColumn({ bucket, items, members, features, canWrite, onAddItem, o
             )}
             {canDelete && (
               <button onClick={() => { onDelete(); setMenuOpen(false); }}
-                className="w-full px-3 py-2 text-left text-xs text-red-400 hover:bg-red-500/10 flex items-center gap-2 border-t border-bdr">
+                className="w-full px-3 py-2 text-left text-xs text-red-600 hover:bg-red-500/10 flex items-center gap-2 border-t border-bdr">
                 Delete
               </button>
             )}

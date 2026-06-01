@@ -216,7 +216,7 @@ export default function FeaturesPanel({ project, profile }) {
                   {canWrite && (
                     <div className="flex gap-1.5 shrink-0">
                       <button onClick={() => startEdit(f)} className="px-2 py-1 text-xs text-muted hover:text-paper border border-bdr rounded">Edit</button>
-                      <button onClick={() => deleteFeature(f)} className="px-2 py-1 text-xs text-red-400 hover:text-red-300 border border-red-500/30 rounded">Delete</button>
+                      <button onClick={() => deleteFeature(f)} className="px-2 py-1 text-xs text-red-600 hover:text-red-600 border border-red-500/30 rounded">Delete</button>
                     </div>
                   )}
                 </div>
@@ -240,7 +240,7 @@ export default function FeaturesPanel({ project, profile }) {
 function StatCell({ label, value, highlight }) {
   return (
     <div>
-      <div className={`text-lg font-bold ${highlight ? 'text-red-400' : 'text-paper'}`}>{value}</div>
+      <div className={`text-lg font-bold ${highlight ? 'text-red-600' : 'text-paper'}`}>{value}</div>
       <div className="text-[9px] font-mono uppercase tracking-[0.18em] text-dim">{label}</div>
     </div>
   );

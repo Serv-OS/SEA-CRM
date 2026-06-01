@@ -2,16 +2,16 @@ import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
 
 const STATUS_STYLES = {
-  todo: 'bg-blue-500/20 text-blue-300',
-  in_progress: 'bg-orange-500/20 text-orange-300',
-  blocked: 'bg-red-500/20 text-red-300',
-  done: 'bg-green-500/20 text-green-300',
+  todo: 'bg-blue-100 text-blue-700 border border-blue-200',
+  in_progress: 'bg-orange-100 text-orange-700 border border-orange-200',
+  blocked: 'bg-red-100 text-red-700 border border-red-200',
+  done: 'bg-emerald-100 text-emerald-700 border border-emerald-200',
 };
 const PRIORITY_STYLES = {
-  P0: 'bg-red-500/20 text-red-300 border-red-500/30',
-  P1: 'bg-orange-500/20 text-orange-300 border-orange-500/30',
-  P2: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
-  P3: 'bg-slate-500/20 text-slate-300 border-slate-500/30',
+  P0: 'bg-red-100 text-red-700 border border-red-200 border-red-200',
+  P1: 'bg-orange-100 text-orange-700 border border-orange-200 border-orange-500/30',
+  P2: 'bg-blue-100 text-blue-700 border border-blue-200 border-blue-500/30',
+  P3: 'bg-slate-100 text-slate-600 border border-slate-200 border-slate-500/30',
 };
 
 export default function TaskList({ profile, onSelect }) {
@@ -170,7 +170,7 @@ export default function TaskList({ profile, onSelect }) {
             {canWrite && (
               <button onClick={(e) => toggleDone(e, t)}
                 className={`w-5 h-5 rounded border-2 shrink-0 flex items-center justify-center transition ${
-                  t.status === 'done' ? 'bg-green-500/30 border-green-500 text-green-300' : 'border-bdr hover:border-ember'
+                  t.status === 'done' ? 'bg-green-500/30 border-green-500 text-emerald-600' : 'border-bdr hover:border-ember'
                 }`}>
                 {t.status === 'done' && <span className="text-xs">&#x2713;</span>}
               </button>
@@ -185,7 +185,7 @@ export default function TaskList({ profile, onSelect }) {
             <span className={`px-1.5 py-0.5 text-[9px] font-bold rounded border ${PRIORITY_STYLES[t.priority]}`}>{t.priority}</span>
             <span className={`px-1.5 py-0.5 text-[9px] font-bold uppercase rounded ${STATUS_STYLES[t.status]}`}>{t.status.replace('_', ' ')}</span>
             {t.due_date && (
-              <span className={`text-xs ${isOverdue(t) ? 'text-red-400 font-bold' : 'text-dim'}`}>
+              <span className={`text-xs ${isOverdue(t) ? 'text-red-600 font-bold' : 'text-dim'}`}>
                 {new Date(t.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
               </span>
             )}

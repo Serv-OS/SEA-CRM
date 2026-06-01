@@ -131,7 +131,7 @@ export default function CompanyList({ profile, onSelect }) {
                 <td className="px-3 py-3 text-xs text-muted text-center">{locCount(c.id)}</td>
                 <td className="px-3 py-3 text-xs text-center">
                   {liveCount(c.id) > 0
-                    ? <span className="text-green-400">{liveCount(c.id)}</span>
+                    ? <span className="text-emerald-600">{liveCount(c.id)}</span>
                     : <span className="text-dim">0</span>}
                 </td>
                 <td className="px-3 py-3 text-xs text-muted">{ownerName(c.owner_id)}</td>

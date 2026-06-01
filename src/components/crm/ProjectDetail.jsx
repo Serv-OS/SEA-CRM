@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 
 const STATUS_STYLES = {
-  todo: 'bg-blue-500/20 text-blue-300',
-  in_progress: 'bg-orange-500/20 text-orange-300',
-  blocked: 'bg-red-500/20 text-red-300',
-  done: 'bg-green-500/20 text-green-300',
+  todo: 'bg-blue-100 text-blue-700 border border-blue-200',
+  in_progress: 'bg-orange-100 text-orange-700 border border-orange-200',
+  blocked: 'bg-red-100 text-red-700 border border-red-200',
+  done: 'bg-emerald-100 text-emerald-700 border border-emerald-200',
 };
 
 const SUBJECT_TYPES = [
@@ -208,7 +208,7 @@ export default function ProjectDetail({ projectId, profile, onClose, onSelectTas
                         onClick={() => onSelectTask?.(t.id)}>{t.title}</span>
                       <span className={`px-1 py-0.5 text-[8px] font-bold rounded ${STATUS_STYLES[t.status]}`}>{t.status.replace('_',' ')}</span>
                       {t.due_date && (
-                        <span className={`text-[10px] ${new Date(t.due_date) < new Date() ? 'text-red-400' : 'text-dim'}`}>
+                        <span className={`text-[10px] ${new Date(t.due_date) < new Date() ? 'text-red-600' : 'text-dim'}`}>
                           {new Date(t.due_date).toLocaleDateString('en-GB', { day:'numeric', month:'short' })}
                         </span>
                       )}
@@ -246,7 +246,7 @@ export default function ProjectDetail({ projectId, profile, onClose, onSelectTas
                       <div key={t.id} className="flex items-center gap-2 py-1.5 px-3 bg-card/30 border border-bdr rounded-lg">
                         {canWrite && (
                           <button onClick={() => toggleTask(t)}
-                            className="w-4 h-4 rounded bg-green-500/30 border border-green-500 text-green-300 text-[10px] flex items-center justify-center shrink-0">&#x2713;</button>
+                            className="w-4 h-4 rounded bg-green-500/30 border border-green-500 text-emerald-600 text-[10px] flex items-center justify-center shrink-0">&#x2713;</button>
                         )}
                         <span className="text-sm text-dim line-through flex-1">{t.title}</span>
                       </div>

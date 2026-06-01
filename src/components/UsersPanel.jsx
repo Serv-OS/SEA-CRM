@@ -112,7 +112,7 @@ export default function UsersPanel({ profile }) {
                     Invite
                   </button>
                 </div>
-                {error && <div className="text-xs text-red-400">{error}</div>}
+                {error && <div className="text-xs text-red-600">{error}</div>}
                 <div className="flex items-center justify-between">
                   <div className="text-xs text-muted leading-relaxed">
                     Once invited, share <button type="button" onClick={copyInviteUrl} className="text-ember hover:underline">{window.location.origin}</button> with them.
@@ -149,7 +149,7 @@ export default function UsersPanel({ profile }) {
                   </div>
                   <div className="col-span-3 flex justify-end">
                     <button onClick={() => revokeInvite(inv.email)}
-                      className="px-2 py-1 text-xs text-red-400 hover:text-red-300 border border-red-500/30 hover:bg-red-500/10 rounded">
+                      className="px-2 py-1 text-xs text-red-600 hover:text-red-600 border border-red-200 hover:bg-red-50 rounded">
                       Revoke
                     </button>
                   </div>
@@ -158,7 +158,7 @@ export default function UsersPanel({ profile }) {
             </div>
           )}
 
-          {error && !inviting && <div className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-2">{error}</div>}
+          {error && !inviting && <div className="text-xs text-red-600 bg-red-50 border border-red-500/20 rounded-lg px-4 py-2">{error}</div>}
 
           <div className="bg-card border border-bdr rounded-xl overflow-hidden">
             <div className="px-4 py-2.5 border-b border-bdr grid grid-cols-12 gap-3 text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-dim">
@@ -197,7 +197,7 @@ export default function UsersPanel({ profile }) {
                 <div className="col-span-2 flex justify-end">
                   {u.id !== profile.id && (
                     <button onClick={() => removeUser(u)}
-                      className="px-2 py-1 text-xs text-red-400 hover:text-red-300 border border-red-500/30 hover:bg-red-500/10 rounded">
+                      className="px-2 py-1 text-xs text-red-600 hover:text-red-600 border border-red-200 hover:bg-red-50 rounded">
                       Remove
                     </button>
                   )}

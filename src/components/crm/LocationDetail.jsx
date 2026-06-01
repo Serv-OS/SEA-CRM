@@ -5,10 +5,10 @@ import ActivityTimeline from './ActivityTimeline.jsx';
 
 const STATUS_OPTIONS = ['prospect', 'onboarding', 'live', 'churned'];
 const STATUS_COLORS = {
-  prospect: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
-  onboarding: 'bg-orange-500/20 text-orange-300 border-orange-500/30',
-  live: 'bg-green-500/20 text-green-300 border-green-500/30',
-  churned: 'bg-red-500/20 text-red-300 border-red-500/30',
+  prospect: 'bg-blue-100 text-blue-700 border border-blue-200 border-blue-500/30',
+  onboarding: 'bg-orange-100 text-orange-700 border border-orange-200 border-orange-500/30',
+  live: 'bg-emerald-100 text-emerald-700 border border-emerald-200 border-green-500/30',
+  churned: 'bg-red-100 text-red-700 border border-red-200 border-red-500/30',
 };
 
 export default function LocationDetail({ locationId, profile, onClose, onNavigate }) {
@@ -80,7 +80,7 @@ export default function LocationDetail({ locationId, profile, onClose, onNavigat
   const input = "w-full px-3 py-2 bg-card border border-bdr rounded text-sm text-paper placeholder-dim focus:outline-none focus:border-ember";
   const label = "text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-dim mb-1 block";
 
-  const MODULE_STATUS = { quoted:'bg-slate-500/20 text-slate-300', included:'bg-blue-500/20 text-blue-300', enabling:'bg-orange-500/20 text-orange-300', live:'bg-green-500/20 text-green-300', disabled:'bg-red-500/20 text-red-300' };
+  const MODULE_STATUS = { quoted:'bg-slate-100 text-slate-600 border border-slate-200', included:'bg-blue-100 text-blue-700 border border-blue-200', enabling:'bg-orange-100 text-orange-700 border border-orange-200', live:'bg-emerald-100 text-emerald-700 border border-emerald-200', disabled:'bg-red-100 text-red-700 border border-red-200' };
   const DEAL_STAGES = { new_lead:'New Lead', contacted:'Contacted', qualified:'Qualified', demo_booked:'Demo Booked', demo_done:'Demo Done', proposal_sent:'Proposal', negotiation:'Negotiation', closed_won:'Won', closed_lost:'Lost' };
   const OB_STAGES = { kickoff:'Kickoff', hardware_ordered:'HW Ordered', hardware_shipped:'HW Shipped', account_menu_config:'Config', staff_training:'Training', go_live_scheduled:'Go-Live', live:'Live', handover_to_support:'Handover' };
 

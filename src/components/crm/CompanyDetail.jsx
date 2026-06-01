@@ -4,10 +4,10 @@ import AssociationManager from './AssociationManager.jsx';
 import ActivityTimeline from './ActivityTimeline.jsx';
 
 const STATUS_COLORS = {
-  prospect: 'bg-blue-500/20 text-blue-300',
-  onboarding: 'bg-orange-500/20 text-orange-300',
-  live: 'bg-green-500/20 text-green-300',
-  churned: 'bg-red-500/20 text-red-300',
+  prospect: 'bg-blue-100 text-blue-700 border border-blue-200',
+  onboarding: 'bg-orange-100 text-orange-700 border border-orange-200',
+  live: 'bg-emerald-100 text-emerald-700 border border-emerald-200',
+  churned: 'bg-red-100 text-red-700 border border-red-200',
 };
 
 export default function CompanyDetail({ companyId, profile, onClose, onNavigate }) {

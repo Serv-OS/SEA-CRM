@@ -57,9 +57,9 @@ export default function ProjectList({ profile, onSelect }) {
   };
 
   const STATUS_BADGE = {
-    active: 'bg-green-500/20 text-green-300',
-    completed: 'bg-blue-500/20 text-blue-300',
-    cancelled: 'bg-red-500/20 text-red-300',
+    active: 'bg-emerald-100 text-emerald-700 border border-emerald-200',
+    completed: 'bg-blue-100 text-blue-700 border border-blue-200',
+    cancelled: 'bg-red-100 text-red-700 border border-red-200',
   };
 
   const input = "w-full px-3 py-2 bg-card border border-bdr rounded text-sm text-paper placeholder-dim focus:outline-none focus:border-ember";
