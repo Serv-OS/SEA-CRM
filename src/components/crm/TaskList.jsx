@@ -18,6 +18,9 @@ export default function TaskList({ profile, onSelect }) {
   const [allTasks, setAllTasks] = useState([]);
   const [members, setMembers] = useState([]);
   const [projects, setProjects] = useState([]);
+  const [companies, setCompanies] = useState([]);
+  const [locations, setLocations] = useState([]);
+  const [deals, setDeals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState({ status: 'open', assignee: 'all', search: '' });
   const [expanded, setExpanded] = useState({});
@@ -34,14 +37,20 @@ export default function TaskList({ profile, onSelect }) {
 
   const load = async () => {
     setLoading(true);
-    const [t, m, p] = await Promise.all([
+    const [t, m, p, c, l, d] = await Promise.all([
       supabase.from('tasks').select('*').order('sort_order'),
       supabase.from('profiles').select('id, email, display_name'),
-      supabase.from('crm_projects').select('id, name').eq('status', 'active').order('name'),
+      supabase.from('crm_projects').select('*').order('name'),
+      supabase.from('companies').select('id, name'),
+      supabase.from('locations').select('id, name, company_id'),
+      supabase.from('deals').select('id, name, company_id'),
     ]);
     setAllTasks(t.data || []);
     setMembers(m.data || []);
     setProjects(p.data || []);
+    setCompanies(c.data || []);
+    setLocations(l.data || []);
+    setDeals(d.data || []);
     setLoading(false);
   };
 
@@ -79,6 +88,42 @@ export default function TaskList({ profile, onSelect }) {
   };
 
   const projectName = (id) => projects.find(p => p.id === id)?.name || '';
+
+  // Resolve what a task or its project is linked to
+  const getTaskContext = (task) => {
+    const badges = [];
+
+    // Direct subject link on the task
+    const resolveSubject = (type, id) => {
+      if (!type || !id) return null;
+      if (type === 'company') { const c = companies.find(x => x.id === id); return c ? { label: 'Company', name: c.name } : null; }
+      if (type === 'location') { const l = locations.find(x => x.id === id); return l ? { label: 'Location', name: l.name, companyId: l.company_id } : null; }
+      if (type === 'deal') { const d = deals.find(x => x.id === id); return d ? { label: 'Deal', name: d.name, companyId: d.company_id } : null; }
+      if (type === 'onboarding') return { label: 'Onboarding', name: '' };
+      if (type === 'ticket') return { label: 'Ticket', name: '' };
+      return null;
+    };
+
+    // Check task's own subject
+    let subject = resolveSubject(task.subject_type, task.subject_id);
+
+    // If no direct subject, check the project's subject
+    if (!subject && task.project_id) {
+      const proj = projects.find(p => p.id === task.project_id);
+      if (proj) subject = resolveSubject(proj.subject_type, proj.subject_id);
+    }
+
+    if (subject) {
+      badges.push({ type: 'link', label: subject.label, name: subject.name });
+      // Resolve company from location/deal
+      if (subject.companyId) {
+        const c = companies.find(x => x.id === subject.companyId);
+        if (c) badges.push({ type: 'company', name: c.name });
+      }
+    }
+
+    return badges;
+  };
 
   const create = async (e) => {
     e.preventDefault();
@@ -127,6 +172,7 @@ export default function TaskList({ profile, onSelect }) {
     const hasKids = kids.length > 0;
     const isExpanded = expanded[t.id];
     const sub = subtaskSummary(t.id);
+    const context = depth === 0 ? getTaskContext(t) : [];
 
     return (
       <div key={t.id}>
@@ -161,11 +207,21 @@ export default function TaskList({ profile, onSelect }) {
             <div className={`text-sm ${t.status === 'done' ? 'text-dim line-through' : 'text-paper'}`}>
               {t.title}
             </div>
-            <div className="flex items-center gap-2 mt-0.5 text-xs text-dim">
-              {projectName(t.project_id) && <span>{projectName(t.project_id)}</span>}
-              {t.subject_type && <span>{t.subject_type}</span>}
+            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+              {projectName(t.project_id) && (
+                <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] rounded bg-purple-50 text-purple-700 border border-purple-200">
+                  {'\u{1F4C1}'} {projectName(t.project_id)}
+                </span>
+              )}
+              {context.map((b, i) => (
+                <span key={i} className={`inline-flex items-center px-1.5 py-0.5 text-[10px] rounded ${
+                  b.type === 'company' ? 'bg-slate-100 text-slate-600 border border-slate-200' : 'bg-ember/10 text-ember-deep border border-ember/20'
+                }`}>
+                  {b.type === 'company' ? '\u{1F3E2}' : ''} {b.label ? `${b.label}: ` : ''}{b.name}
+                </span>
+              ))}
               {sub && !isExpanded && (
-                <span className="text-muted">
+                <span className="text-[10px] text-muted">
                   {sub.done}/{sub.total} subtasks
                 </span>
               )}
