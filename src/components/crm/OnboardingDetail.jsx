@@ -16,33 +16,44 @@ const STAGE_LABELS = {
 export default function OnboardingDetail({ onboardingId, profile, onClose, onNavigate }) {
   const [ob, setOb] = useState(null);
   const [company, setCompany] = useState(null);
+  const [locations, setLocations] = useState([]);
   const [members, setMembers] = useState([]);
   const [history, setHistory] = useState([]);
+  const [projects, setProjects] = useState([]);
+  const [deal, setDeal] = useState(null);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState({});
-  const [tab, setTab] = useState('overview');
 
   const canWrite = profile.role === 'owner' || profile.role === 'editor';
 
   useEffect(() => { load(); }, [onboardingId]);
 
   const load = async () => {
-    const [o, m, h] = await Promise.all([
+    const [o, m, h, prj] = await Promise.all([
       supabase.from('onboardings').select('*').eq('id', onboardingId).single(),
       supabase.from('profiles').select('id, email, display_name'),
       supabase.from('stage_history').select('*').eq('object_type', 'onboarding').eq('object_id', onboardingId).order('changed_at', { ascending: false }),
+      supabase.from('crm_projects').select('*').eq('subject_type', 'onboarding').eq('subject_id', onboardingId).order('created_at', { ascending: false }),
     ]);
     setOb(o.data);
     setMembers(m.data || []);
     setHistory(h.data || []);
+    setProjects(prj.data || []);
     if (o.data?.company_id) {
-      const { data: c } = await supabase.from('companies').select('id, name').eq('id', o.data.company_id).single();
-      setCompany(c);
+      const [c, l] = await Promise.all([
+        supabase.from('companies').select('*').eq('id', o.data.company_id).single(),
+        supabase.from('locations').select('*').eq('company_id', o.data.company_id).order('name'),
+      ]);
+      setCompany(c.data);
+      setLocations(l.data || []);
+    }
+    if (o.data?.deal_id) {
+      const { data: d } = await supabase.from('deals').select('*').eq('id', o.data.deal_id).single();
+      setDeal(d);
     }
   };
 
   const startEdit = () => { setDraft({ ...ob }); setEditing(true); };
-
   const save = async () => {
     const oldStage = ob.stage;
     const { id, created_at, updated_at, ...patch } = draft;
@@ -53,17 +64,9 @@ export default function OnboardingDetail({ onboardingId, profile, onClose, onNav
         from_stage: oldStage, to_stage: patch.stage, changed_by: profile.id,
       });
     }
-    setEditing(false);
-    load();
+    setEditing(false); load();
   };
-
   const set = (k, v) => setDraft({ ...draft, [k]: v });
-
-  const deleteRecord = async () => {
-    if (!confirm('Delete this onboarding record?\n\nThis cannot be undone.')) return;
-    await supabase.from('onboardings').delete().eq('id', onboardingId);
-    onClose();
-  };
 
   const changeStage = async (newStage) => {
     if (newStage === ob.stage) return;
@@ -75,35 +78,47 @@ export default function OnboardingDetail({ onboardingId, profile, onClose, onNav
     load();
   };
 
-  if (!ob) return <div className="h-full flex items-center justify-center text-dim text-sm">Loading...</div>;
-
-  const ownerName = (id) => {
-    const m = members.find(u => u.id === id);
-    return m ? (m.display_name || m.email.split('@')[0]) : 'Unassigned';
+  const deleteRecord = async () => {
+    if (!confirm('Delete this onboarding record?\n\nThis cannot be undone.')) return;
+    await supabase.from('onboardings').delete().eq('id', onboardingId);
+    onClose();
   };
 
-  const input = "w-full px-3 py-2 bg-card border border-bdr rounded text-sm text-paper placeholder-dim focus:outline-none focus:border-ember";
+  const createLinkedProject = async () => {
+    const name = prompt(`Project name for ${company?.name || 'this'} onboarding:`);
+    if (!name?.trim()) return;
+    const { data } = await supabase.from('crm_projects').insert({
+      name: name.trim(), subject_type: 'onboarding', subject_id: onboardingId, owner_id: profile.id,
+    }).select().single();
+    if (data) onNavigate?.('project', data.id);
+    else load();
+  };
+
+  if (!ob) return <div className="h-full flex items-center justify-center text-dim text-sm">Loading...</div>;
+
+  const ownerName = (id) => { const m = members.find(u => u.id === id); return m ? (m.display_name || m.email.split('@')[0]) : 'Unassigned'; };
+
+  const input = "w-full px-3 py-2 bg-card border border-bdr rounded-xl text-sm text-paper placeholder-dim focus:outline-none focus:border-ember";
   const label = "text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-dim mb-1 block";
-  const tabBtn = (t, lbl) => (
-    <button onClick={() => setTab(t)}
-      className={`px-3 py-1.5 text-xs font-medium rounded transition ${tab === t ? 'bg-card text-paper' : 'text-muted hover:text-paper'}`}>
-      {lbl}
-    </button>
-  );
 
   return (
     <div className="h-full flex flex-col">
-      <div className="px-6 py-4 border-b border-bdr flex items-center gap-3">
-        <button onClick={onClose} className="text-muted hover:text-paper text-sm">&larr;</button>
+      {/* Header */}
+      <div className="px-6 py-5 border-b border-bdr flex items-center gap-4">
+        <button onClick={onClose} className="text-muted hover:text-paper text-lg">&larr;</button>
         <div className="flex-1 min-w-0">
-          <div className="text-lg font-bold text-paper truncate">
-            <span className="text-ember cursor-pointer hover:underline" onClick={() => onNavigate?.('company', ob.company_id)}>
-              {company?.name || 'Unknown'}
-            </span>
-            {' '}Onboarding
+          <div className="text-xl font-bold text-paper truncate">
+            {company?.name || 'Unknown'} Onboarding
           </div>
-          <div className="text-[10px] text-dim font-mono uppercase tracking-[0.18em]">
-            {STAGE_LABELS[ob.stage]} / Owner: {ownerName(ob.owner_id)}
+          <div className="flex items-center gap-2 mt-1 flex-wrap">
+            <span className="badge-status bg-orange-100 text-orange-700 border border-orange-200">{STAGE_LABELS[ob.stage]}</span>
+            <span className="text-xs text-muted">Owner: {ownerName(ob.owner_id)}</span>
+            {company && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] rounded-lg bg-slate-100 text-slate-600 border border-slate-200 cursor-pointer hover:border-slate-300"
+                onClick={() => onNavigate?.('company', company.id)}>
+                {'\u{1F3E2}'} {company.name}
+              </span>
+            )}
           </div>
         </div>
         {canWrite && !editing && (
@@ -116,6 +131,7 @@ export default function OnboardingDetail({ onboardingId, profile, onClose, onNav
         )}
       </div>
 
+      {/* Stage progress bar */}
       {canWrite && (
         <div className="px-6 py-2 border-b border-bdr flex gap-0.5 overflow-x-auto">
           {STAGES.map((s, i) => {
@@ -123,8 +139,8 @@ export default function OnboardingDetail({ onboardingId, profile, onClose, onNav
             const isPast = STAGES.indexOf(ob.stage) > i;
             return (
               <button key={s} onClick={() => changeStage(s)}
-                className={`px-2 py-1 text-[9px] font-bold uppercase rounded transition whitespace-nowrap ${
-                  isActive ? 'bg-ember text-ink' : isPast ? 'bg-ember/20 text-ember' : 'bg-card text-dim hover:text-paper'
+                className={`px-2.5 py-1.5 text-[9px] font-bold uppercase rounded-xl transition whitespace-nowrap ${
+                  isActive ? 'bg-ember text-white' : isPast ? 'bg-ember/20 text-ember' : 'bg-card text-dim hover:text-paper'
                 }`}>
                 {STAGE_LABELS[s]}
               </button>
@@ -133,70 +149,157 @@ export default function OnboardingDetail({ onboardingId, profile, onClose, onNav
         </div>
       )}
 
-      <div className="px-6 py-2 border-b border-bdr flex gap-1">
-        {tabBtn('overview', 'Overview')}
-        {tabBtn('contacts', 'Contacts')}
-        {tabBtn('history', 'Stage History')}
-        {tabBtn('activity', 'Activity')}
-      </div>
-
+      {/* Card grid - everything visible */}
       <div className="flex-1 overflow-y-auto p-6">
-        <div className="max-w-3xl">
-          {tab === 'overview' && !editing && (
-            <div className="grid grid-cols-2 gap-4">
-              <Field label="Stage" value={STAGE_LABELS[ob.stage]} />
-              <Field label="Owner" value={ownerName(ob.owner_id)} />
-              {ob.notes && <div className="col-span-2"><div className={label}>Notes</div><div className="text-sm text-paper whitespace-pre-wrap">{ob.notes}</div></div>}
-            </div>
-          )}
-
-          {tab === 'overview' && editing && (
-            <div className="space-y-3">
+        {editing ? (
+          <div className="max-w-3xl">
+            <Card title="Edit Onboarding">
               <div className="grid grid-cols-2 gap-3">
                 <div><label className={label}>Stage</label>
                   <select className={input} value={draft.stage} onChange={e => set('stage', e.target.value)}>
                     {STAGES.map(s => <option key={s} value={s}>{STAGE_LABELS[s]}</option>)}
-                  </select>
-                </div>
+                  </select></div>
                 <div><label className={label}>Owner</label>
                   <select className={input} value={draft.owner_id || ''} onChange={e => set('owner_id', e.target.value || null)}>
                     <option value="">Unassigned</option>
                     {members.map(m => <option key={m.id} value={m.id}>{m.display_name || m.email}</option>)}
-                  </select>
+                  </select></div>
+              </div>
+              <div className="mt-3"><label className={label}>Notes</label><textarea className={input + ' resize-none'} rows={3} value={draft.notes || ''} onChange={e => set('notes', e.target.value)} /></div>
+              <div className="flex gap-2 mt-4">
+                <button onClick={save} className="btn-glass px-5 py-2 rounded-xl text-sm">Save</button>
+                <button onClick={() => setEditing(false)} className="btn-ghost px-4 py-2 rounded-xl text-sm">Cancel</button>
+              </div>
+            </Card>
+          </div>
+        ) : (
+          <div className="grid grid-cols-12 gap-4 max-w-[1400px]">
+
+            {/* LEFT: Key Info + Company + Locations */}
+            <div className="col-span-4 space-y-4">
+              <Card title="Key Info">
+                <div className="space-y-3">
+                  <Field label="Stage" value={STAGE_LABELS[ob.stage]} />
+                  <Field label="Owner" value={ownerName(ob.owner_id)} />
+                  <Field label="Created" value={new Date(ob.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' })} />
+                  {ob.notes && <Field label="Notes" value={ob.notes} />}
                 </div>
-              </div>
-              <div><label className={label}>Notes</label><textarea className={input + ' resize-none'} rows={3} value={draft.notes || ''} onChange={e => set('notes', e.target.value)} /></div>
-              <div className="flex gap-2"><button onClick={save} className="px-4 py-2 bg-ember text-ink text-sm font-semibold rounded">Save</button>
-                <button onClick={() => setEditing(false)} className="px-4 py-2 text-sm text-muted border border-bdr rounded">Cancel</button></div>
-            </div>
-          )}
+              </Card>
 
-          {tab === 'contacts' && <AssociationManager subjectType="onboarding" subjectId={onboardingId} targetType="contact" profile={profile} onNavigate={onNavigate} />}
-
-          {tab === 'history' && (
-            <div>
-              <div className={label + ' mb-3'}>Stage history ({history.length})</div>
-              <div className="space-y-2">
-                {history.map(h => (
-                  <div key={h.id} className="flex items-center gap-3 text-xs py-2 border-b border-bdr last:border-b-0">
-                    <span className="text-muted">{ownerName(h.changed_by)}</span>
-                    <span className="text-dim">{h.from_stage ? STAGE_LABELS[h.from_stage] : 'Created'} &rarr; {STAGE_LABELS[h.to_stage]}</span>
-                    <span className="text-dim ml-auto">{new Date(h.changed_at).toLocaleDateString('en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}</span>
+              <Card title="Company">
+                {company ? (
+                  <div onClick={() => onNavigate?.('company', company.id)}
+                    className="p-3 glass-inner rounded-xl cursor-pointer flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-ember/15 border border-ember/25 flex items-center justify-center text-lg shrink-0">{'\u{1F3E2}'}</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-base font-semibold text-paper">{company.name}</div>
+                      <div className="text-xs text-muted">{company.domain || company.industry || 'Company'}</div>
+                    </div>
                   </div>
-                ))}
-                {history.length === 0 && <div className="text-xs text-dim italic py-3">No history.</div>}
-              </div>
-            </div>
-          )}
+                ) : <Empty>No company</Empty>}
+              </Card>
 
-          {tab === 'activity' && <ActivityTimeline subjectType="onboarding" subjectId={onboardingId} profile={profile} />}
-        </div>
+              <Card title="Locations" count={locations.length}>
+                {locations.length > 0 ? (
+                  <div className="space-y-2">
+                    {locations.map(l => (
+                      <div key={l.id} onClick={() => onNavigate?.('location', l.id)}
+                        className="p-3 glass-inner rounded-xl cursor-pointer">
+                        <div className="text-sm font-medium text-paper">{l.name}</div>
+                        <div className="text-xs text-muted">{[l.venue_type, l.city].filter(Boolean).join(' / ')}</div>
+                      </div>
+                    ))}
+                  </div>
+                ) : <Empty>No locations</Empty>}
+              </Card>
+
+              {deal && (
+                <Card title="From Deal">
+                  <div onClick={() => onNavigate?.('deal', deal.id)}
+                    className="p-3 glass-inner rounded-xl cursor-pointer">
+                    <div className="text-sm font-medium text-paper">{deal.name}</div>
+                    <div className="flex items-center gap-2 mt-1">
+                      {deal.value && <span className="text-xs text-ember font-mono">{'\u{00A3}'}{Number(deal.value).toLocaleString()}</span>}
+                      <span className="text-xs text-muted">{deal.stage?.replace(/_/g, ' ')}</span>
+                    </div>
+                  </div>
+                </Card>
+              )}
+            </div>
+
+            {/* MIDDLE: Activity + Contacts */}
+            <div className="col-span-4 space-y-4">
+              <Card title="Activity">
+                <ActivityTimeline subjectType="onboarding" subjectId={onboardingId} profile={profile} />
+              </Card>
+
+              <Card title="Contacts">
+                <AssociationManager subjectType="onboarding" subjectId={onboardingId} targetType="contact" profile={profile} onNavigate={onNavigate} />
+              </Card>
+            </div>
+
+            {/* RIGHT: Projects + Stage History */}
+            <div className="col-span-4 space-y-4">
+              <Card title="Projects" count={projects.length}
+                action={canWrite ? { label: '+ Create', onClick: createLinkedProject } : null}>
+                {projects.length > 0 ? (
+                  <div className="space-y-2">
+                    {projects.map(p => (
+                      <div key={p.id} onClick={() => onNavigate?.('project', p.id)}
+                        className="p-3 glass-inner rounded-xl cursor-pointer">
+                        <div className="text-sm font-medium text-paper">{p.name}</div>
+                        <div className="text-xs text-muted mt-0.5">{p.status}</div>
+                      </div>
+                    ))}
+                  </div>
+                ) : <Empty>No projects linked</Empty>}
+              </Card>
+
+              <Card title="Stage History" count={history.length}>
+                {history.length > 0 ? (
+                  <div className="space-y-2">
+                    {history.map(h => (
+                      <div key={h.id} className="flex items-center gap-3 text-xs py-1.5">
+                        <span className="text-paper">{ownerName(h.changed_by)}</span>
+                        <span className="text-muted">{h.from_stage ? STAGE_LABELS[h.from_stage] : 'Created'} &rarr; {STAGE_LABELS[h.to_stage]}</span>
+                        <span className="text-dim ml-auto text-[10px]">
+                          {new Date(h.changed_at).toLocaleDateString('en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : <Empty>No stage changes</Empty>}
+              </Card>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
+function Card({ title, count, action, children }) {
+  return (
+    <div className="glass-card rounded-2xl overflow-hidden">
+      <div className="px-4 py-3 border-b border-bdr flex items-center gap-2">
+        <h3 className="text-sm font-bold text-paper">{title}</h3>
+        {count !== undefined && <span className="text-xs text-dim font-mono">({count})</span>}
+        {action && <button onClick={action.onClick} className="ml-auto text-xs text-ember hover:text-ember-deep font-medium">{action.label}</button>}
+      </div>
+      <div className="p-4">{children}</div>
+    </div>
+  );
+}
+
 function Field({ label, value }) {
-  return (<div><div className="text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-dim mb-0.5">{label}</div>
-    <div className="text-sm text-paper">{value || <span className="text-dim italic">--</span>}</div></div>);
+  return (
+    <div>
+      <div className="text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-dim mb-0.5">{label}</div>
+      <div className="text-sm text-paper break-words">{value || <span className="text-dim italic">--</span>}</div>
+    </div>
+  );
+}
+
+function Empty({ children }) {
+  return <div className="text-xs text-dim italic py-3 text-center">{children}</div>;
 }

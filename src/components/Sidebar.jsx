@@ -187,15 +187,15 @@ export default function Sidebar({ profile, projects, activeProject, setActivePro
         </div>
 
         {[
-          { key: 'companies', icon: '\u{1F3E2}', label: 'Companies' },
-          { key: 'contacts',  icon: '\u{1F464}', label: 'Contacts' },
-          { key: 'locations', icon: '\u{1F4CD}', label: 'Locations' },
-          { key: 'deals',      icon: '\u{1F4B0}', label: 'Deals' },
-          { key: 'onboarding',icon: '\u{1F680}', label: 'Onboarding' },
+          { key: 'companies',        icon: '\u{1F3E2}', label: 'Companies' },
+          { key: 'locations',        icon: '\u{1F4CD}', label: 'Locations' },
+          { key: 'contacts',         icon: '\u{1F464}', label: 'Contacts' },
+          { key: 'deals',            icon: '\u{1F4B0}', label: 'Deals' },
+          { key: 'onboarding',       icon: '\u{1F680}', label: 'Onboarding' },
+          { key: 'projects',         icon: '\u{1F4C1}', label: 'Projects' },
+          { key: 'tasks',            icon: '\u{2611}',  label: 'Tasks' },
           { key: 'tickets',          icon: '\u{1F3AB}', label: 'Tickets' },
           { key: 'modules',          icon: '\u{1F9E9}', label: 'Modules' },
-          { key: 'tasks',            icon: '\u{2611}',  label: 'Tasks' },
-          { key: 'projects',         icon: '\u{1F4C1}', label: 'Projects' },
           { key: 'feature_requests', icon: '\u{1F4A1}', label: 'Feature Requests' },
           { key: 'releases',         icon: '\u{1F4E6}', label: 'Releases' },
           { key: 'reporting',        icon: '\u{1F4CA}', label: 'Reporting' },
