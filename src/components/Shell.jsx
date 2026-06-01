@@ -22,19 +22,26 @@ export default function Shell({ session }) {
 
   useEffect(() => {
     load();
-    const ch = supabase.channel('projects')
-      .on('postgres_changes', { event:'*', schema:'public', table:'projects' }, load)
+    const ch = supabase.channel('backlog_projects')
+      .on('postgres_changes', { event:'*', schema:'public', table:'backlog_projects' }, load)
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, []);
 
   const load = async () => {
-    const { data } = await supabase.from('projects').select('*').eq('archived', false).order('created_at');
+    const { data } = await supabase.from('backlog_projects').select('*').eq('archived', false).order('created_at');
     setProjects(data || []);
     if (!activeProject && data?.length) setActiveProject(data[0]);
   };
 
-  const signOut = () => supabase.auth.signOut();
+  const signOut = async () => {
+    try {
+      await supabase.auth.signOut({ scope: 'global' });
+    } catch {
+      // If global signout fails (e.g. network), force local cleanup
+      await supabase.auth.signOut({ scope: 'local' });
+    }
+  };
 
   if (!profile) return <div className="h-full flex items-center justify-center text-muted text-sm">Loading profile…</div>;
 

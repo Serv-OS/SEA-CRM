@@ -19,13 +19,13 @@ export default function ItemDetail({ itemId, profile, onClose }) {
   useEffect(() => { load(); }, [itemId]);
 
   const load = async () => {
-    const { data: i } = await supabase.from('items').select('*').eq('id', itemId).single();
+    const { data: i } = await supabase.from('backlog_items').select('*').eq('id', itemId).single();
     setItem(i);
     if (i) {
       const [b, m, f, c, a] = await Promise.all([
-        supabase.from('buckets').select('*').eq('project_id', i.project_id).order('position'),
+        supabase.from('buckets').select('*').eq('backlog_project_id', i.backlog_project_id).order('position'),
         supabase.from('profiles').select('id, email, display_name'),
-        supabase.from('features').select('*').eq('project_id', i.project_id).order('name'),
+        supabase.from('features').select('*').eq('project_id', i.backlog_project_id).order('name'),
         supabase.from('comments').select('*').eq('item_id', itemId).order('created_at'),
         supabase.from('activity').select('*').eq('item_id', itemId).order('created_at', { ascending: false }),
       ]);
@@ -75,9 +75,9 @@ export default function ItemDetail({ itemId, profile, onClose }) {
     if (bucketChanged && newBucket?.is_done) patch.closed_at = new Date().toISOString();
     if (bucketChanged && !newBucket?.is_done) patch.closed_at = null;
 
-    await supabase.from('items').update(patch).eq('id', itemId);
+    await supabase.from('backlog_items').update(patch).eq('id', itemId);
     await supabase.from('activity').insert({
-      item_id: itemId, project_id: item.project_id, actor_id: profile.id,
+      item_id: itemId, backlog_project_id: item.backlog_project_id, actor_id: profile.id,
       action: bucketChanged ? 'moved' : 'edited', detail: { fields: Object.keys(patch) },
     });
     setEditing(false);
@@ -86,7 +86,7 @@ export default function ItemDetail({ itemId, profile, onClose }) {
 
   const del = async () => {
     if (!confirm('Delete this item? This cannot be undone.')) return;
-    await supabase.from('items').delete().eq('id', itemId);
+    await supabase.from('backlog_items').delete().eq('id', itemId);
     onClose();
   };
 
@@ -96,7 +96,7 @@ export default function ItemDetail({ itemId, profile, onClose }) {
       item_id: itemId, author_id: profile.id, body: newComment.trim(),
     });
     await supabase.from('activity').insert({
-      item_id: itemId, project_id: item.project_id, actor_id: profile.id, action: 'commented',
+      item_id: itemId, backlog_project_id: item.backlog_project_id, actor_id: profile.id, action: 'commented',
     });
     setNewComment('');
     load();

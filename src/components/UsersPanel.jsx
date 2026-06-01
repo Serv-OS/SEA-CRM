@@ -58,7 +58,9 @@ export default function UsersPanel({ profile }) {
 
   const removeUser = async (u) => {
     if (!confirm(`Remove ${u.email}? They'll lose access immediately. Their items and comments stay, but they'll need a new invite to return.`)) return;
-    await supabase.from('profiles').delete().eq('id', u.id);
+    setError('');
+    const { error: err } = await supabase.rpc('admin_delete_user', { target_user_id: u.id });
+    if (err) { setError(`Failed to remove user: ${err.message}`); return; }
     load();
   };
 
@@ -156,6 +158,8 @@ export default function UsersPanel({ profile }) {
             </div>
           )}
 
+          {error && !inviting && <div className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-2">{error}</div>}
+
           <div className="bg-card border border-bdr rounded-xl overflow-hidden">
             <div className="px-4 py-2.5 border-b border-bdr grid grid-cols-12 gap-3 text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-dim">
               <div className="col-span-5">User</div>
@@ -172,7 +176,7 @@ export default function UsersPanel({ profile }) {
                   </div>
                   <div className="min-w-0">
                     <div className="text-sm text-paper truncate">{u.display_name || u.email.split('@')[0]}</div>
-                    <div className="text-xs text-dim truncate">{u.email}</div>
+                    <div className="text-xs text-muted">{u.email}</div>
                   </div>
                 </div>
                 <div className="col-span-3">

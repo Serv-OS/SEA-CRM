@@ -18,7 +18,7 @@ export default function Sidebar({ profile, projects, activeProject, setActivePro
     e.preventDefault();
     if (!name.trim()) return;
     const slug = name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'') + '-' + Math.random().toString(36).slice(2,6);
-    const { data: p } = await supabase.from('projects').insert({
+    const { data: p } = await supabase.from('backlog_projects').insert({
       name: name.trim(),
       slug, icon,
       default_item_type: defaultType,
@@ -31,7 +31,7 @@ export default function Sidebar({ profile, projects, activeProject, setActivePro
         { name: 'Testing',     position: 2, color: '#C75A29', is_done: false },
         { name: 'Shipped',     position: 3, color: '#6B6359', is_done: true  },
       ];
-      await supabase.from('buckets').insert(defaults.map(b => ({ ...b, project_id: p.id })));
+      await supabase.from('buckets').insert(defaults.map(b => ({ ...b, backlog_project_id: p.id })));
       setActiveProject(p);
     }
     setName(''); setIcon('📦'); setDefaultType('task'); setAdding(false); onRefresh?.();
@@ -47,7 +47,7 @@ export default function Sidebar({ profile, projects, activeProject, setActivePro
   const saveEdit = async (e) => {
     e?.preventDefault();
     if (!editName.trim()) return;
-    await supabase.from('projects').update({
+    await supabase.from('backlog_projects').update({
       name: editName.trim(),
       icon: editIcon || '📦',
     }).eq('id', editingId);
@@ -68,7 +68,7 @@ export default function Sidebar({ profile, projects, activeProject, setActivePro
       alert('Project name did not match. Deletion cancelled.');
       return;
     }
-    const { error } = await supabase.from('projects').delete().eq('id', p.id);
+    const { error } = await supabase.from('backlog_projects').delete().eq('id', p.id);
     if (error) { alert('Delete failed: ' + error.message); return; }
     if (activeProject?.id === p.id) setActiveProject(null);
     onRefresh?.();

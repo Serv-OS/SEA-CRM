@@ -25,7 +25,7 @@ export default function FeaturesPanel({ project, profile }) {
   const load = async () => {
     const [f, i] = await Promise.all([
       supabase.from('features').select('*').eq('project_id', project.id).order('name'),
-      supabase.from('items').select('id, type, feature_id, bucket_id, closed_at').eq('project_id', project.id),
+      supabase.from('backlog_items').select('id, type, feature_id, bucket_id, closed_at').eq('backlog_project_id', project.id),
     ]);
     setFeatures(f.data || []);
     setItems(i.data || []);
@@ -89,14 +89,14 @@ export default function FeaturesPanel({ project, profile }) {
     let msg = `Delete feature "${f.name}"?`;
     if (count > 0) msg += `\n\n${count} item${count === 1 ? '' : 's'} tagged with this feature will be untagged (not deleted).`;
     if (!confirm(msg)) return;
-    await supabase.from('items').update({ feature_id: null }).eq('feature_id', f.id);
+    await supabase.from('backlog_items').update({ feature_id: null }).eq('feature_id', f.id);
     await supabase.from('features').delete().eq('id', f.id);
     load();
   };
 
   const updateDefaultType = async (type) => {
     setDefaultType(type);
-    await supabase.from('projects').update({ default_item_type: type }).eq('id', project.id);
+    await supabase.from('backlog_projects').update({ default_item_type: type }).eq('id', project.id);
   };
 
   const input = "w-full px-3 py-2 bg-card border border-bdr rounded text-sm text-paper placeholder-dim focus:outline-none focus:border-ember";

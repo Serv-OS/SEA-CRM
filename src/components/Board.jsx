@@ -36,16 +36,16 @@ export default function Board({ project, profile, onOpenItem }) {
 
   useEffect(() => {
     const ch = supabase.channel('board-' + project.id)
-      .on('postgres_changes', { event:'*', schema:'public', table:'items',   filter:`project_id=eq.${project.id}` }, load)
-      .on('postgres_changes', { event:'*', schema:'public', table:'buckets', filter:`project_id=eq.${project.id}` }, load)
+      .on('postgres_changes', { event:'*', schema:'public', table:'backlog_items', filter:`backlog_project_id=eq.${project.id}` }, load)
+      .on('postgres_changes', { event:'*', schema:'public', table:'buckets', filter:`backlog_project_id=eq.${project.id}` }, load)
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [project.id]);
 
   const load = async () => {
     const [b, i, m, f] = await Promise.all([
-      supabase.from('buckets').select('*').eq('project_id', project.id).order('position'),
-      supabase.from('items').select('*').eq('project_id', project.id).order('position'),
+      supabase.from('buckets').select('*').eq('backlog_project_id', project.id).order('position'),
+      supabase.from('backlog_items').select('*').eq('backlog_project_id', project.id).order('position'),
       supabase.from('profiles').select('id, email, display_name'),
       supabase.from('features').select('*').eq('project_id', project.id).order('name'),
     ]);
@@ -92,8 +92,8 @@ export default function Board({ project, profile, onOpenItem }) {
   const submitCreate = async (draft) => {
     if (!draft.title.trim()) return;
     const pos = (itemsByBucket[draft.bucket_id]?.length || 0);
-    const { data: item } = await supabase.from('items').insert({
-      project_id: project.id,
+    const { data: item } = await supabase.from('backlog_items').insert({
+      backlog_project_id: project.id,
       bucket_id: draft.bucket_id,
       title: draft.title.trim(),
       description: draft.description || null,
@@ -111,7 +111,7 @@ export default function Board({ project, profile, onOpenItem }) {
     }).select().single();
     if (item) {
       await supabase.from('activity').insert({
-        item_id: item.id, project_id: project.id, actor_id: profile.id, action: 'created',
+        item_id: item.id, backlog_project_id: project.id, actor_id: profile.id, action: 'created',
         detail: { title: item.title },
       });
     }
@@ -123,7 +123,7 @@ export default function Board({ project, profile, onOpenItem }) {
     if (bucketEditor.mode === 'new') {
       const pos = buckets.length;
       await supabase.from('buckets').insert({
-        project_id: project.id,
+        backlog_project_id: project.id,
         name: data.name.trim(),
         color: data.color,
         is_done: data.is_done,
@@ -151,7 +151,7 @@ export default function Board({ project, profile, onOpenItem }) {
     if (itemCount > 0) {
       const fallback = buckets.find(b => b.id !== bucket.id);
       if (fallback) {
-        await supabase.from('items').update({ bucket_id: fallback.id }).eq('bucket_id', bucket.id);
+        await supabase.from('backlog_items').update({ bucket_id: fallback.id }).eq('bucket_id', bucket.id);
       } else {
         alert('Cannot delete the only bucket. Create another bucket first.');
         return;
@@ -182,12 +182,12 @@ export default function Board({ project, profile, onOpenItem }) {
     e.preventDefault();
     if (!dragItem || dragItem.bucket_id === bucketId) { setDragItem(null); return; }
     const bucket = buckets.find(b => b.id === bucketId);
-    await supabase.from('items').update({
+    await supabase.from('backlog_items').update({
       bucket_id: bucketId,
       closed_at: bucket?.is_done ? new Date().toISOString() : null,
     }).eq('id', dragItem.id);
     await supabase.from('activity').insert({
-      item_id: dragItem.id, project_id: project.id, actor_id: profile.id, action: 'moved',
+      item_id: dragItem.id, backlog_project_id: project.id, actor_id: profile.id, action: 'moved',
       detail: { from: dragItem.bucket_id, to: bucketId, bucket_name: bucket?.name },
     });
     setDragItem(null);
