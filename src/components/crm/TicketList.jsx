@@ -23,11 +23,14 @@ export default function TicketList({ profile, onSelect, onNavigate }) {
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState({ status: 'open', search: '' });
+  const [locations, setLocations] = useState([]);
   const [showCreate, setShowCreate] = useState(false);
   const [subject, setSubject] = useState('');
+  const [newLocation, setNewLocation] = useState('');
   const [companyId, setCompanyId] = useState('');
   const [priority, setPriority] = useState('P2');
   const [ticketType, setTicketType] = useState('support');
+  const [description, setDescription] = useState('');
 
   const canWrite = profile.role === 'owner' || profile.role === 'editor';
 
@@ -35,13 +38,15 @@ export default function TicketList({ profile, onSelect, onNavigate }) {
 
   const load = async () => {
     setLoading(true);
-    const [t, c, m] = await Promise.all([
+    const [t, c, l, m] = await Promise.all([
       supabase.from('tickets').select('*').order('created_at', { ascending: false }),
       supabase.from('companies').select('id, name').order('name'),
+      supabase.from('locations').select('id, name, company_id').order('name'),
       supabase.from('profiles').select('id, email, display_name'),
     ]);
     setTickets(t.data || []);
     setCompanies(c.data || []);
+    setLocations(l.data || []);
     setMembers(m.data || []);
     setLoading(false);
   };
@@ -64,18 +69,34 @@ export default function TicketList({ profile, onSelect, onNavigate }) {
     return m ? (m.display_name || m.email.split('@')[0]) : '';
   };
 
+  const handleLocationChange = (locId) => {
+    setNewLocation(locId);
+    if (locId) {
+      const loc = locations.find(l => l.id === locId);
+      if (loc) setCompanyId(loc.company_id);
+    }
+  };
+
   const create = async (e) => {
     e.preventDefault();
     if (!subject.trim() || !companyId) return;
     const { data } = await supabase.from('tickets').insert({
-      subject: subject.trim(), company_id: companyId, priority, ticket_type: ticketType, owner_id: profile.id,
+      subject: subject.trim(),
+      description: description.trim() || null,
+      company_id: companyId,
+      priority, ticket_type: ticketType, owner_id: profile.id,
     }).select().single();
     if (data) {
       await supabase.from('stage_history').insert({
         object_type: 'ticket', object_id: data.id, from_stage: null, to_stage: 'new', changed_by: profile.id,
       });
+      if (newLocation) {
+        await supabase.from('associations').insert({
+          from_type: 'ticket', from_id: data.id, to_type: 'location', to_id: newLocation, label: 'affected_location',
+        });
+      }
     }
-    setSubject(''); setCompanyId(''); setPriority('P2'); setTicketType('support'); setShowCreate(false);
+    setSubject(''); setDescription(''); setNewLocation(''); setCompanyId(''); setPriority('P2'); setTicketType('support'); setShowCreate(false);
     if (data) onSelect(data.id);
     else load();
   };
@@ -114,20 +135,36 @@ export default function TicketList({ profile, onSelect, onNavigate }) {
         <div className="px-6 py-3 border-b border-bdr">
           <form onSubmit={create} className="space-y-2">
             <input className={input} value={subject} onChange={e => setSubject(e.target.value)} placeholder="Ticket subject" autoFocus />
-            <div className="flex gap-2">
-              <select className={input + ' w-48'} value={companyId} onChange={e => setCompanyId(e.target.value)}>
-                <option value="">Company...</option>
-                {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            <textarea className={input + ' resize-none'} rows={2} value={description} onChange={e => setDescription(e.target.value)} placeholder="Description (optional)" />
+            <div className="flex gap-2 items-center flex-wrap">
+              <select className={input + ' w-56'} value={newLocation} onChange={e => handleLocationChange(e.target.value)}>
+                <option value="">Select location...</option>
+                {locations.map(l => {
+                  const co = companies.find(c => c.id === l.company_id);
+                  return <option key={l.id} value={l.id}>{l.name} ({co?.name || '?'})</option>;
+                })}
               </select>
-              <select className={input + ' w-32'} value={priority} onChange={e => setPriority(e.target.value)}>
+              {companyId && (
+                <span className="px-3 py-2 bg-slate-50 border border-slate-200 rounded text-xs text-slate-600 flex items-center gap-1.5">
+                  {'\u{1F3E2}'} {companies.find(c => c.id === companyId)?.name || ''}
+                </span>
+              )}
+              {!newLocation && (
+                <select className={input + ' w-44'} value={companyId} onChange={e => setCompanyId(e.target.value)}>
+                  <option value="">Or company...</option>
+                  {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              )}
+              <select className={input + ' w-24'} value={priority} onChange={e => setPriority(e.target.value)}>
                 <option value="P0">P0</option><option value="P1">P1</option><option value="P2">P2</option><option value="P3">P3</option>
               </select>
-              <select className={input + ' w-40'} value={ticketType} onChange={e => setTicketType(e.target.value)}>
+              <select className={input + ' w-36'} value={ticketType} onChange={e => setTicketType(e.target.value)}>
                 <option value="support">Support</option><option value="bug">Bug</option>
-                <option value="feature_request">Feature Request</option><option value="billing">Billing</option><option value="other">Other</option>
+                <option value="feature_request">Feature Req</option><option value="billing">Billing</option><option value="other">Other</option>
               </select>
-              <button type="submit" className="px-4 py-2 bg-ember text-ink text-sm font-semibold rounded shrink-0">Create</button>
-              <button type="button" onClick={() => setShowCreate(false)} className="px-3 py-2 text-sm text-muted border border-bdr rounded shrink-0">Cancel</button>
+              <button type="submit" className="px-4 py-2 bg-ember text-white text-sm font-semibold rounded shrink-0">Create</button>
+              <button type="button" onClick={() => { setShowCreate(false); setNewLocation(''); setCompanyId(''); setDescription(''); }}
+                className="px-3 py-2 text-sm text-muted border border-bdr rounded shrink-0">Cancel</button>
             </div>
           </form>
         </div>

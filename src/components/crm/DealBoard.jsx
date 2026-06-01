@@ -17,12 +17,14 @@ const STAGES = [
 export default function DealBoard({ profile, onSelectDeal, onNavigate }) {
   const [deals, setDeals] = useState([]);
   const [companies, setCompanies] = useState([]);
+  const [locations, setLocations] = useState([]);
   const [members, setMembers] = useState([]);
   const [dragDeal, setDragDeal] = useState(null);
   const [viewMode, setViewMode] = useState('board');
   const [search, setSearch] = useState('');
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState('');
+  const [newLocation, setNewLocation] = useState('');
   const [newCompany, setNewCompany] = useState('');
   const [newValue, setNewValue] = useState('');
 
@@ -31,12 +33,14 @@ export default function DealBoard({ profile, onSelectDeal, onNavigate }) {
   useEffect(() => { load(); }, []);
 
   const load = async () => {
-    const [d, c, m] = await Promise.all([
+    const [d, c, l, m] = await Promise.all([
       supabase.from('deals').select('*').order('created_at', { ascending: false }),
       supabase.from('companies').select('id, name').order('name'),
+      supabase.from('locations').select('id, name, company_id').order('name'),
       supabase.from('profiles').select('id, email, display_name'),
     ]);
     setDeals(d.data || []);
+    setLocations(l.data || []);
     setCompanies(c.data || []);
     setMembers(m.data || []);
   };
@@ -96,6 +100,15 @@ export default function DealBoard({ profile, onSelectDeal, onNavigate }) {
     setDragDeal(null);
   };
 
+  // Auto-derive company when location is selected
+  const handleLocationChange = (locId) => {
+    setNewLocation(locId);
+    if (locId) {
+      const loc = locations.find(l => l.id === locId);
+      if (loc) setNewCompany(loc.company_id);
+    }
+  };
+
   const create = async (e) => {
     e.preventDefault();
     if (!newName.trim() || !newCompany) return;
@@ -105,13 +118,19 @@ export default function DealBoard({ profile, onSelectDeal, onNavigate }) {
       value: newValue ? parseFloat(newValue) : null,
       owner_id: profile.id,
     }).select().single();
-    // Write initial stage history
     if (data) {
+      // Write initial stage history
       await supabase.from('stage_history').insert({
         object_type: 'deal', object_id: data.id, from_stage: null, to_stage: 'new_lead', changed_by: profile.id,
       });
+      // Auto-link the location if one was selected
+      if (newLocation) {
+        await supabase.from('associations').insert({
+          from_type: 'deal', from_id: data.id, to_type: 'location', to_id: newLocation, label: 'affected_location',
+        });
+      }
     }
-    setNewName(''); setNewCompany(''); setNewValue(''); setShowCreate(false);
+    setNewName(''); setNewLocation(''); setNewCompany(''); setNewValue(''); setShowCreate(false);
     if (data) onSelectDeal(data.id);
     else load();
   };
@@ -154,17 +173,34 @@ export default function DealBoard({ profile, onSelectDeal, onNavigate }) {
 
       {showCreate && (
         <div className="px-6 py-3 border-b border-bdr">
-          <form onSubmit={create} className="flex gap-2 items-end">
-            <div className="flex-1"><input className={input} value={newName} onChange={e => setNewName(e.target.value)} placeholder="Deal name" autoFocus /></div>
-            <div className="w-48">
-              <select className={input} value={newCompany} onChange={e => setNewCompany(e.target.value)}>
-                <option value="">Select company...</option>
-                {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
+          <form onSubmit={create} className="space-y-2">
+            <div className="flex gap-2">
+              <input className={input + ' flex-1'} value={newName} onChange={e => setNewName(e.target.value)} placeholder="Deal name" autoFocus />
+              <input className={input + ' w-32'} value={newValue} onChange={e => setNewValue(e.target.value)} placeholder="Value (GBP)" type="number" step="0.01" />
             </div>
-            <div className="w-32"><input className={input} value={newValue} onChange={e => setNewValue(e.target.value)} placeholder="Value" type="number" step="0.01" /></div>
-            <button type="submit" className="px-4 py-2 bg-ember text-ink text-sm font-semibold rounded">Create</button>
-            <button type="button" onClick={() => setShowCreate(false)} className="px-3 py-2 text-sm text-muted border border-bdr rounded">Cancel</button>
+            <div className="flex gap-2 items-center">
+              <select className={input + ' w-56'} value={newLocation} onChange={e => handleLocationChange(e.target.value)}>
+                <option value="">Select location...</option>
+                {locations.map(l => {
+                  const co = companies.find(c => c.id === l.company_id);
+                  return <option key={l.id} value={l.id}>{l.name} ({co?.name || '?'})</option>;
+                })}
+              </select>
+              {newCompany && (
+                <span className="px-3 py-2 bg-slate-50 border border-slate-200 rounded text-xs text-slate-600 flex items-center gap-1.5">
+                  {'\u{1F3E2}'} {companies.find(c => c.id === newCompany)?.name || ''}
+                </span>
+              )}
+              {!newLocation && (
+                <select className={input + ' w-48'} value={newCompany} onChange={e => setNewCompany(e.target.value)}>
+                  <option value="">Or select company...</option>
+                  {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              )}
+              <button type="submit" className="px-4 py-2 bg-ember text-white text-sm font-semibold rounded shrink-0">Create</button>
+              <button type="button" onClick={() => { setShowCreate(false); setNewLocation(''); setNewCompany(''); }}
+                className="px-3 py-2 text-sm text-muted border border-bdr rounded shrink-0">Cancel</button>
+            </div>
           </form>
         </div>
       )}

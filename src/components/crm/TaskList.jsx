@@ -26,6 +26,7 @@ export default function TaskList({ profile, onSelect }) {
   const [expanded, setExpanded] = useState({});
   const [showCreate, setShowCreate] = useState(false);
   const [title, setTitle] = useState('');
+  const [newDescription, setNewDescription] = useState('');
   const [priority, setPriority] = useState('P2');
   const [assignee, setAssignee] = useState('');
   const [dueDate, setDueDate] = useState('');
@@ -130,12 +131,13 @@ export default function TaskList({ profile, onSelect }) {
     if (!title.trim()) return;
     const { data } = await supabase.from('tasks').insert({
       title: title.trim(),
+      description: newDescription.trim() || null,
       priority,
       owner_id: assignee || null,
       due_date: dueDate || null,
       project_id: projectId || null,
     }).select().single();
-    setTitle(''); setPriority('P2'); setAssignee(''); setDueDate(''); setProjectId('');
+    setTitle(''); setNewDescription(''); setPriority('P2'); setAssignee(''); setDueDate(''); setProjectId('');
     setShowCreate(false);
     if (data) onSelect(data.id);
     else load();
@@ -312,6 +314,8 @@ export default function TaskList({ profile, onSelect }) {
                 <option value="P2">P2</option><option value="P3">P3</option>
               </select>
             </div>
+            <textarea className={input + ' resize-none'} rows={2} value={newDescription} onChange={e => setNewDescription(e.target.value)}
+              placeholder="Description / details (optional)" />
             <div className="flex gap-2">
               <select className={input + ' w-40'} value={assignee} onChange={e => setAssignee(e.target.value)}>
                 <option value="">Unassigned</option>

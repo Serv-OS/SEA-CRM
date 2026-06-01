@@ -143,9 +143,9 @@ export default function ProjectList({ profile, onSelect }) {
           <form onSubmit={create} className="space-y-2">
             <input className={input} value={name} onChange={e => setName(e.target.value)}
               placeholder="Project name" autoFocus />
+            <textarea className={input + ' resize-none'} rows={2} value={description} onChange={e => setDescription(e.target.value)}
+              placeholder="What is this project about? Describe the scope and objectives..." />
             <div className="flex gap-2">
-              <input className={input + ' flex-1'} value={description} onChange={e => setDescription(e.target.value)}
-                placeholder="Description (optional)" />
               <button type="submit" className="px-4 py-2 bg-ember text-white text-sm font-semibold rounded shrink-0">Create</button>
               <button type="button" onClick={() => setShowCreate(false)}
                 className="px-3 py-2 text-sm text-muted border border-bdr rounded shrink-0">Cancel</button>
