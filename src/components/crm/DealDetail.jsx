@@ -148,13 +148,23 @@ export default function DealDetail({ dealId, profile, onClose, onNavigate }) {
                 <div><label className={label}>Name</label><input className={input} value={draft.name || ''} onChange={e => set('name', e.target.value)} /></div>
                 <div><label className={label}>Company</label><select className={input} value={draft.company_id || ''} onChange={e => set('company_id', e.target.value)}>
                   {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
-                <div><label className={label}>Value</label><input className={input} type="number" step="0.01" value={draft.value || ''} onChange={e => set('value', e.target.value ? parseFloat(e.target.value) : null)} /></div>
                 <div><label className={label}>Stage</label><select className={input} value={draft.stage} onChange={e => set('stage', e.target.value)}>
                   {STAGES.map(s => <option key={s} value={s}>{STAGE_LABELS[s]}</option>)}</select></div>
                 <div><label className={label}>Source</label><input className={input} value={draft.source || ''} onChange={e => set('source', e.target.value)} /></div>
                 <div><label className={label}>Expected close</label><input className={input} type="date" value={draft.expected_close_date || ''} onChange={e => set('expected_close_date', e.target.value || null)} /></div>
                 <div><label className={label}>Owner</label><select className={input} value={draft.owner_id || ''} onChange={e => set('owner_id', e.target.value || null)}>
                   <option value="">Unassigned</option>{members.map(m => <option key={m.id} value={m.id}>{m.display_name || m.email}</option>)}</select></div>
+              </div>
+              <div className="mt-3"><label className={label + ' mb-2'}>Revenue Breakdown</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><label className={label}>Hardware (one-time)</label><input className={input} type="number" step="0.01" value={draft.hardware_value || ''} onChange={e => set('hardware_value', e.target.value ? parseFloat(e.target.value) : null)} placeholder="0.00" /></div>
+                  <div><label className={label}>Services (one-time)</label><input className={input} type="number" step="0.01" value={draft.services_value || ''} onChange={e => set('services_value', e.target.value ? parseFloat(e.target.value) : null)} placeholder="0.00" /></div>
+                  <div><label className={label}>SaaS ARR</label><input className={input} type="number" step="0.01" value={draft.saas_arr || ''} onChange={e => set('saas_arr', e.target.value ? parseFloat(e.target.value) : null)} placeholder="0.00" /></div>
+                  <div><label className={label}>Payments ARR</label><input className={input} type="number" step="0.01" value={draft.payments_arr || ''} onChange={e => set('payments_arr', e.target.value ? parseFloat(e.target.value) : null)} placeholder="0.00" /></div>
+                  <div><label className={label}>Total deal value</label><input className={input} type="number" step="0.01" value={draft.value || ''} onChange={e => set('value', e.target.value ? parseFloat(e.target.value) : null)} placeholder="Or enter a flat total" /></div>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3 mt-3">
                 {draft.stage === 'closed_lost' && <div><label className={label}>Lost reason</label><input className={input} value={draft.lost_reason || ''} onChange={e => set('lost_reason', e.target.value)} /></div>}
               </div>
               <div className="mt-3"><label className={label}>Notes</label><textarea className={input + ' resize-none'} rows={3} value={draft.notes || ''} onChange={e => set('notes', e.target.value)} /></div>
@@ -171,8 +181,6 @@ export default function DealDetail({ dealId, profile, onClose, onNavigate }) {
             <div className="col-span-4 space-y-4">
               <Card title="Key Info">
                 <div className="space-y-3">
-                  <Field label="Value" value={fmt(deal.value)} />
-                  <Field label="Currency" value={deal.currency} />
                   <Field label="Stage" value={STAGE_LABELS[deal.stage]} />
                   <Field label="Source" value={deal.source} />
                   <Field label="Expected close" value={deal.expected_close_date ? new Date(deal.expected_close_date).toLocaleDateString('en-GB') : null} />
@@ -180,6 +188,21 @@ export default function DealDetail({ dealId, profile, onClose, onNavigate }) {
                   <Field label="Created" value={new Date(deal.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' })} />
                   {deal.lost_reason && <Field label="Lost reason" value={deal.lost_reason} />}
                   {deal.notes && <Field label="Notes" value={deal.notes} />}
+                </div>
+              </Card>
+
+              <Card title="Revenue">
+                <div className="space-y-2">
+                  {deal.hardware_value > 0 && <div className="flex justify-between"><span className="text-xs text-muted">Hardware</span><span className="text-sm text-paper font-mono">{fmt(deal.hardware_value)}</span></div>}
+                  {deal.services_value > 0 && <div className="flex justify-between"><span className="text-xs text-muted">Services</span><span className="text-sm text-paper font-mono">{fmt(deal.services_value)}</span></div>}
+                  {deal.saas_arr > 0 && <div className="flex justify-between"><span className="text-xs text-muted">SaaS ARR</span><span className="text-sm text-paper font-mono">{fmt(deal.saas_arr)}</span></div>}
+                  {deal.payments_arr > 0 && <div className="flex justify-between"><span className="text-xs text-muted">Payments ARR</span><span className="text-sm text-paper font-mono">{fmt(deal.payments_arr)}</span></div>}
+                  <div className="flex justify-between pt-2 border-t border-bdr">
+                    <span className="text-xs text-paper font-semibold">Total</span>
+                    <span className="text-base text-ember font-mono font-bold">{fmt(
+                      (deal.hardware_value || 0) + (deal.services_value || 0) + (deal.saas_arr || 0) + (deal.payments_arr || 0) || deal.value
+                    )}</span>
+                  </div>
                 </div>
               </Card>
 
