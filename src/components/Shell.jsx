@@ -15,6 +15,8 @@ import TaskList from './crm/TaskList.jsx';
 import TaskDetail from './crm/TaskDetail.jsx';
 import ProjectList from './crm/ProjectList.jsx';
 import ProjectDetail from './crm/ProjectDetail.jsx';
+import DealBoard from './crm/DealBoard.jsx';
+import DealDetail from './crm/DealDetail.jsx';
 
 export default function Shell({ session }) {
   const [profile, setProfile]   = useState(null);
@@ -83,6 +85,10 @@ export default function Shell({ session }) {
       case 'location_detail':
         return <LocationDetail locationId={detailId} profile={profile}
           onClose={() => setView('locations')} onNavigate={navigateTo} />;
+      case 'deals':
+        return <DealBoard profile={profile} onSelectDeal={(id) => { setView('deal_detail'); setDetailId(id); }} onNavigate={navigateTo} />;
+      case 'deal_detail':
+        return <DealDetail dealId={detailId} profile={profile} onClose={() => setView('deals')} onNavigate={navigateTo} />;
       case 'tasks':
         return <TaskList profile={profile} onSelect={(id) => { setView('task_detail'); setDetailId(id); }} />;
       case 'task_detail':

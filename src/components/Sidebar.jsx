@@ -190,6 +190,7 @@ export default function Sidebar({ profile, projects, activeProject, setActivePro
           { key: 'companies', icon: '\u{1F3E2}', label: 'Companies' },
           { key: 'contacts',  icon: '\u{1F464}', label: 'Contacts' },
           { key: 'locations', icon: '\u{1F4CD}', label: 'Locations' },
+          { key: 'deals',     icon: '\u{1F4B0}', label: 'Deals' },
           { key: 'tasks',     icon: '\u{2611}',  label: 'Tasks' },
           { key: 'projects',  icon: '\u{1F4C1}', label: 'Projects' },
         ].map(item => (
