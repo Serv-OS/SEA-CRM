@@ -140,7 +140,7 @@ export default function Sidebar({ profile, projects, activeProject, setActivePro
             return (
               <div key={p.id} className="relative group">
                 <button onClick={() => { setActiveProject(p); setView('board'); }}
-                  className={`w-full px-3 py-2 text-left rounded-lg text-sm flex items-center gap-2 transition ${
+                  className={`w-full px-3 py-2 text-left rounded-xl text-sm flex items-center gap-2 transition ${
                     active ? 'bg-card text-paper' : 'text-muted hover:bg-card hover:text-paper'
                   }`}>
                   <span>{p.icon}</span>
@@ -157,7 +157,7 @@ export default function Sidebar({ profile, projects, activeProject, setActivePro
                   </button>
                 )}
                 {menuId === p.id && (
-                  <div className="absolute right-1 top-full mt-0.5 z-10 w-36 bg-card border border-bdr rounded-lg shadow-lg overflow-hidden"
+                  <div className="absolute right-1 top-full mt-0.5 z-10 w-36 bg-card border border-bdr rounded-xl shadow-lg overflow-hidden"
                     onClick={e => e.stopPropagation()}>
                     <button onClick={() => startEdit(p)}
                       className="w-full px-3 py-2 text-left text-xs text-paper hover:bg-ink-soft flex items-center gap-2">
@@ -201,7 +201,7 @@ export default function Sidebar({ profile, projects, activeProject, setActivePro
           { key: 'reporting',        icon: '\u{1F4CA}', label: 'Reporting' },
         ].map(item => (
           <button key={item.key} onClick={() => setView(item.key)}
-            className={`w-full px-3 py-2 text-left rounded-lg text-sm flex items-center gap-2 ${
+            className={`w-full px-3 py-2 text-left rounded-xl text-sm flex items-center gap-2 ${
               view === item.key || view === item.key.slice(0, -1) + '_detail'
                 ? 'bg-card text-paper' : 'text-muted hover:bg-card hover:text-paper'
             }`}>
@@ -218,7 +218,7 @@ export default function Sidebar({ profile, projects, activeProject, setActivePro
 
         {activeProject && canWrite && (
           <button onClick={() => setView('features')}
-            className={`w-full px-3 py-2 text-left rounded-lg text-sm flex items-center gap-2 ${
+            className={`w-full px-3 py-2 text-left rounded-xl text-sm flex items-center gap-2 ${
               view === 'features' ? 'bg-card text-paper' : 'text-muted hover:bg-card hover:text-paper'
             }`}>
             <span className="text-ember">&#x25C6;</span>
@@ -230,7 +230,7 @@ export default function Sidebar({ profile, projects, activeProject, setActivePro
 
         {isOwner && (
           <button onClick={() => setView('users')}
-            className={`w-full px-3 py-2 text-left rounded-lg text-sm flex items-center gap-2 ${
+            className={`w-full px-3 py-2 text-left rounded-xl text-sm flex items-center gap-2 ${
               view === 'users' ? 'bg-card text-paper' : 'text-muted hover:bg-card hover:text-paper'
             }`}>
             <span>&#x1F465;</span>
@@ -249,7 +249,7 @@ export default function Sidebar({ profile, projects, activeProject, setActivePro
             <div className="text-[10px] text-dim font-mono uppercase tracking-[0.18em]">{profile.role}</div>
           </div>
         </div>
-        <button onClick={onSignOut} className="w-full px-2 py-1.5 text-xs text-muted hover:text-paper border border-bdr rounded hover:bg-card transition">
+        <button onClick={onSignOut} className="w-full px-2 py-1.5 text-xs btn-ghost rounded-xl">
           Sign out
         </button>
       </div>

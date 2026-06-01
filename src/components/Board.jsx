@@ -354,7 +354,7 @@ function BucketEditorModal({ mode, bucket, onSave, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50" onClick={onClose}>
       <form onSubmit={submit} onClick={e => e.stopPropagation()}
         className="w-96 glass-raised rounded-2xl overflow-hidden">
         <div className="px-5 py-4 border-b border-bdr">
@@ -432,7 +432,7 @@ function CreateItemModal({ draft: initial, buckets, members, features, project, 
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50" onClick={onClose}>
       <div className="w-[640px] max-w-[90vw] max-h-[85vh] glass-raised rounded-2xl overflow-hidden flex flex-col"
         onClick={e => e.stopPropagation()}>
         <div className="px-6 py-4 border-b border-bdr flex items-center justify-between">

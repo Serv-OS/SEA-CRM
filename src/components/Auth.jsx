@@ -27,31 +27,31 @@ export default function Auth() {
           <div className="mt-4">
             <Wordmark className="!text-4xl"/>
           </div>
-          <div className="text-sm text-muted mt-2 font-mono text-[10px] uppercase tracking-[0.18em]">Posupject</div>
+          <div className="text-sm mt-2 font-mono text-[10px] uppercase tracking-[0.18em] text-muted">Posupject</div>
         </div>
 
         {sent ? (
-          <div className="glass-raised glass-shimmer rounded-2xl p-8 text-center">
+          <div className="glass-raised glass-shimmer rounded-3xl p-8 text-center">
             <div className="text-3xl mb-3">&#x2709;&#xFE0F;</div>
-            <div className="text-base text-paper font-semibold mb-1">Check your email</div>
-            <div className="text-sm text-muted">We sent a magic link to <span className="text-paper font-medium">{email}</span></div>
+            <div className="text-base font-semibold mb-1">Check your email</div>
+            <div className="text-sm text-muted">We sent a magic link to <span className="font-medium text-ink">{email}</span></div>
           </div>
         ) : (
-          <form onSubmit={send} className="glass-raised glass-shimmer rounded-2xl p-6 space-y-4">
+          <form onSubmit={send} className="glass-raised glass-shimmer rounded-3xl p-8 space-y-4">
             <input
               type="email" required autoFocus
               value={email} onChange={e => setEmail(e.target.value)}
               placeholder="you@example.com"
-              className="w-full px-4 py-3 bg-ink/50 border border-bdr rounded-xl text-paper placeholder-dim text-sm focus:outline-none focus:border-ember backdrop-blur-sm"
+              className="w-full px-4 py-3 rounded-2xl text-sm focus:outline-none glass-card placeholder-dim"
             />
             <button
               type="submit" disabled={sending || !email}
-              className="w-full px-4 py-3 btn-glass rounded-xl text-sm disabled:opacity-50"
+              className="w-full px-4 py-3 btn-glass rounded-2xl text-sm disabled:opacity-50"
             >
               {sending ? 'Sending...' : 'Send magic link'}
             </button>
-            {error && <div className="text-xs text-red-400 text-center">{error}</div>}
-            <div className="text-xs text-dim text-center pt-1">
+            {error && <div className="text-xs text-red-500 text-center">{error}</div>}
+            <div className="text-xs text-muted text-center pt-1">
               First user becomes owner. Subsequent users must be invited by an owner.
             </div>
           </form>
