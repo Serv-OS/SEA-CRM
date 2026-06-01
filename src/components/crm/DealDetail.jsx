@@ -50,10 +50,26 @@ export default function DealDetail({ dealId, profile, onClose, onNavigate }) {
   const startEdit = () => { setDraft({ ...deal }); setEditing(true); };
   const save = async () => {
     const oldStage = deal.stage;
-    const { id, created_at, updated_at, ...patch } = draft;
-    if (patch.stage === 'closed_won' || patch.stage === 'closed_lost') patch.closed_at = patch.closed_at || new Date().toISOString();
+    const patch = {
+      name: draft.name,
+      company_id: draft.company_id,
+      stage: draft.stage,
+      value: draft.value || null,
+      currency: draft.currency || 'GBP',
+      expected_close_date: draft.expected_close_date || null,
+      source: draft.source || null,
+      notes: draft.notes || null,
+      lost_reason: draft.lost_reason || null,
+      owner_id: draft.owner_id || null,
+      hardware_value: draft.hardware_value || null,
+      services_value: draft.services_value || null,
+      saas_arr: draft.saas_arr || null,
+      payments_arr: draft.payments_arr || null,
+    };
+    if (patch.stage === 'closed_won' || patch.stage === 'closed_lost') patch.closed_at = deal.closed_at || new Date().toISOString();
     else patch.closed_at = null;
-    await supabase.from('deals').update(patch).eq('id', dealId);
+    const { error } = await supabase.from('deals').update(patch).eq('id', dealId);
+    if (error) { alert('Save failed: ' + error.message); return; }
     if (patch.stage !== oldStage) {
       await supabase.from('stage_history').insert({ object_type: 'deal', object_id: dealId, from_stage: oldStage, to_stage: patch.stage, changed_by: profile.id });
       if (patch.stage === 'closed_won') { const ob = await handleClosedWon(dealId, profile.id); if (ob) alert('Onboarding created automatically.'); }
