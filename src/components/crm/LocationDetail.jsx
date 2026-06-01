@@ -153,6 +153,18 @@ export default function LocationDetail({ locationId, profile, onClose, onNavigat
                 </div>
               </Card>
 
+              <Card title="Company">
+                <div onClick={() => onNavigate?.('company', location.company_id)}
+                  className="p-3 glass-inner rounded-xl cursor-pointer flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-ember/20 border border-ember/30 flex items-center justify-center text-lg shrink-0">{'\u{1F3E2}'}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-base font-semibold text-paper">{company?.name || 'Unknown'}</div>
+                    <div className="text-xs text-muted">Parent company</div>
+                  </div>
+                  <span className="text-xs text-ember">&rarr;</span>
+                </div>
+              </Card>
+
               <Card title="Modules" count={locationModules.length}>
                 {locationModules.length > 0 ? (
                   <div className="space-y-1.5">
