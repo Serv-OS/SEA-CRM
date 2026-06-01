@@ -60,6 +60,12 @@ export default function LocationDetail({ locationId, profile, onClose, onNavigat
   };
   const set = (k, v) => setDraft({ ...draft, [k]: v });
 
+  const deleteRecord = async () => {
+    if (!confirm(`Delete location "${location?.name}"?\n\nThis cannot be undone.`)) return;
+    await supabase.from('locations').delete().eq('id', locationId);
+    onClose();
+  };
+
   const createLinkedProject = async () => {
     const name = prompt(`Project name for ${location?.name}:`);
     if (!name?.trim()) return;
@@ -103,7 +109,12 @@ export default function LocationDetail({ locationId, profile, onClose, onNavigat
           </div>
         </div>
         {canWrite && !editing && (
-          <button onClick={startEdit} className="btn-ghost px-4 py-2 rounded-xl text-sm">Edit</button>
+          <div className="flex gap-2">
+            <button onClick={startEdit} className="btn-ghost px-4 py-2 rounded-xl text-sm">Edit</button>
+            {profile.role === 'owner' && (
+              <button onClick={deleteRecord} className="px-3 py-2 text-xs text-red-600 border border-red-200 rounded-xl hover:bg-red-50 transition">Delete</button>
+            )}
+          </div>
         )}
       </div>
 

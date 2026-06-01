@@ -60,6 +60,12 @@ export default function ProjectDetail({ projectId, profile, onClose, onSelectTas
     setSubjectRecords((data || []).map(r => ({ id: r.id, name: cfg.nameField ? r[cfg.nameField] : r.id.slice(0, 8) })));
   };
 
+  const deleteRecord = async () => {
+    if (!confirm(`Delete project "${project?.name}" and all its tasks?\n\nThis cannot be undone.`)) return;
+    await supabase.from('crm_projects').delete().eq('id', projectId);
+    onClose();
+  };
+
   const startEdit = () => { setDraft({ ...project }); setEditing(true); };
 
   const save = async () => {
@@ -126,7 +132,12 @@ export default function ProjectDetail({ projectId, profile, onClose, onSelectTas
           </div>
         </div>
         {canWrite && !editing && (
-          <button onClick={startEdit} className="px-3 py-1.5 bg-card border border-bdr rounded text-xs text-muted hover:text-paper">Edit</button>
+          <div className="flex gap-2">
+            <button onClick={startEdit} className="btn-ghost px-4 py-2 rounded-xl text-sm">Edit</button>
+            {profile.role === 'owner' && (
+              <button onClick={deleteRecord} className="px-3 py-2 text-xs text-red-600 border border-red-200 rounded-xl hover:bg-red-50 transition">Delete</button>
+            )}
+          </div>
         )}
       </div>
 

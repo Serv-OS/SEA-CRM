@@ -30,6 +30,13 @@ export default function ContactDetail({ contactId, profile, onClose, onNavigate 
   };
   const set = (k, v) => setDraft({ ...draft, [k]: v });
 
+  const deleteRecord = async () => {
+    const name = [contact?.first_name, contact?.last_name].filter(Boolean).join(' ') || contact?.email;
+    if (!confirm(`Delete contact "${name}"?\n\nThis cannot be undone.`)) return;
+    await supabase.from('contacts').delete().eq('id', contactId);
+    onClose();
+  };
+
   if (!contact) return <div className="h-full flex items-center justify-center text-dim text-sm">Loading...</div>;
 
   const fullName = [contact.first_name, contact.last_name].filter(Boolean).join(' ') || 'Unnamed contact';
@@ -54,7 +61,12 @@ export default function ContactDetail({ contactId, profile, onClose, onNavigate 
           </div>
         </div>
         {canWrite && !editing && (
-          <button onClick={startEdit} className="btn-ghost px-4 py-2 rounded-xl text-sm">Edit</button>
+          <div className="flex gap-2">
+            <button onClick={startEdit} className="btn-ghost px-4 py-2 rounded-xl text-sm">Edit</button>
+            {profile.role === 'owner' && (
+              <button onClick={deleteRecord} className="px-3 py-2 text-xs text-red-600 border border-red-200 rounded-xl hover:bg-red-50 transition">Delete</button>
+            )}
+          </div>
         )}
       </div>
 

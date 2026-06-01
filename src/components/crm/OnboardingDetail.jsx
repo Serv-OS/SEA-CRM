@@ -59,6 +59,12 @@ export default function OnboardingDetail({ onboardingId, profile, onClose, onNav
 
   const set = (k, v) => setDraft({ ...draft, [k]: v });
 
+  const deleteRecord = async () => {
+    if (!confirm('Delete this onboarding record?\n\nThis cannot be undone.')) return;
+    await supabase.from('onboardings').delete().eq('id', onboardingId);
+    onClose();
+  };
+
   const changeStage = async (newStage) => {
     if (newStage === ob.stage) return;
     await supabase.from('onboardings').update({ stage: newStage }).eq('id', onboardingId);
@@ -101,7 +107,12 @@ export default function OnboardingDetail({ onboardingId, profile, onClose, onNav
           </div>
         </div>
         {canWrite && !editing && (
-          <button onClick={startEdit} className="px-3 py-1.5 bg-card border border-bdr rounded text-xs text-muted hover:text-paper">Edit</button>
+          <div className="flex gap-2">
+            <button onClick={startEdit} className="btn-ghost px-4 py-2 rounded-xl text-sm">Edit</button>
+            {profile.role === 'owner' && (
+              <button onClick={deleteRecord} className="px-3 py-2 text-xs text-red-600 border border-red-200 rounded-xl hover:bg-red-50 transition">Delete</button>
+            )}
+          </div>
         )}
       </div>
 

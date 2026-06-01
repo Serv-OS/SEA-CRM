@@ -103,6 +103,12 @@ export default function DealDetail({ dealId, profile, onClose, onNavigate }) {
     if (data) onNavigate?.('project', data.id);
   };
 
+  const deleteRecord = async () => {
+    if (!confirm(`Delete deal "${deal?.name}"?\n\nThis cannot be undone.`)) return;
+    await supabase.from('deals').delete().eq('id', dealId);
+    onClose();
+  };
+
   if (!deal) return <div className="h-full flex items-center justify-center text-dim text-sm">Loading...</div>;
 
   const ownerName = (id) => {
@@ -135,7 +141,12 @@ export default function DealDetail({ dealId, profile, onClose, onNavigate }) {
           </div>
         </div>
         {canWrite && !editing && (
-          <button onClick={startEdit} className="px-3 py-1.5 bg-card border border-bdr rounded text-xs text-muted hover:text-paper">Edit</button>
+          <div className="flex gap-2">
+            <button onClick={startEdit} className="btn-ghost px-4 py-2 rounded-xl text-sm">Edit</button>
+            {profile.role === 'owner' && (
+              <button onClick={deleteRecord} className="px-3 py-2 text-xs text-red-600 border border-red-200 rounded-xl hover:bg-red-50 transition">Delete</button>
+            )}
+          </div>
         )}
       </div>
 

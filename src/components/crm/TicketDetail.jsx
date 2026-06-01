@@ -57,6 +57,12 @@ export default function TicketDetail({ ticketId, profile, onClose, onNavigate })
 
   const set = (k, v) => setDraft({ ...draft, [k]: v });
 
+  const deleteRecord = async () => {
+    if (!confirm(`Delete ticket "${ticket?.subject}"?\n\nThis cannot be undone.`)) return;
+    await supabase.from('tickets').delete().eq('id', ticketId);
+    onClose();
+  };
+
   const changeStage = async (newStage) => {
     if (newStage === ticket.stage) return;
     const patch = { stage: newStage };
@@ -92,7 +98,12 @@ export default function TicketDetail({ ticketId, profile, onClose, onNavigate })
         </div>
         <span className={`px-2 py-1 text-[10px] font-bold uppercase rounded ${STAGE_STYLES[ticket.stage]}`}>{STAGE_LABELS[ticket.stage]}</span>
         {canWrite && !editing && (
-          <button onClick={startEdit} className="px-3 py-1.5 bg-card border border-bdr rounded text-xs text-muted hover:text-paper">Edit</button>
+          <div className="flex gap-2">
+            <button onClick={startEdit} className="btn-ghost px-4 py-2 rounded-xl text-sm">Edit</button>
+            {profile.role === 'owner' && (
+              <button onClick={deleteRecord} className="px-3 py-2 text-xs text-red-600 border border-red-200 rounded-xl hover:bg-red-50 transition">Delete</button>
+            )}
+          </div>
         )}
       </div>
 

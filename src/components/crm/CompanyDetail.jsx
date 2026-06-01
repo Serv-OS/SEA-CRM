@@ -72,6 +72,12 @@ export default function CompanyDetail({ companyId, profile, onClose, onNavigate 
     load();
   };
 
+  const deleteRecord = async () => {
+    if (!confirm(`Delete "${company?.name}" and all its locations, deals, onboardings, and tickets?\n\nThis cannot be undone.`)) return;
+    await supabase.from('companies').delete().eq('id', companyId);
+    onClose();
+  };
+
   if (!company) return <div className="h-full flex items-center justify-center text-dim text-sm">Loading...</div>;
 
   const ownerName = (id) => { const m = members.find(u => u.id === id); return m ? (m.display_name || m.email.split('@')[0]) : 'Unassigned'; };
@@ -96,7 +102,12 @@ export default function CompanyDetail({ companyId, profile, onClose, onNavigate 
           </div>
         </div>
         {canWrite && !editing && (
-          <button onClick={startEdit} className="btn-ghost px-4 py-2 rounded-xl text-sm">Edit</button>
+          <div className="flex gap-2">
+            <button onClick={startEdit} className="btn-ghost px-4 py-2 rounded-xl text-sm">Edit</button>
+            {profile.role === 'owner' && (
+              <button onClick={deleteRecord} className="px-3 py-2 text-xs text-red-600 border border-red-200 rounded-xl hover:bg-red-50 transition">Delete</button>
+            )}
+          </div>
         )}
       </div>
 
