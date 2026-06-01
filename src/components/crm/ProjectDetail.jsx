@@ -8,7 +8,16 @@ const STATUS_STYLES = {
   done: 'bg-green-500/20 text-green-300',
 };
 
-export default function ProjectDetail({ projectId, profile, onClose, onSelectTask }) {
+const SUBJECT_TYPES = [
+  { key: '', label: 'None' },
+  { key: 'company', label: 'Company', table: 'companies', nameField: 'name' },
+  { key: 'location', label: 'Location', table: 'locations', nameField: 'name' },
+  { key: 'deal', label: 'Deal', table: 'deals', nameField: 'name' },
+  { key: 'onboarding', label: 'Onboarding', table: 'onboardings', nameField: null },
+  { key: 'ticket', label: 'Ticket', table: 'tickets', nameField: 'subject' },
+];
+
+export default function ProjectDetail({ projectId, profile, onClose, onSelectTask, onNavigate }) {
   const [project, setProject] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [members, setMembers] = useState([]);
@@ -16,6 +25,8 @@ export default function ProjectDetail({ projectId, profile, onClose, onSelectTas
   const [draft, setDraft] = useState({});
   const [newTask, setNewTask] = useState('');
   const [newPriority, setNewPriority] = useState('P2');
+  const [subjectRecords, setSubjectRecords] = useState([]);
+  const [linkedName, setLinkedName] = useState('');
 
   const canWrite = profile.role === 'owner' || profile.role === 'editor';
 
@@ -30,6 +41,23 @@ export default function ProjectDetail({ projectId, profile, onClose, onSelectTas
     setProject(p.data);
     setTasks(t.data || []);
     setMembers(m.data || []);
+    // Resolve linked record name
+    if (p.data?.subject_type && p.data?.subject_id) {
+      const cfg = SUBJECT_TYPES.find(s => s.key === p.data.subject_type);
+      if (cfg?.table) {
+        const { data } = await supabase.from(cfg.table).select('*').eq('id', p.data.subject_id).single();
+        if (data) setLinkedName(cfg.nameField ? data[cfg.nameField] : `${cfg.label} record`);
+      }
+    } else {
+      setLinkedName('');
+    }
+  };
+
+  const loadSubjectRecords = async (type) => {
+    const cfg = SUBJECT_TYPES.find(s => s.key === type);
+    if (!cfg?.table) { setSubjectRecords([]); return; }
+    const { data } = await supabase.from(cfg.table).select('*').order(cfg.nameField || 'created_at').limit(200);
+    setSubjectRecords((data || []).map(r => ({ id: r.id, name: cfg.nameField ? r[cfg.nameField] : r.id.slice(0, 8) })));
   };
 
   const startEdit = () => { setDraft({ ...project }); setEditing(true); };
@@ -89,6 +117,12 @@ export default function ProjectDetail({ projectId, profile, onClose, onSelectTas
           <div className="text-lg font-bold text-paper truncate">{project.name}</div>
           <div className="text-[10px] text-dim font-mono uppercase tracking-[0.18em]">
             {project.status} / {doneTasks.length}/{tasks.length} tasks done ({pct}%)
+            {linkedName && (
+              <span> / <span className="text-ember cursor-pointer hover:underline"
+                onClick={() => onNavigate?.(project.subject_type, project.subject_id)}>
+                {project.subject_type}: {linkedName}
+              </span></span>
+            )}
           </div>
         </div>
         {canWrite && !editing && (
@@ -127,6 +161,27 @@ export default function ProjectDetail({ projectId, profile, onClose, onSelectTas
                   </select>
                 </div>
                 <div><label className={label}>Due date</label><input className={input} type="date" value={draft.due_date || ''} onChange={e => set('due_date', e.target.value || null)} /></div>
+                <div>
+                  <label className={label}>Linked to</label>
+                  <select className={input} value={draft.subject_type || ''} onChange={e => {
+                    set('subject_type', e.target.value || null);
+                    set('subject_id', null);
+                    if (e.target.value) loadSubjectRecords(e.target.value);
+                    else setSubjectRecords([]);
+                  }}>
+                    {SUBJECT_TYPES.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
+                  </select>
+                </div>
+                {draft.subject_type && (
+                  <div>
+                    <label className={label}>Record</label>
+                    <select className={input} value={draft.subject_id || ''} onChange={e => set('subject_id', e.target.value || null)}
+                      onFocus={() => { if (!subjectRecords.length) loadSubjectRecords(draft.subject_type); }}>
+                      <option value="">Select...</option>
+                      {subjectRecords.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                    </select>
+                  </div>
+                )}
               </div>
               <div className="flex gap-2 pt-1">
                 <button onClick={save} className="px-4 py-2 bg-ember text-ink text-sm font-semibold rounded">Save</button>

@@ -16,6 +16,7 @@ export default function CompanyDetail({ companyId, profile, onClose, onNavigate 
   const [deals, setDeals] = useState([]);
   const [onboardings, setOnboardings] = useState([]);
   const [tickets, setTickets] = useState([]);
+  const [projects, setProjects] = useState([]);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState({});
   const [members, setMembers] = useState([]);
@@ -25,17 +26,19 @@ export default function CompanyDetail({ companyId, profile, onClose, onNavigate 
   useEffect(() => { load(); }, [companyId]);
 
   const load = async () => {
-    const [c, l, m, d, ob, t] = await Promise.all([
+    const [c, l, m, d, ob, t, prj] = await Promise.all([
       supabase.from('companies').select('*').eq('id', companyId).single(),
       supabase.from('locations').select('*').eq('company_id', companyId).order('name'),
       supabase.from('profiles').select('id, email, display_name'),
       supabase.from('deals').select('*').eq('company_id', companyId).order('created_at', { ascending: false }),
       supabase.from('onboardings').select('*').eq('company_id', companyId).order('created_at', { ascending: false }),
       supabase.from('tickets').select('*').eq('company_id', companyId).order('created_at', { ascending: false }),
+      supabase.from('crm_projects').select('*').eq('subject_type', 'company').eq('subject_id', companyId).order('created_at', { ascending: false }),
     ]);
     setCompany(c.data);
     setLocations(l.data || []);
     setMembers(m.data || []);
+    setProjects(prj.data || []);
     setDeals(d.data || []);
     setOnboardings(ob.data || []);
     setTickets(t.data || []);
@@ -212,6 +215,20 @@ export default function CompanyDetail({ companyId, profile, onClose, onNavigate 
                     {tickets.length > 5 && <div className="text-xs text-muted text-center py-1">+{tickets.length - 5} more</div>}
                   </div>
                 ) : <Empty>No tickets</Empty>}
+              </Card>
+
+              <Card title="Projects" count={projects.length}>
+                {projects.length > 0 ? (
+                  <div className="space-y-2">
+                    {projects.map(p => (
+                      <div key={p.id} onClick={() => onNavigate?.('project', p.id)}
+                        className="p-3 bg-ink-soft border border-bdr rounded-lg cursor-pointer hover:border-ember transition">
+                        <div className="text-sm font-medium text-paper">{p.name}</div>
+                        <div className="text-xs text-muted mt-0.5">{p.status}</div>
+                      </div>
+                    ))}
+                  </div>
+                ) : <Empty>No projects linked</Empty>}
               </Card>
             </div>
           </div>

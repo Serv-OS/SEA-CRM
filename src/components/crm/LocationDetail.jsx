@@ -16,6 +16,7 @@ export default function LocationDetail({ locationId, profile, onClose, onNavigat
   const [company, setCompany] = useState(null);
   const [deals, setDeals] = useState([]);
   const [onboardings, setOnboardings] = useState([]);
+  const [projects, setProjects] = useState([]);
   const [locationModules, setLocationModules] = useState([]);
   const [modules, setModules] = useState([]);
   const [editing, setEditing] = useState(false);
@@ -27,16 +28,18 @@ export default function LocationDetail({ locationId, profile, onClose, onNavigat
   useEffect(() => { load(); }, [locationId]);
 
   const load = async () => {
-    const [l, m, mods, lm] = await Promise.all([
+    const [l, m, mods, lm, prj] = await Promise.all([
       supabase.from('locations').select('*').eq('id', locationId).single(),
       supabase.from('profiles').select('id, email, display_name'),
       supabase.from('modules').select('*').order('sort_order'),
       supabase.from('location_modules').select('*').eq('location_id', locationId),
+      supabase.from('crm_projects').select('*').eq('subject_type', 'location').eq('subject_id', locationId).order('created_at', { ascending: false }),
     ]);
     setLocation(l.data);
     setMembers(m.data || []);
     setModules(mods.data || []);
     setLocationModules(lm.data || []);
+    setProjects(prj.data || []);
     if (l.data?.company_id) {
       const [c, d, ob] = await Promise.all([
         supabase.from('companies').select('id, name').eq('id', l.data.company_id).single(),
@@ -193,8 +196,18 @@ export default function LocationDetail({ locationId, profile, onClose, onNavigat
                 ) : <Empty>No onboardings</Empty>}
               </Card>
 
-              <Card title="Projects">
-                <Empty>Link projects from the Projects view</Empty>
+              <Card title="Projects" count={projects.length}>
+                {projects.length > 0 ? (
+                  <div className="space-y-2">
+                    {projects.map(p => (
+                      <div key={p.id} onClick={() => onNavigate?.('project', p.id)}
+                        className="p-3 bg-ink-soft border border-bdr rounded-lg cursor-pointer hover:border-ember transition">
+                        <div className="text-sm font-medium text-paper">{p.name}</div>
+                        <div className="text-xs text-muted mt-0.5">{p.status}</div>
+                      </div>
+                    ))}
+                  </div>
+                ) : <Empty>No projects linked to this location</Empty>}
               </Card>
             </div>
           </div>

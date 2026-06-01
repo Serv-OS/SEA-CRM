@@ -70,6 +70,11 @@ export default function Shell({ session }) {
     if (type === 'company') { setView('company_detail'); setDetailId(id); }
     else if (type === 'contact') { setView('contact_detail'); setDetailId(id); }
     else if (type === 'location') { setView('location_detail'); setDetailId(id); }
+    else if (type === 'deal') { setView('deal_detail'); setDetailId(id); }
+    else if (type === 'onboarding') { setView('onboarding_detail'); setDetailId(id); }
+    else if (type === 'ticket') { setView('ticket_detail'); setDetailId(id); }
+    else if (type === 'project') { setView('project_detail'); setDetailId(id); }
+    else if (type === 'task') { setView('task_detail'); setDetailId(id); }
   };
 
   if (!profile) return <div className="h-full flex items-center justify-center text-muted text-sm">Loading profile...</div>;
@@ -128,7 +133,8 @@ export default function Shell({ session }) {
       case 'project_detail':
         return <ProjectDetail projectId={detailId} profile={profile}
           onClose={() => setView('projects')}
-          onSelectTask={(id) => { setView('task_detail'); setDetailId(id); }} />;
+          onSelectTask={(id) => { setView('task_detail'); setDetailId(id); }}
+          onNavigate={navigateTo} />;
       case 'board':
       default:
         return activeProject
