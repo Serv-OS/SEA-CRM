@@ -13,10 +13,21 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-async function getAccessToken(): Promise<string> {
+async function getAccessToken(supabase: any): Promise<string> {
   const clientId = Deno.env.get("GMAIL_CLIENT_ID")!;
   const clientSecret = Deno.env.get("GMAIL_CLIENT_SECRET")!;
-  const refreshToken = Deno.env.get("GMAIL_REFRESH_TOKEN")!;
+
+  // Read refresh token from database (in-app OAuth connection)
+  const { data: conn } = await supabase
+    .from("gmail_connections")
+    .select("refresh_token")
+    .eq("is_active", true)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .single();
+
+  const refreshToken = conn?.refresh_token || Deno.env.get("GMAIL_REFRESH_TOKEN");
+  if (!refreshToken) throw new Error("No Gmail connection found. Connect Gmail in Settings.");
 
   const res = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
@@ -136,7 +147,7 @@ serve(async (req) => {
     const references = inReplyTo || undefined;
 
     // Build and send email via Gmail API
-    const accessToken = await getAccessToken();
+    const accessToken = await getAccessToken(supabase);
     const emailSubject = subject || (ticket?.subject ? `Re: ${ticket.subject}` : "Support reply");
     const rawMessage = createMimeMessage(to, emailSubject, body, inReplyTo, references);
 

@@ -27,6 +27,7 @@ import FeatureRequestDetail from './crm/FeatureRequestDetail.jsx';
 import ReleaseList from './crm/ReleaseList.jsx';
 import ReleaseDetail from './crm/ReleaseDetail.jsx';
 import ReportingDashboard from './crm/ReportingDashboard.jsx';
+import SettingsPanel from './crm/SettingsPanel.jsx';
 
 export default function Shell({ session }) {
   const [profile, setProfile]   = useState(null);
@@ -124,6 +125,8 @@ export default function Shell({ session }) {
         return <ReleaseDetail releaseId={detailId} profile={profile} onClose={() => setView('releases')} />;
       case 'reporting':
         return <ReportingDashboard profile={profile} />;
+      case 'settings':
+        return <SettingsPanel profile={profile} />;
       case 'tasks':
         return <TaskList profile={profile} onSelect={(id) => { setView('task_detail'); setDetailId(id); }} />;
       case 'task_detail':

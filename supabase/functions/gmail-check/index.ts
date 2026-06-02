@@ -13,10 +13,21 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-async function getAccessToken(): Promise<string> {
+async function getAccessToken(supabase: any): Promise<string> {
   const clientId = Deno.env.get("GMAIL_CLIENT_ID")!;
   const clientSecret = Deno.env.get("GMAIL_CLIENT_SECRET")!;
-  const refreshToken = Deno.env.get("GMAIL_REFRESH_TOKEN")!;
+
+  // Try database first (in-app OAuth connection)
+  const { data: conn } = await supabase
+    .from("gmail_connections")
+    .select("refresh_token, access_token, token_expires_at")
+    .eq("is_active", true)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .single();
+
+  const refreshToken = conn?.refresh_token || Deno.env.get("GMAIL_REFRESH_TOKEN");
+  if (!refreshToken) throw new Error("No Gmail connection found. Connect Gmail in Settings.");
 
   const res = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
@@ -31,6 +42,14 @@ async function getAccessToken(): Promise<string> {
 
   const data = await res.json();
   if (!data.access_token) throw new Error("Failed to get Gmail access token: " + JSON.stringify(data));
+
+  // Update stored access token
+  if (conn) {
+    await supabase.from("gmail_connections")
+      .update({ access_token: data.access_token, token_expires_at: new Date(Date.now() + data.expires_in * 1000).toISOString() })
+      .eq("refresh_token", refreshToken);
+  }
+
   return data.access_token;
 }
 
@@ -117,7 +136,7 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const accessToken = await getAccessToken();
+    const accessToken = await getAccessToken(supabase);
 
     // Get unread messages
     const messages = await getGmailMessages(accessToken);
