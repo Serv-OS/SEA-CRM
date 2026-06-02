@@ -1,0 +1,373 @@
+import { useEffect, useState, useRef } from 'react';
+import { supabase } from '../../lib/supabase';
+
+const TYPE_ICON = { call: '\u{1F4DE}', email: '\u{1F4E7}', sms: '\u{1F4AC}', note: '\u{1F4DD}', meeting: '\u{1F91D}', whatsapp: '\u{1F4F2}' };
+const TYPE_LABEL = { call: 'Call', email: 'Email', sms: 'SMS', note: 'Note', meeting: 'Meeting', whatsapp: 'WhatsApp' };
+const CHANNEL_TABS = [
+  { key: 'note', label: 'Note', icon: '\u{1F4DD}' },
+  { key: 'email', label: 'Email', icon: '\u{1F4E7}' },
+  { key: 'sms', label: 'SMS', icon: '\u{1F4AC}' },
+  { key: 'call', label: 'Call', icon: '\u{1F4DE}' },
+];
+const CALL_OUTCOMES = ['connected', 'voicemail', 'no_answer', 'busy', 'wrong_number', 'callback_scheduled'];
+
+export default function ConversationTimeline({ subjectType, subjectId, profile, contacts }) {
+  const [activities, setActivities] = useState([]);
+  const [members, setMembers] = useState([]);
+  const [channel, setChannel] = useState('note');
+  const [body, setBody] = useState('');
+  const [subject, setSubject] = useState('');
+  const [toEmail, setToEmail] = useState('');
+  const [toPhone, setToPhone] = useState('');
+  const [direction, setDirection] = useState('outbound');
+  const [callDuration, setCallDuration] = useState('');
+  const [callOutcome, setCallOutcome] = useState('connected');
+  const [isInternal, setIsInternal] = useState(true);
+  const [sending, setSending] = useState(false);
+  const [showMentions, setShowMentions] = useState(false);
+  const [mentionFilter, setMentionFilter] = useState('');
+  const [mentionPos, setMentionPos] = useState(0);
+  const bodyRef = useRef(null);
+  const scrollRef = useRef(null);
+
+  const canWrite = profile.role === 'owner' || profile.role === 'editor';
+
+  useEffect(() => { load(); }, [subjectType, subjectId]);
+
+  useEffect(() => {
+    // Scroll to bottom on new activities
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [activities]);
+
+  const load = async () => {
+    const [a, m] = await Promise.all([
+      supabase.from('crm_activities')
+        .select('*')
+        .eq('subject_type', subjectType)
+        .eq('subject_id', subjectId)
+        .order('occurred_at', { ascending: true }),
+      supabase.from('profiles').select('id, email, display_name'),
+    ]);
+    setActivities(a.data || []);
+    setMembers(m.data || []);
+  };
+
+  const getName = (id) => {
+    const m = members.find(u => u.id === id);
+    return m ? (m.display_name || m.email.split('@')[0]) : 'Unknown';
+  };
+
+  const getInitial = (id) => {
+    const name = getName(id);
+    return name[0]?.toUpperCase() || '?';
+  };
+
+  // @mention handling
+  const handleBodyChange = (e) => {
+    const val = e.target.value;
+    setBody(val);
+
+    // Check if we're in a @mention
+    const cursorPos = e.target.selectionStart;
+    const textBeforeCursor = val.slice(0, cursorPos);
+    const atMatch = textBeforeCursor.match(/@(\w*)$/);
+    if (atMatch) {
+      setShowMentions(true);
+      setMentionFilter(atMatch[1].toLowerCase());
+      setMentionPos(cursorPos);
+    } else {
+      setShowMentions(false);
+    }
+  };
+
+  const insertMention = (member) => {
+    const textBefore = body.slice(0, mentionPos).replace(/@\w*$/, '');
+    const textAfter = body.slice(mentionPos);
+    const mention = `@[${member.display_name || member.email.split('@')[0]}](${member.id})`;
+    setBody(textBefore + mention + ' ' + textAfter);
+    setShowMentions(false);
+    bodyRef.current?.focus();
+  };
+
+  const filteredMembers = members.filter(m => {
+    if (!mentionFilter) return true;
+    const name = (m.display_name || m.email).toLowerCase();
+    return name.includes(mentionFilter);
+  });
+
+  // Parse mentions for display
+  const renderBody = (text) => {
+    if (!text) return null;
+    // Replace @[Name](id) with highlighted pills
+    const parts = text.split(/(@\[[^\]]+\]\([^)]+\))/g);
+    return parts.map((part, i) => {
+      const match = part.match(/@\[([^\]]+)\]\(([^)]+)\)/);
+      if (match) {
+        return (
+          <span key={i} className="inline-flex items-center px-1.5 py-0.5 rounded bg-ember/15 text-ember-deep text-xs font-medium mx-0.5">
+            @{match[1]}
+          </span>
+        );
+      }
+      return <span key={i}>{part}</span>;
+    });
+  };
+
+  const save = async () => {
+    if (channel === 'note' && !body.trim()) return;
+    if (channel === 'call' && !body.trim()) return;
+    setSending(true);
+
+    const record = {
+      type: channel,
+      subject: channel === 'email' ? subject.trim() || null : null,
+      body: body.trim() || null,
+      subject_type: subjectType,
+      subject_id: subjectId,
+      direction: channel === 'note' ? null : direction,
+      actor_id: profile.id,
+      is_internal: channel === 'note' ? isInternal : false,
+      channel_metadata: {},
+    };
+
+    if (channel === 'email') {
+      record.channel_metadata = { to: toEmail, from: profile.email };
+    } else if (channel === 'sms') {
+      record.channel_metadata = { to_number: toPhone, from_number: 'system' };
+    } else if (channel === 'call') {
+      const durationParts = callDuration.split(':').map(Number);
+      const seconds = durationParts.length === 2 ? durationParts[0] * 60 + durationParts[1] : parseInt(callDuration) || 0;
+      record.channel_metadata = { duration_seconds: seconds, outcome: callOutcome };
+    }
+
+    const { data: activity, error } = await supabase.from('crm_activities').insert(record).select().single();
+
+    if (error) {
+      alert('Failed to save: ' + error.message);
+      setSending(false);
+      return;
+    }
+
+    // Parse @mentions and create mention records
+    if (body && activity) {
+      const mentionRegex = /@\[([^\]]+)\]\(([^)]+)\)/g;
+      let match;
+      while ((match = mentionRegex.exec(body)) !== null) {
+        const userId = match[2];
+        await supabase.from('mentions').insert({
+          activity_id: activity.id,
+          mentioned_user_id: userId,
+          ticket_id: subjectType === 'ticket' ? subjectId : null,
+        });
+      }
+    }
+
+    // Reset form
+    setBody(''); setSubject(''); setToEmail(''); setToPhone('');
+    setCallDuration(''); setCallOutcome('connected');
+    setSending(false);
+    load();
+  };
+
+  const input = "w-full px-3 py-2 bg-card border border-bdr rounded-xl text-sm text-paper placeholder-dim focus:outline-none focus:border-ember";
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Messages */}
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+        {activities.length === 0 && (
+          <div className="text-center text-dim text-xs py-8 italic">No conversation yet. Start by adding a note or sending a message.</div>
+        )}
+        {activities.map(a => {
+          const isOutbound = a.direction === 'outbound' || !a.direction;
+          const isNote = a.type === 'note';
+          const isCall = a.type === 'call';
+          const isAgent = !!a.actor_id;
+
+          return (
+            <div key={a.id} className={`flex ${isNote ? 'justify-center' : isOutbound ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-[80%] ${
+                isNote
+                  ? 'w-full'
+                  : isOutbound
+                  ? ''
+                  : ''
+              }`}>
+                {/* Note / Internal */}
+                {isNote && (
+                  <div className={`rounded-2xl p-3 ${a.is_internal ? 'bg-amber-50 border border-amber-200' : 'glass-card'}`}>
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span className="w-5 h-5 rounded-full bg-amber-200 text-amber-800 text-[9px] font-bold flex items-center justify-center">{getInitial(a.actor_id)}</span>
+                      <span className="text-xs font-medium text-paper">{getName(a.actor_id)}</span>
+                      {a.is_internal && <span className="text-[9px] text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded font-bold uppercase">Internal</span>}
+                      <span className="text-[10px] text-dim ml-auto">{timeAgo(a.occurred_at)}</span>
+                    </div>
+                    <div className="text-sm text-paper leading-relaxed whitespace-pre-wrap">{renderBody(a.body)}</div>
+                  </div>
+                )}
+
+                {/* Call */}
+                {isCall && (
+                  <div className="glass-card rounded-2xl p-3 w-full">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span className="text-base">{TYPE_ICON.call}</span>
+                      <span className="text-xs font-medium text-paper">{getName(a.actor_id)}</span>
+                      <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${a.direction === 'inbound' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                        {a.direction === 'inbound' ? 'Inbound' : 'Outbound'} Call
+                      </span>
+                      <span className="text-[10px] text-dim ml-auto">{timeAgo(a.occurred_at)}</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-muted mt-1">
+                      {a.channel_metadata?.duration_seconds > 0 && <span>{Math.floor(a.channel_metadata.duration_seconds / 60)}m {a.channel_metadata.duration_seconds % 60}s</span>}
+                      {a.channel_metadata?.outcome && <span className="capitalize">{a.channel_metadata.outcome.replace(/_/g, ' ')}</span>}
+                    </div>
+                    {a.body && <div className="text-sm text-paper mt-2 whitespace-pre-wrap">{a.body}</div>}
+                  </div>
+                )}
+
+                {/* Email / SMS / WhatsApp */}
+                {!isNote && !isCall && (
+                  <div className={`rounded-2xl p-3 ${
+                    isOutbound
+                      ? 'bg-emerald-50 border border-emerald-200'
+                      : 'bg-blue-50 border border-blue-200'
+                  }`}>
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span className="text-sm">{TYPE_ICON[a.type]}</span>
+                      <span className="text-xs font-medium text-paper">
+                        {isAgent ? getName(a.actor_id) : (a.channel_metadata?.from || a.channel_metadata?.from_number || 'Customer')}
+                      </span>
+                      <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${
+                        isOutbound ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'
+                      }`}>{TYPE_LABEL[a.type]} {isOutbound ? 'sent' : 'received'}</span>
+                      <span className="text-[10px] text-dim ml-auto">{timeAgo(a.occurred_at)}</span>
+                    </div>
+                    {a.subject && <div className="text-xs font-medium text-paper mb-1">{a.subject}</div>}
+                    {a.channel_metadata?.to && <div className="text-[10px] text-muted mb-1">To: {a.channel_metadata.to}</div>}
+                    <div className="text-sm text-paper leading-relaxed whitespace-pre-wrap">{renderBody(a.body)}</div>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Composer */}
+      {canWrite && (
+        <div className="border-t border-bdr px-4 py-3">
+          {/* Channel tabs */}
+          <div className="flex gap-1 mb-3">
+            {CHANNEL_TABS.map(t => (
+              <button key={t.key} onClick={() => setChannel(t.key)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl transition ${
+                  channel === t.key ? 'bg-ember text-white' : 'bg-card text-muted hover:text-paper'
+                }`}>
+                <span>{t.icon}</span> {t.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Email fields */}
+          {channel === 'email' && (
+            <div className="space-y-2 mb-2">
+              <input className={input} value={toEmail} onChange={e => setToEmail(e.target.value)}
+                placeholder="To email address" />
+              <input className={input} value={subject} onChange={e => setSubject(e.target.value)}
+                placeholder="Subject" />
+            </div>
+          )}
+
+          {/* SMS fields */}
+          {channel === 'sms' && (
+            <div className="mb-2">
+              <input className={input} value={toPhone} onChange={e => setToPhone(e.target.value)}
+                placeholder="To phone number" />
+            </div>
+          )}
+
+          {/* Call fields */}
+          {channel === 'call' && (
+            <div className="grid grid-cols-3 gap-2 mb-2">
+              <select className={input} value={direction} onChange={e => setDirection(e.target.value)}>
+                <option value="outbound">Outbound call</option>
+                <option value="inbound">Inbound call</option>
+              </select>
+              <input className={input} value={callDuration} onChange={e => setCallDuration(e.target.value)}
+                placeholder="Duration (mm:ss)" />
+              <select className={input} value={callOutcome} onChange={e => setCallOutcome(e.target.value)}>
+                {CALL_OUTCOMES.map(o => <option key={o} value={o}>{o.replace(/_/g, ' ')}</option>)}
+              </select>
+            </div>
+          )}
+
+          {/* Note: internal toggle */}
+          {channel === 'note' && (
+            <div className="flex items-center gap-2 mb-2">
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input type="checkbox" checked={isInternal} onChange={e => setIsInternal(e.target.checked)}
+                  className="accent-ember" />
+                <span className="text-xs text-muted">Internal note (not visible to customer)</span>
+              </label>
+            </div>
+          )}
+
+          {/* Body + send */}
+          <div className="relative">
+            <textarea
+              ref={bodyRef}
+              className={input + ' resize-none pr-20'}
+              rows={channel === 'note' ? 3 : 4}
+              value={body}
+              onChange={handleBodyChange}
+              placeholder={
+                channel === 'note' ? 'Add a note... type @ to mention a team member'
+                : channel === 'email' ? 'Email body...'
+                : channel === 'sms' ? `SMS message... (${body.length}/160 chars)`
+                : 'Call notes...'
+              }
+            />
+
+            {/* @mention dropdown */}
+            {showMentions && filteredMembers.length > 0 && (
+              <div className="absolute bottom-full left-0 mb-1 w-64 glass-raised rounded-xl overflow-hidden shadow-lg z-10 max-h-40 overflow-y-auto">
+                {filteredMembers.slice(0, 8).map(m => (
+                  <button key={m.id} onClick={() => insertMention(m)}
+                    className="w-full px-3 py-2 text-left text-sm text-paper hover:bg-ember/10 flex items-center gap-2 transition">
+                    <span className="w-6 h-6 rounded-full bg-ember text-white text-[10px] font-bold flex items-center justify-center shrink-0">
+                      {(m.display_name || m.email)[0].toUpperCase()}
+                    </span>
+                    <span>{m.display_name || m.email.split('@')[0]}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* SMS character counter */}
+            {channel === 'sms' && (
+              <div className={`absolute bottom-2 right-16 text-[10px] font-mono ${body.length > 160 ? 'text-red-600' : 'text-dim'}`}>
+                {body.length}/160
+              </div>
+            )}
+
+            <button onClick={save} disabled={sending || (!body.trim() && channel !== 'call')}
+              className="absolute bottom-2 right-2 btn-glass px-4 py-1.5 rounded-xl text-xs disabled:opacity-50">
+              {sending ? '...' : channel === 'note' ? 'Add' : channel === 'call' ? 'Log' : 'Send'}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function timeAgo(ts) {
+  const d = (Date.now() - new Date(ts).getTime()) / 1000;
+  if (d < 60) return 'just now';
+  if (d < 3600) return Math.floor(d / 60) + 'm ago';
+  if (d < 86400) return Math.floor(d / 3600) + 'h ago';
+  if (d < 2592000) return Math.floor(d / 86400) + 'd ago';
+  return new Date(ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' });
+}

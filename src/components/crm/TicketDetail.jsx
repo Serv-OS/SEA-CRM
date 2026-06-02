@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import AssociationManager from './AssociationManager.jsx';
-import ActivityTimeline from './ActivityTimeline.jsx';
+import ConversationTimeline from './ConversationTimeline.jsx';
 
 const STAGES = ['new','in_progress','waiting_on_customer','escalated','resolved','closed'];
 const STAGE_LABELS = { new:'New', in_progress:'In Progress', waiting_on_customer:'Waiting on Customer', escalated:'Escalated', resolved:'Resolved', closed:'Closed' };
@@ -259,10 +259,12 @@ export default function TicketDetail({ ticketId, profile, onClose, onNavigate })
               )}
             </div>
 
-            {/* MIDDLE: Activity + Contacts */}
+            {/* MIDDLE: Conversation + Contacts */}
             <div className="col-span-4 space-y-4">
-              <Card title="Activity">
-                <ActivityTimeline subjectType="ticket" subjectId={ticketId} profile={profile} />
+              <Card title="Conversation" noPadding>
+                <div className="h-[500px]">
+                  <ConversationTimeline subjectType="ticket" subjectId={ticketId} profile={profile} contacts={[]} />
+                </div>
               </Card>
 
               <Card title="Contacts">
@@ -310,7 +312,7 @@ export default function TicketDetail({ ticketId, profile, onClose, onNavigate })
   );
 }
 
-function Card({ title, count, action, children }) {
+function Card({ title, count, action, noPadding, children }) {
   return (
     <div className="glass-card rounded-2xl overflow-hidden">
       <div className="px-4 py-3 border-b border-bdr flex items-center gap-2">
@@ -318,7 +320,7 @@ function Card({ title, count, action, children }) {
         {count !== undefined && <span className="text-xs text-dim font-mono">({count})</span>}
         {action && <button onClick={action.onClick} className="ml-auto text-xs text-ember hover:text-ember-deep font-medium">{action.label}</button>}
       </div>
-      <div className="p-4">{children}</div>
+      <div className={noPadding ? '' : 'p-4'}>{children}</div>
     </div>
   );
 }
