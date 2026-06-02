@@ -74,6 +74,8 @@ export default function TicketDetail({ ticketId, profile, onClose, onNavigate })
       subject: draft.subject, description: draft.description || null, stage: draft.stage,
       priority: draft.priority, ticket_type: draft.ticket_type, source: draft.source || null,
       notes: draft.notes || null, owner_id: draft.owner_id || null, company_id: draft.company_id,
+      channel: draft.channel || null, customer_email: draft.customer_email || null,
+      customer_phone: draft.customer_phone || null, contact_id: draft.contact_id || null,
     };
     if (patch.stage === 'resolved' && !ticket.resolved_at) patch.resolved_at = new Date().toISOString();
     if (patch.stage === 'closed') patch.closed_at = new Date().toISOString();
@@ -134,6 +136,13 @@ export default function TicketDetail({ ticketId, profile, onClose, onNavigate })
                 {'\u{1F3E2}'} {company.name}
               </span>
             )}
+            {ticket.channel && (
+              <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold uppercase rounded-lg ${
+                ticket.channel === 'sms' ? 'bg-blue-100 text-blue-700' : ticket.channel === 'email' ? 'bg-purple-100 text-purple-700' : 'bg-emerald-100 text-emerald-700'
+              }`}>{ticket.channel}</span>
+            )}
+            {ticket.customer_phone && <span className="text-xs text-muted">{ticket.customer_phone}</span>}
+            {ticket.customer_email && <span className="text-xs text-muted">{ticket.customer_email}</span>}
           </div>
         </div>
         {canWrite && !editing && (
@@ -181,6 +190,10 @@ export default function TicketDetail({ ticketId, profile, onClose, onNavigate })
                     <option value="">Unassigned</option>{members.map(m => <option key={m.id} value={m.id}>{m.display_name || m.email}</option>)}</select></div>
                   <div><label className={label}>Company</label><select className={input} value={draft.company_id} onChange={e => set('company_id', e.target.value)}>
                     {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
+                  <div><label className={label}>Channel</label><select className={input} value={draft.channel || ''} onChange={e => set('channel', e.target.value || null)}>
+                    <option value="">Not set</option><option value="email">Email</option><option value="sms">SMS</option><option value="whatsapp">WhatsApp</option><option value="phone">Phone</option><option value="web">Web</option></select></div>
+                  <div><label className={label}>Customer email</label><input className={input} value={draft.customer_email || ''} onChange={e => set('customer_email', e.target.value)} placeholder="customer@example.com" /></div>
+                  <div><label className={label}>Customer phone</label><input className={input} value={draft.customer_phone || ''} onChange={e => set('customer_phone', e.target.value)} placeholder="+44..." /></div>
                 </div>
                 <div><label className={label}>Notes</label><textarea className={input + ' resize-none'} rows={2} value={draft.notes || ''} onChange={e => set('notes', e.target.value)} /></div>
                 <div className="flex gap-2 pt-1">
@@ -263,7 +276,7 @@ export default function TicketDetail({ ticketId, profile, onClose, onNavigate })
             <div className="col-span-4 space-y-4">
               <Card title="Conversation" noPadding>
                 <div className="h-[500px]">
-                  <ConversationTimeline subjectType="ticket" subjectId={ticketId} profile={profile} contacts={[]} />
+                  <ConversationTimeline subjectType="ticket" subjectId={ticketId} profile={profile} contacts={[]} ticket={ticket} />
                 </div>
               </Card>
 

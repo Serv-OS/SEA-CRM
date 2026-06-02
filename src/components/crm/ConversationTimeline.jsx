@@ -11,10 +11,12 @@ const CHANNEL_TABS = [
 ];
 const CALL_OUTCOMES = ['connected', 'voicemail', 'no_answer', 'busy', 'wrong_number', 'callback_scheduled'];
 
-export default function ConversationTimeline({ subjectType, subjectId, profile, contacts }) {
+export default function ConversationTimeline({ subjectType, subjectId, profile, contacts, ticket }) {
   const [activities, setActivities] = useState([]);
   const [members, setMembers] = useState([]);
-  const [channel, setChannel] = useState('note');
+  // Default channel: match the ticket's inbound channel, or 'note'
+  const ticketChannel = ticket?.channel || null;
+  const [channel, setChannel] = useState(ticketChannel || 'note');
   const [body, setBody] = useState('');
   const [subject, setSubject] = useState('');
   const [toEmail, setToEmail] = useState('');
@@ -258,14 +260,32 @@ export default function ConversationTimeline({ subjectType, subjectId, profile, 
       {/* Composer */}
       {canWrite && (
         <div className="border-t border-bdr px-4 py-3">
-          {/* Channel tabs */}
+          {/* Channel indicator + tabs */}
+          {ticketChannel && ticketChannel !== 'web' && (
+            <div className="flex items-center gap-2 mb-2 px-1">
+              <span className="text-[10px] text-muted">Customer contacted via</span>
+              <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold uppercase rounded-lg ${
+                ticketChannel === 'sms' ? 'bg-blue-100 text-blue-700' : ticketChannel === 'email' ? 'bg-purple-100 text-purple-700' : 'bg-emerald-100 text-emerald-700'
+              }`}>{TYPE_ICON[ticketChannel]} {ticketChannel}</span>
+              {ticket?.customer_phone && <span className="text-[10px] text-muted">{ticket.customer_phone}</span>}
+              {ticket?.customer_email && <span className="text-[10px] text-muted">{ticket.customer_email}</span>}
+            </div>
+          )}
           <div className="flex gap-1 mb-3">
             {CHANNEL_TABS.map(t => (
-              <button key={t.key} onClick={() => setChannel(t.key)}
+              <button key={t.key} onClick={() => {
+                setChannel(t.key);
+                // Auto-fill customer contact from ticket
+                if (t.key === 'email' && ticket?.customer_email) setToEmail(ticket.customer_email);
+                if (t.key === 'sms' && ticket?.customer_phone) setToPhone(ticket.customer_phone);
+              }}
                 className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl transition ${
-                  channel === t.key ? 'bg-ember text-white' : 'bg-card text-muted hover:text-paper'
+                  channel === t.key ? 'bg-ember text-white'
+                  : t.key === ticketChannel ? 'bg-ember/10 text-ember border border-ember/20'
+                  : 'bg-card text-muted hover:text-paper'
                 }`}>
                 <span>{t.icon}</span> {t.label}
+                {t.key === ticketChannel && t.key !== 'note' && <span className="text-[8px] ml-0.5">*</span>}
               </button>
             ))}
           </div>
@@ -273,7 +293,7 @@ export default function ConversationTimeline({ subjectType, subjectId, profile, 
           {/* Email fields */}
           {channel === 'email' && (
             <div className="space-y-2 mb-2">
-              <input className={input} value={toEmail} onChange={e => setToEmail(e.target.value)}
+              <input className={input} value={toEmail || ticket?.customer_email || ''} onChange={e => setToEmail(e.target.value)}
                 placeholder="To email address" />
               <input className={input} value={subject} onChange={e => setSubject(e.target.value)}
                 placeholder="Subject" />
@@ -283,7 +303,7 @@ export default function ConversationTimeline({ subjectType, subjectId, profile, 
           {/* SMS fields */}
           {channel === 'sms' && (
             <div className="mb-2">
-              <input className={input} value={toPhone} onChange={e => setToPhone(e.target.value)}
+              <input className={input} value={toPhone || ticket?.customer_phone || ''} onChange={e => setToPhone(e.target.value)}
                 placeholder="To phone number" />
             </div>
           )}
