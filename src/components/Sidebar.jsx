@@ -194,7 +194,7 @@ export default function Sidebar({ profile, projects, activeProject, setActivePro
           { key: 'onboarding',       icon: '\u{1F680}', label: 'Onboarding' },
           { key: 'projects',         icon: '\u{1F4C1}', label: 'Projects' },
           { key: 'tasks',            icon: '\u{2611}',  label: 'Tasks' },
-          { key: 'tickets',          icon: '\u{1F3AB}', label: 'Tickets' },
+          { key: 'tickets',          icon: '\u{1F3AB}', label: 'Support' },
           { key: 'modules',          icon: '\u{1F9E9}', label: 'Modules' },
           { key: 'feature_requests', icon: '\u{1F4A1}', label: 'Feature Requests' },
           { key: 'releases',         icon: '\u{1F4E6}', label: 'Releases' },
