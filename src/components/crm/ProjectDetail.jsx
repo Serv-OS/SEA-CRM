@@ -275,75 +275,152 @@ export default function ProjectDetail({ projectId, profile, onClose, onSelectTas
               </div>
             </div>
           ) : (
-            <>
-              {project.description && (
-                <div className="text-sm text-muted">{project.description}</div>
-              )}
+            <div className="grid grid-cols-12 gap-4 max-w-[1400px]">
 
-              {/* Open tasks */}
-              <div>
-                <div className={label}>Open ({openTasks.length})</div>
-                <div className="space-y-1">
-                  {openTasks.map(t => (
-                    <div key={t.id} className="flex items-center gap-2 py-2 px-3 bg-card/50 border border-bdr rounded-lg group">
-                      {canWrite && (
-                        <button onClick={() => toggleTask(t)}
-                          className="w-4 h-4 rounded border border-bdr hover:border-ember shrink-0" />
-                      )}
-                      <span className="text-sm text-paper flex-1 cursor-pointer hover:text-ember"
-                        onClick={() => onSelectTask?.(t.id)}>{t.title}</span>
-                      <span className={`px-1 py-0.5 text-[8px] font-bold rounded ${STATUS_STYLES[t.status]}`}>{t.status.replace('_',' ')}</span>
-                      {t.due_date && (
-                        <span className={`text-[10px] ${new Date(t.due_date) < new Date() ? 'text-red-600' : 'text-dim'}`}>
-                          {new Date(t.due_date).toLocaleDateString('en-GB', { day:'numeric', month:'short' })}
-                        </span>
-                      )}
-                      {t.owner_id && (
-                        <span className="w-5 h-5 rounded-full bg-ember text-ink text-[9px] font-bold flex items-center justify-center shrink-0">
-                          {ownerName(t.owner_id)[0]?.toUpperCase() || '?'}
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                </div>
+              {/* LEFT: Details + Description */}
+              <div className="col-span-4 space-y-4">
+                <Card title="Details">
+                  <div className="space-y-3">
+                    <Field label="Status" value={project.status} />
+                    <Field label="Owner" value={ownerName(project.owner_id) || null} />
+                    <Field label="Due date" value={project.due_date ? new Date(project.due_date).toLocaleDateString('en-GB') : null} />
+                    <Field label="Created" value={new Date(project.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' })} />
+                  </div>
+                </Card>
+
+                {project.description && (
+                  <Card title="Description">
+                    <div className="text-sm text-paper whitespace-pre-wrap leading-relaxed">{project.description}</div>
+                  </Card>
+                )}
+
+                {/* Linked To card */}
+                {(() => {
+                  const ctx = getLinkedContext();
+                  if (!ctx) return (
+                    <Card title="Linked To">
+                      <div className="text-xs text-dim italic py-2 text-center">Not linked to any record</div>
+                    </Card>
+                  );
+                  return (
+                    <Card title="Linked To">
+                      <div className="space-y-2">
+                        {/* Linked record */}
+                        <div onClick={() => onNavigate?.(project.subject_type, project.subject_id)}
+                          className="p-3 glass-inner rounded-xl cursor-pointer flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-xl bg-ember/15 border border-ember/25 flex items-center justify-center text-sm shrink-0">
+                            {project.subject_type === 'location' ? '\u{1F4CD}' : project.subject_type === 'deal' ? '\u{1F4B0}' : project.subject_type === 'onboarding' ? '\u{1F680}' : project.subject_type === 'ticket' ? '\u{1F3AB}' : '\u{1F3E2}'}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-semibold text-paper">{ctx.name || ctx.companyName}</div>
+                            <div className="text-xs text-muted">{ctx.type}</div>
+                          </div>
+                        </div>
+                        {/* Auto-derived company (if linked to location/deal) */}
+                        {ctx.companyName && ctx.type !== 'Company' && (
+                          <div onClick={() => ctx.companyId && onNavigate?.('company', ctx.companyId)}
+                            className="p-3 glass-inner rounded-xl cursor-pointer flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-sm shrink-0">{'\u{1F3E2}'}</div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-semibold text-paper">{ctx.companyName}</div>
+                              <div className="text-xs text-muted">Company</div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </Card>
+                  );
+                })()}
               </div>
 
-              {/* Add task */}
-              {canWrite && (
-                <form onSubmit={addTask} className="flex gap-2">
-                  <input className={input + ' flex-1'} value={newTask} onChange={e => setNewTask(e.target.value)}
-                    placeholder="Add a task..." />
-                  <select className="px-2 py-2 bg-card border border-bdr rounded text-sm text-paper"
-                    value={newPriority} onChange={e => setNewPriority(e.target.value)}>
-                    <option value="P0">P0</option><option value="P1">P1</option>
-                    <option value="P2">P2</option><option value="P3">P3</option>
-                  </select>
-                  <button type="submit" disabled={!newTask.trim()}
-                    className="px-3 py-2 bg-ember text-ink text-xs font-semibold rounded disabled:opacity-50">Add</button>
-                </form>
-              )}
+              {/* MIDDLE: Tasks */}
+              <div className="col-span-8 space-y-4">
+                <Card title="Tasks" count={tasks.length}>
+                  {/* Open tasks */}
+                  {openTasks.length > 0 && (
+                    <div className="space-y-1.5 mb-3">
+                      {openTasks.map(t => (
+                        <div key={t.id} className="flex items-center gap-2 py-2 px-3 glass-inner rounded-xl group">
+                          {canWrite && (
+                            <button onClick={() => toggleTask(t)}
+                              className="w-5 h-5 rounded border-2 border-slate-300 hover:border-ember shrink-0 transition" />
+                          )}
+                          <span className="text-sm text-paper flex-1 cursor-pointer hover:text-ember"
+                            onClick={() => onSelectTask?.(t.id)}>{t.title}</span>
+                          <span className={`px-1.5 py-0.5 text-[8px] font-bold rounded ${STATUS_STYLES[t.status]}`}>{t.status.replace('_',' ')}</span>
+                          {t.due_date && (
+                            <span className={`text-[10px] ${new Date(t.due_date) < new Date() ? 'text-red-600 font-bold' : 'text-dim'}`}>
+                              {new Date(t.due_date).toLocaleDateString('en-GB', { day:'numeric', month:'short' })}
+                            </span>
+                          )}
+                          {t.owner_id && (
+                            <span className="w-5 h-5 rounded-full bg-ember text-white text-[9px] font-bold flex items-center justify-center shrink-0">
+                              {ownerName(t.owner_id)[0]?.toUpperCase() || '?'}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
-              {/* Done tasks */}
-              {doneTasks.length > 0 && (
-                <div>
-                  <div className={label}>Completed ({doneTasks.length})</div>
-                  <div className="space-y-1">
-                    {doneTasks.map(t => (
-                      <div key={t.id} className="flex items-center gap-2 py-1.5 px-3 bg-card/30 border border-bdr rounded-lg">
-                        {canWrite && (
-                          <button onClick={() => toggleTask(t)}
-                            className="w-4 h-4 rounded bg-green-500/30 border border-green-500 text-emerald-600 text-[10px] flex items-center justify-center shrink-0">&#x2713;</button>
-                        )}
-                        <span className="text-sm text-dim line-through flex-1">{t.title}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </>
+                  {/* Add task */}
+                  {canWrite && (
+                    <form onSubmit={addTask} className="flex gap-2 mb-3">
+                      <input className={input + ' flex-1'} value={newTask} onChange={e => setNewTask(e.target.value)}
+                        placeholder="Add a task..." />
+                      <select className="px-2 py-2 bg-card border border-bdr rounded text-sm text-paper"
+                        value={newPriority} onChange={e => setNewPriority(e.target.value)}>
+                        <option value="P0">P0</option><option value="P1">P1</option>
+                        <option value="P2">P2</option><option value="P3">P3</option>
+                      </select>
+                      <button type="submit" disabled={!newTask.trim()}
+                        className="px-3 py-2 bg-ember text-white text-xs font-semibold rounded disabled:opacity-50">Add</button>
+                    </form>
+                  )}
+
+                  {/* Done tasks */}
+                  {doneTasks.length > 0 && (
+                    <div className="space-y-1 opacity-60">
+                      {doneTasks.map(t => (
+                        <div key={t.id} className="flex items-center gap-2 py-1.5 px-3 rounded-xl">
+                          {canWrite && (
+                            <button onClick={() => toggleTask(t)}
+                              className="w-5 h-5 rounded bg-emerald-100 border-2 border-emerald-400 text-emerald-600 text-[10px] flex items-center justify-center shrink-0">&#x2713;</button>
+                          )}
+                          <span className="text-sm text-dim line-through flex-1">{t.title}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {tasks.length === 0 && <div className="text-xs text-dim italic py-3 text-center">No tasks yet</div>}
+                </Card>
+              </div>
+            </div>
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function Card({ title, count, children }) {
+  return (
+    <div className="glass-card rounded-2xl overflow-hidden">
+      <div className="px-4 py-3 border-b border-bdr flex items-center gap-2">
+        <h3 className="text-sm font-bold text-paper">{title}</h3>
+        {count !== undefined && <span className="text-xs text-dim font-mono">({count})</span>}
+      </div>
+      <div className="p-4">{children}</div>
+    </div>
+  );
+}
+
+function Field({ label, value }) {
+  return (
+    <div>
+      <div className="text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-dim mb-0.5">{label}</div>
+      <div className="text-sm text-paper">{value || <span className="text-dim italic">--</span>}</div>
     </div>
   );
 }
