@@ -101,11 +101,25 @@ export default function ProjectDetail({ projectId, profile, onClose, onSelectTas
     onClose();
   };
 
-  const startEdit = () => { setDraft({ ...project }); setEditing(true); };
+  const startEdit = () => {
+    setDraft({ ...project });
+    setEditing(true);
+    if (project.subject_type) loadSubjectRecords(project.subject_type);
+  };
 
   const save = async () => {
-    const { id, created_at, updated_at, ...patch } = draft;
-    await supabase.from('crm_projects').update(patch).eq('id', projectId);
+    const patch = {
+      name: draft.name,
+      description: draft.description || null,
+      status: draft.status,
+      owner_id: draft.owner_id || null,
+      due_date: draft.due_date || null,
+      subject_type: draft.subject_type || null,
+      subject_id: draft.subject_id || null,
+      template_id: draft.template_id || null,
+    };
+    const { error } = await supabase.from('crm_projects').update(patch).eq('id', projectId);
+    if (error) { alert('Save failed: ' + error.message); return; }
     setEditing(false);
     load();
   };
@@ -224,42 +238,31 @@ export default function ProjectDetail({ projectId, profile, onClose, onSelectTas
                 </div>
                 <div><label className={label}>Due date</label><input className={input} type="date" value={draft.due_date || ''} onChange={e => set('due_date', e.target.value || null)} /></div>
                 <div>
-                  <label className={label}>Link type</label>
-                  <select className={input} value={draft.subject_type || ''} onChange={e => {
-                    set('subject_type', e.target.value || null);
-                    set('subject_id', null);
-                    if (e.target.value) loadSubjectRecords(e.target.value);
-                    else setSubjectRecords([]);
+                  <label className={label}>Location</label>
+                  <select className={input} value={draft.subject_type === 'location' ? (draft.subject_id || '') : ''} onChange={e => {
+                    if (e.target.value) {
+                      set('subject_type', 'location');
+                      set('subject_id', e.target.value);
+                    } else {
+                      set('subject_type', null);
+                      set('subject_id', null);
+                    }
                   }}>
-                    {SUBJECT_TYPES.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
+                    <option value="">No location</option>
+                    {locations.map(l => {
+                      const co = companies.find(c => c.id === l.company_id);
+                      return <option key={l.id} value={l.id}>{l.name} ({co?.name || '?'})</option>;
+                    })}
                   </select>
                 </div>
-                {draft.subject_type && (
-                  <div>
-                    <label className={label}>
-                      {draft.subject_type === 'location' ? 'Location' : draft.subject_type === 'deal' ? 'Deal' : draft.subject_type === 'company' ? 'Company' : 'Record'}
-                    </label>
-                    <select className={input} value={draft.subject_id || ''} onChange={e => set('subject_id', e.target.value || null)}
-                      onFocus={() => { if (!subjectRecords.length) loadSubjectRecords(draft.subject_type); }}>
-                      <option value="">Select...</option>
-                      {subjectRecords.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-                    </select>
-                  </div>
-                )}
-                {/* Auto-derived company (read-only) */}
-                {draft.subject_type && draft.subject_id && draft.subject_type !== 'company' && (() => {
-                  let coName = '';
-                  if (draft.subject_type === 'location') {
-                    const loc = locations.find(l => l.id === draft.subject_id);
-                    coName = loc ? companies.find(c => c.id === loc.company_id)?.name : '';
-                  } else if (draft.subject_type === 'deal') {
-                    const deal = deals.find(d => d.id === draft.subject_id);
-                    coName = deal ? companies.find(c => c.id === deal.company_id)?.name : '';
-                  }
+                {/* Auto-derived company */}
+                {draft.subject_type === 'location' && draft.subject_id && (() => {
+                  const loc = locations.find(l => l.id === draft.subject_id);
+                  const coName = loc ? companies.find(c => c.id === loc.company_id)?.name : '';
                   return coName ? (
                     <div>
                       <label className={label}>Company (auto)</label>
-                      <div className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-600 flex items-center gap-2">
+                      <div className="px-3 py-2 bg-slate-50 border border-slate-200 rounded text-sm text-slate-600 flex items-center gap-2">
                         {'\u{1F3E2}'} {coName}
                       </div>
                     </div>

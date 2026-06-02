@@ -90,6 +90,7 @@ export default function ProjectList({ profile, onSelect }) {
       recordName = project.subject_id?.slice(0, 8) || '';
     }
 
+    if (!recordName && !companyName) return null;
     return {
       type: SUBJECT_LABELS[project.subject_type] || project.subject_type,
       name: recordName,
