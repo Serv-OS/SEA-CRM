@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import Sidebar from './Sidebar.jsx';
 import PhoneBar from './PhoneBar.jsx';
+import NotificationBell from './NotificationBell.jsx';
 import AccountPanel from './AccountPanel.jsx';
 import Board from './Board.jsx';
 import UsersPanel from './UsersPanel.jsx';
@@ -168,7 +169,12 @@ export default function Shell({ session }) {
         onRefresh={load}
       />
       <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
-      <PhoneBar profile={profile} />
+      <div className="flex items-stretch border-b border-bdr">
+        <div className="flex-1 min-w-0"><PhoneBar profile={profile} /></div>
+        <div className="glass flex items-center px-3 shrink-0">
+          <NotificationBell profile={profile} onNavigate={navigateTo} />
+        </div>
+      </div>
       <main className="flex-1 min-w-0 overflow-hidden">
         {renderMain()}
       </main>

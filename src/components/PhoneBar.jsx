@@ -238,7 +238,7 @@ export default function PhoneBar({ profile }) {
   };
 
   return (
-    <div className="glass border-b border-bdr px-4 py-2 flex items-center gap-3">
+    <div className="glass px-4 py-2 flex items-center gap-3 h-full">
       {/* Status indicator */}
       <div className="flex items-center gap-2">
         <div className={`w-2.5 h-2.5 rounded-full ${statusColors[status]}`} />
