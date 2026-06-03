@@ -2,10 +2,12 @@ import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
 
 const STAGES = [
-  { key: 'new_lead',      label: 'New Lead',      color: '#3b82f6' },
-  { key: 'attempting',     label: 'Attempting',     color: '#6366f1' },
-  { key: 'mql',           label: 'Marketing Qual.', color: '#8b5cf6' },
-  { key: 'sql',           label: 'Sales Qual.',    color: '#E8743C' },
+  { key: 'new_lead',      label: 'New Lead',          color: '#3b82f6' },
+  { key: 'attempting',     label: 'Attempting',         color: '#6366f1' },
+  { key: 'mql',           label: 'Marketing Qualified', color: '#8b5cf6' },
+  { key: 'sql',           label: 'Sales Qualified',    color: '#E8743C' },
+  { key: 'deal',          label: 'Deal',               color: '#10b981' },
+  { key: 'disqualified',  label: 'Disqualified',       color: '#ef4444' },
 ];
 
 const STAGE_LABELS = { new_lead: 'New Lead', attempting: 'Attempting', mql: 'MQL', sql: 'SQL', deal: 'Deal', disqualified: 'Disqualified' };
@@ -64,7 +66,7 @@ export default function LeadBoard({ profile, onNavigate }) {
 
   const load = async () => {
     const [l, c, loc, ct, m] = await Promise.all([
-      supabase.from('leads').select('*').not('stage', 'in', '("deal","disqualified")').order('created_at', { ascending: false }),
+      supabase.from('leads').select('*').order('created_at', { ascending: false }),
       supabase.from('companies').select('id, name, domain').order('name'),
       supabase.from('locations').select('id, name, company_id, venue_type, city').order('name'),
       supabase.from('contacts').select('id, first_name, last_name, email, phone').order('last_name'),
