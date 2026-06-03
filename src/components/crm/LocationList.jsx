@@ -1,5 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
+import LeadBadge from './LeadBadge.jsx';
+import { primaryLead, LEAD_STAGES } from '../../lib/leadStages';
 
 const STATUS_COLORS = {
   prospect: 'bg-blue-100 text-blue-700 border border-blue-200',
@@ -11,26 +13,40 @@ const STATUS_COLORS = {
 export default function LocationList({ profile, onSelect, onNavigate }) {
   const [locations, setLocations] = useState([]);
   const [companies, setCompanies] = useState([]);
+  const [leads, setLeads] = useState([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [leadFilter, setLeadFilter] = useState('all');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => { load(); }, []);
 
   const load = async () => {
     setLoading(true);
-    const [l, c] = await Promise.all([
+    const [l, c, ld] = await Promise.all([
       supabase.from('locations').select('*').order('name'),
       supabase.from('companies').select('id, name'),
+      supabase.from('leads').select('id, location_id, stage, name'),
     ]);
     setLocations(l.data || []);
     setCompanies(c.data || []);
+    setLeads(ld.data || []);
     setLoading(false);
   };
+
+  const leadFor = (locationId) => primaryLead(leads.filter(l => l.location_id === locationId));
 
   const filtered = useMemo(() => {
     let result = locations;
     if (statusFilter !== 'all') result = result.filter(l => l.status === statusFilter);
+    if (leadFilter !== 'all') {
+      result = result.filter(l => {
+        const pl = leadFor(l.id);
+        if (leadFilter === 'any') return !!pl;
+        if (leadFilter === 'none') return !pl;
+        return pl?.stage === leadFilter;
+      });
+    }
     if (search) {
       const q = search.toLowerCase();
       result = result.filter(l =>
@@ -40,7 +56,7 @@ export default function LocationList({ profile, onSelect, onNavigate }) {
       );
     }
     return result;
-  }, [locations, companies, search, statusFilter]);
+  }, [locations, companies, leads, search, statusFilter, leadFilter]);
 
   const companyName = (id) => companies.find(c => c.id === id)?.name || '';
 
@@ -71,6 +87,13 @@ export default function LocationList({ profile, onSelect, onNavigate }) {
           <option value="live">Live</option>
           <option value="churned">Churned</option>
         </select>
+        <select value={leadFilter} onChange={e => setLeadFilter(e.target.value)}
+          className="px-2 py-1.5 bg-card border border-bdr rounded text-sm text-paper focus:outline-none focus:border-ember">
+          <option value="all">All leads</option>
+          <option value="any">Has a lead</option>
+          <option value="none">No lead</option>
+          {LEAD_STAGES.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
+        </select>
       </div>
 
       <div className="flex-1 overflow-y-auto">
@@ -82,12 +105,13 @@ export default function LocationList({ profile, onSelect, onNavigate }) {
               <th className="px-3 py-2.5 text-left">City</th>
               <th className="px-3 py-2.5 text-left">Type</th>
               <th className="px-3 py-2.5 text-center">Covers</th>
+              <th className="px-3 py-2.5 text-left">Lead</th>
               <th className="px-3 py-2.5 text-left">Status</th>
             </tr>
           </thead>
           <tbody>
             {loading && (
-              <tr><td colSpan={6} className="px-6 py-8 text-center text-dim text-sm">Loading...</td></tr>
+              <tr><td colSpan={7} className="px-6 py-8 text-center text-dim text-sm">Loading...</td></tr>
             )}
             {!loading && filtered.map(l => (
               <tr key={l.id}
@@ -102,6 +126,9 @@ export default function LocationList({ profile, onSelect, onNavigate }) {
                 <td className="px-3 py-3 text-xs text-muted">{l.venue_type || ''}</td>
                 <td className="px-3 py-3 text-xs text-muted text-center">{l.covers || ''}</td>
                 <td className="px-3 py-3">
+                  {leadFor(l.id) ? <LeadBadge stage={leadFor(l.id).stage} /> : <span className="text-dim text-xs">--</span>}
+                </td>
+                <td className="px-3 py-3">
                   <span className={`px-1.5 py-0.5 text-[9px] font-bold uppercase rounded ${STATUS_COLORS[l.status] || 'bg-card text-dim'}`}>
                     {l.status}
                   </span>
@@ -109,7 +136,7 @@ export default function LocationList({ profile, onSelect, onNavigate }) {
               </tr>
             ))}
             {!loading && filtered.length === 0 && (
-              <tr><td colSpan={6} className="px-6 py-8 text-center text-dim text-sm">
+              <tr><td colSpan={7} className="px-6 py-8 text-center text-dim text-sm">
                 {search || statusFilter !== 'all' ? 'No locations match your filters.' : 'No locations yet.'}
               </td></tr>
             )}

@@ -3,24 +3,30 @@ import { supabase } from '../../lib/supabase';
 import AssociationManager from './AssociationManager.jsx';
 import ActivityTimeline from './ActivityTimeline.jsx';
 import CallButton from '../CallButton.jsx';
+import LeadBadge from './LeadBadge.jsx';
+import LeadsCard from './LeadsCard.jsx';
+import { primaryLead } from '../../lib/leadStages';
 
 export default function ContactDetail({ contactId, profile, onClose, onNavigate }) {
   const [contact, setContact] = useState(null);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState({});
   const [members, setMembers] = useState([]);
+  const [leads, setLeads] = useState([]);
 
   const canWrite = profile.role === 'owner' || profile.role === 'editor';
 
   useEffect(() => { load(); }, [contactId]);
 
   const load = async () => {
-    const [c, m] = await Promise.all([
+    const [c, m, ld] = await Promise.all([
       supabase.from('contacts').select('*').eq('id', contactId).single(),
       supabase.from('profiles').select('id, email, display_name'),
+      supabase.from('leads').select('*').eq('contact_id', contactId).order('created_at', { ascending: false }),
     ]);
     setContact(c.data);
     setMembers(m.data || []);
+    setLeads(ld.data || []);
   };
 
   const startEdit = () => { setDraft({ ...contact }); setEditing(true); };
@@ -54,7 +60,10 @@ export default function ContactDetail({ contactId, profile, onClose, onNavigate 
           {fullName[0]?.toUpperCase() || '?'}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-xl font-bold text-paper truncate">{fullName}</div>
+          <div className="flex items-center gap-2">
+            <div className="text-xl font-bold text-paper truncate">{fullName}</div>
+            {primaryLead(leads) && <LeadBadge stage={primaryLead(leads).stage} full />}
+          </div>
           <div className="text-xs text-muted mt-0.5">
             {contact.job_title && <span>{contact.job_title} / </span>}
             {contact.email && <span className="text-ember">{contact.email}</span>}
@@ -124,8 +133,10 @@ export default function ContactDetail({ contactId, profile, onClose, onNavigate 
               </Card>
             </div>
 
-            {/* RIGHT: Companies + Locations + Deals */}
+            {/* RIGHT: Leads + Companies + Locations */}
             <div className="col-span-4 space-y-4">
+              <LeadsCard leads={leads} />
+
               <Card title="Companies">
                 <AssociationManager subjectType="contact" subjectId={contactId} targetType="company" profile={profile} onNavigate={onNavigate} />
               </Card>

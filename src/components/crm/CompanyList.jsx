@@ -1,11 +1,15 @@
 import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
+import LeadBadge from './LeadBadge.jsx';
+import { primaryLead, LEAD_STAGES } from '../../lib/leadStages';
 
 export default function CompanyList({ profile, onSelect }) {
   const [companies, setCompanies] = useState([]);
   const [locations, setLocations] = useState([]);
   const [members, setMembers] = useState([]);
+  const [leads, setLeads] = useState([]);
   const [search, setSearch] = useState('');
+  const [leadFilter, setLeadFilter] = useState('all');
   const [loading, setLoading] = useState(true);
 
   const canWrite = profile.role === 'owner' || profile.role === 'editor';
@@ -14,26 +18,41 @@ export default function CompanyList({ profile, onSelect }) {
 
   const load = async () => {
     setLoading(true);
-    const [c, l, m] = await Promise.all([
+    const [c, l, m, ld] = await Promise.all([
       supabase.from('companies').select('*').order('name'),
       supabase.from('locations').select('id, company_id, status'),
       supabase.from('profiles').select('id, email, display_name'),
+      supabase.from('leads').select('id, company_id, stage, name'),
     ]);
     setCompanies(c.data || []);
     setLocations(l.data || []);
     setMembers(m.data || []);
+    setLeads(ld.data || []);
     setLoading(false);
   };
 
+  const leadFor = (companyId) => primaryLead(leads.filter(l => l.company_id === companyId));
+
   const filtered = useMemo(() => {
-    if (!search) return companies;
-    const q = search.toLowerCase();
-    return companies.filter(c =>
-      c.name.toLowerCase().includes(q) ||
-      (c.domain || '').toLowerCase().includes(q) ||
-      (c.city || '').toLowerCase().includes(q)
-    );
-  }, [companies, search]);
+    let result = companies;
+    if (leadFilter !== 'all') {
+      result = result.filter(c => {
+        const pl = leadFor(c.id);
+        if (leadFilter === 'any') return !!pl;
+        if (leadFilter === 'none') return !pl;
+        return pl?.stage === leadFilter;
+      });
+    }
+    if (search) {
+      const q = search.toLowerCase();
+      result = result.filter(c =>
+        c.name.toLowerCase().includes(q) ||
+        (c.domain || '').toLowerCase().includes(q) ||
+        (c.city || '').toLowerCase().includes(q)
+      );
+    }
+    return result;
+  }, [companies, leads, search, leadFilter]);
 
   const locCount = (companyId) => locations.filter(l => l.company_id === companyId).length;
   const liveCount = (companyId) => locations.filter(l => l.company_id === companyId && l.status === 'live').length;
@@ -78,10 +97,17 @@ export default function CompanyList({ profile, onSelect }) {
         )}
       </div>
 
-      <div className="px-6 py-3 border-b border-bdr">
+      <div className="px-6 py-3 border-b border-bdr flex items-center gap-2">
         <input value={search} onChange={e => setSearch(e.target.value)}
           placeholder="Search companies..."
           className="px-3 py-1.5 bg-card border border-bdr rounded text-sm text-paper placeholder-dim focus:outline-none focus:border-ember w-72" />
+        <select value={leadFilter} onChange={e => setLeadFilter(e.target.value)}
+          className="px-2 py-1.5 bg-card border border-bdr rounded text-sm text-paper focus:outline-none focus:border-ember">
+          <option value="all">All companies</option>
+          <option value="any">Has a lead</option>
+          <option value="none">No lead</option>
+          {LEAD_STAGES.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
+        </select>
       </div>
 
       {showCreate && (
@@ -107,6 +133,7 @@ export default function CompanyList({ profile, onSelect }) {
           <thead>
             <tr className="border-b border-bdr text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-dim">
               <th className="px-6 py-2.5 text-left">Company</th>
+              <th className="px-3 py-2.5 text-left">Lead</th>
               <th className="px-3 py-2.5 text-left">Domain</th>
               <th className="px-3 py-2.5 text-left">City</th>
               <th className="px-3 py-2.5 text-center">Locations</th>
@@ -116,7 +143,7 @@ export default function CompanyList({ profile, onSelect }) {
           </thead>
           <tbody>
             {loading && (
-              <tr><td colSpan={6} className="px-6 py-8 text-center text-dim text-sm">Loading...</td></tr>
+              <tr><td colSpan={7} className="px-6 py-8 text-center text-dim text-sm">Loading...</td></tr>
             )}
             {!loading && filtered.map(c => (
               <tr key={c.id}
@@ -125,6 +152,9 @@ export default function CompanyList({ profile, onSelect }) {
                 <td className="px-6 py-3">
                   <div className="text-sm text-paper font-medium">{c.name}</div>
                   {c.industry && <div className="text-xs text-dim">{c.industry}</div>}
+                </td>
+                <td className="px-3 py-3">
+                  {leadFor(c.id) ? <LeadBadge stage={leadFor(c.id).stage} /> : <span className="text-dim text-xs">--</span>}
                 </td>
                 <td className="px-3 py-3 text-xs text-muted">{c.domain || ''}</td>
                 <td className="px-3 py-3 text-xs text-muted">{c.city || ''}</td>
@@ -138,7 +168,7 @@ export default function CompanyList({ profile, onSelect }) {
               </tr>
             ))}
             {!loading && filtered.length === 0 && (
-              <tr><td colSpan={6} className="px-6 py-8 text-center text-dim text-sm">
+              <tr><td colSpan={7} className="px-6 py-8 text-center text-dim text-sm">
                 {search ? 'No companies match your search.' : 'No companies yet. Add one to get started.'}
               </td></tr>
             )}

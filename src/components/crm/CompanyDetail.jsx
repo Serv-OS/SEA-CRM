@@ -3,6 +3,9 @@ import { supabase } from '../../lib/supabase';
 import AssociationManager from './AssociationManager.jsx';
 import ActivityTimeline from './ActivityTimeline.jsx';
 import CallButton from '../CallButton.jsx';
+import LeadBadge from './LeadBadge.jsx';
+import LeadsCard from './LeadsCard.jsx';
+import { primaryLead } from '../../lib/leadStages';
 
 const STATUS_COLORS = {
   prospect: 'bg-blue-100 text-blue-700 border border-blue-200',
@@ -18,6 +21,7 @@ export default function CompanyDetail({ companyId, profile, onClose, onNavigate 
   const [onboardings, setOnboardings] = useState([]);
   const [tickets, setTickets] = useState([]);
   const [projects, setProjects] = useState([]);
+  const [leads, setLeads] = useState([]);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState({});
   const [members, setMembers] = useState([]);
@@ -27,7 +31,7 @@ export default function CompanyDetail({ companyId, profile, onClose, onNavigate 
   useEffect(() => { load(); }, [companyId]);
 
   const load = async () => {
-    const [c, l, m, d, ob, t, prj] = await Promise.all([
+    const [c, l, m, d, ob, t, prj, ld] = await Promise.all([
       supabase.from('companies').select('*').eq('id', companyId).single(),
       supabase.from('locations').select('*').eq('company_id', companyId).order('name'),
       supabase.from('profiles').select('id, email, display_name'),
@@ -35,6 +39,7 @@ export default function CompanyDetail({ companyId, profile, onClose, onNavigate 
       supabase.from('onboardings').select('*').eq('company_id', companyId).order('created_at', { ascending: false }),
       supabase.from('tickets').select('*').eq('company_id', companyId).order('created_at', { ascending: false }),
       supabase.from('crm_projects').select('*').eq('subject_type', 'company').eq('subject_id', companyId).order('created_at', { ascending: false }),
+      supabase.from('leads').select('*').eq('company_id', companyId).order('created_at', { ascending: false }),
     ]);
     setCompany(c.data);
     setLocations(l.data || []);
@@ -43,6 +48,7 @@ export default function CompanyDetail({ companyId, profile, onClose, onNavigate 
     setDeals(d.data || []);
     setOnboardings(ob.data || []);
     setTickets(t.data || []);
+    setLeads(ld.data || []);
   };
 
   const startEdit = () => { setDraft({ ...company }); setEditing(true); };
@@ -94,7 +100,10 @@ export default function CompanyDetail({ companyId, profile, onClose, onNavigate 
       <div className="px-6 py-4 border-b border-bdr flex items-center gap-3">
         <button onClick={onClose} className="text-muted hover:text-paper text-lg">&larr;</button>
         <div className="flex-1 min-w-0">
-          <div className="text-xl font-bold text-paper truncate">{company.name}</div>
+          <div className="flex items-center gap-2">
+            <div className="text-xl font-bold text-paper truncate">{company.name}</div>
+            {primaryLead(leads) && <LeadBadge stage={primaryLead(leads).stage} full />}
+          </div>
           <div className="text-xs text-muted mt-0.5">
             {company.domain && <span className="text-ember">{company.domain}</span>}
             {company.domain && ' / '}
@@ -195,6 +204,8 @@ export default function CompanyDetail({ companyId, profile, onClose, onNavigate 
 
             {/* RIGHT COLUMN: Deals + Onboardings + Tickets */}
             <div className="col-span-4 space-y-4">
+
+              <LeadsCard leads={leads} />
 
               <Card title="Deals" count={deals.length}>
                 {deals.length > 0 ? (

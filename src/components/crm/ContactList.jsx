@@ -1,11 +1,15 @@
 import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
+import LeadBadge from './LeadBadge.jsx';
+import { primaryLead, LEAD_STAGES } from '../../lib/leadStages';
 
 export default function ContactList({ profile, onSelect }) {
   const [contacts, setContacts] = useState([]);
   const [associations, setAssociations] = useState([]);
   const [companies, setCompanies] = useState([]);
+  const [leads, setLeads] = useState([]);
   const [search, setSearch] = useState('');
+  const [leadFilter, setLeadFilter] = useState('all');
   const [loading, setLoading] = useState(true);
 
   const canWrite = profile.role === 'owner' || profile.role === 'editor';
@@ -14,27 +18,42 @@ export default function ContactList({ profile, onSelect }) {
 
   const load = async () => {
     setLoading(true);
-    const [c, a, co] = await Promise.all([
+    const [c, a, co, ld] = await Promise.all([
       supabase.from('contacts').select('*').order('last_name'),
       supabase.from('associations').select('*').eq('from_type', 'contact'),
       supabase.from('companies').select('id, name'),
+      supabase.from('leads').select('id, contact_id, stage, name'),
     ]);
     setContacts(c.data || []);
     setAssociations(a.data || []);
     setCompanies(co.data || []);
+    setLeads(ld.data || []);
     setLoading(false);
   };
 
+  const leadFor = (contactId) => primaryLead(leads.filter(l => l.contact_id === contactId));
+
   const filtered = useMemo(() => {
-    if (!search) return contacts;
-    const q = search.toLowerCase();
-    return contacts.filter(c =>
-      (c.first_name || '').toLowerCase().includes(q) ||
-      (c.last_name || '').toLowerCase().includes(q) ||
-      (c.email || '').toLowerCase().includes(q) ||
-      (c.phone || '').toLowerCase().includes(q)
-    );
-  }, [contacts, search]);
+    let result = contacts;
+    if (leadFilter !== 'all') {
+      result = result.filter(c => {
+        const pl = leadFor(c.id);
+        if (leadFilter === 'any') return !!pl;
+        if (leadFilter === 'none') return !pl;
+        return pl?.stage === leadFilter;
+      });
+    }
+    if (search) {
+      const q = search.toLowerCase();
+      result = result.filter(c =>
+        (c.first_name || '').toLowerCase().includes(q) ||
+        (c.last_name || '').toLowerCase().includes(q) ||
+        (c.email || '').toLowerCase().includes(q) ||
+        (c.phone || '').toLowerCase().includes(q)
+      );
+    }
+    return result;
+  }, [contacts, leads, search, leadFilter]);
 
   const getCompanyNames = (contactId) => {
     const linked = associations
@@ -80,10 +99,17 @@ export default function ContactList({ profile, onSelect }) {
         )}
       </div>
 
-      <div className="px-6 py-3 border-b border-bdr">
+      <div className="px-6 py-3 border-b border-bdr flex items-center gap-2">
         <input value={search} onChange={e => setSearch(e.target.value)}
           placeholder="Search contacts..."
           className="px-3 py-1.5 bg-card border border-bdr rounded text-sm text-paper placeholder-dim focus:outline-none focus:border-ember w-72" />
+        <select value={leadFilter} onChange={e => setLeadFilter(e.target.value)}
+          className="px-2 py-1.5 bg-card border border-bdr rounded text-sm text-paper focus:outline-none focus:border-ember">
+          <option value="all">All contacts</option>
+          <option value="any">Has a lead</option>
+          <option value="none">No lead</option>
+          {LEAD_STAGES.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
+        </select>
       </div>
 
       {showCreate && (
@@ -103,6 +129,7 @@ export default function ContactList({ profile, onSelect }) {
           <thead>
             <tr className="border-b border-bdr text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-dim">
               <th className="px-6 py-2.5 text-left">Name</th>
+              <th className="px-3 py-2.5 text-left">Lead</th>
               <th className="px-3 py-2.5 text-left">Email</th>
               <th className="px-3 py-2.5 text-left">Phone</th>
               <th className="px-3 py-2.5 text-left">Company</th>
@@ -111,7 +138,7 @@ export default function ContactList({ profile, onSelect }) {
           </thead>
           <tbody>
             {loading && (
-              <tr><td colSpan={5} className="px-6 py-8 text-center text-dim text-sm">Loading...</td></tr>
+              <tr><td colSpan={6} className="px-6 py-8 text-center text-dim text-sm">Loading...</td></tr>
             )}
             {!loading && filtered.map(c => (
               <tr key={c.id}
@@ -120,6 +147,9 @@ export default function ContactList({ profile, onSelect }) {
                 <td className="px-6 py-3 text-sm text-paper font-medium">
                   {[c.first_name, c.last_name].filter(Boolean).join(' ') || <span className="text-dim italic">No name</span>}
                 </td>
+                <td className="px-3 py-3">
+                  {leadFor(c.id) ? <LeadBadge stage={leadFor(c.id).stage} /> : <span className="text-dim text-xs">--</span>}
+                </td>
                 <td className="px-3 py-3 text-xs text-muted">{c.email || ''}</td>
                 <td className="px-3 py-3 text-xs text-muted">{c.phone || ''}</td>
                 <td className="px-3 py-3 text-xs text-muted">{getCompanyNames(c.id) || ''}</td>
@@ -127,7 +157,7 @@ export default function ContactList({ profile, onSelect }) {
               </tr>
             ))}
             {!loading && filtered.length === 0 && (
-              <tr><td colSpan={5} className="px-6 py-8 text-center text-dim text-sm">
+              <tr><td colSpan={6} className="px-6 py-8 text-center text-dim text-sm">
                 {search ? 'No contacts match your search.' : 'No contacts yet.'}
               </td></tr>
             )}

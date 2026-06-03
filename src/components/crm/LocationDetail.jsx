@@ -3,6 +3,9 @@ import { supabase } from '../../lib/supabase';
 import AssociationManager from './AssociationManager.jsx';
 import ActivityTimeline from './ActivityTimeline.jsx';
 import CallButton from '../CallButton.jsx';
+import LeadBadge from './LeadBadge.jsx';
+import LeadsCard from './LeadsCard.jsx';
+import { primaryLead } from '../../lib/leadStages';
 
 const STATUS_OPTIONS = ['prospect', 'onboarding', 'live', 'churned'];
 const STATUS_COLORS = {
@@ -20,6 +23,7 @@ export default function LocationDetail({ locationId, profile, onClose, onNavigat
   const [projects, setProjects] = useState([]);
   const [locationModules, setLocationModules] = useState([]);
   const [modules, setModules] = useState([]);
+  const [leads, setLeads] = useState([]);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState({});
   const [members, setMembers] = useState([]);
@@ -29,18 +33,20 @@ export default function LocationDetail({ locationId, profile, onClose, onNavigat
   useEffect(() => { load(); }, [locationId]);
 
   const load = async () => {
-    const [l, m, mods, lm, prj] = await Promise.all([
+    const [l, m, mods, lm, prj, ld] = await Promise.all([
       supabase.from('locations').select('*').eq('id', locationId).single(),
       supabase.from('profiles').select('id, email, display_name'),
       supabase.from('modules').select('*').order('sort_order'),
       supabase.from('location_modules').select('*').eq('location_id', locationId),
       supabase.from('crm_projects').select('*').eq('subject_type', 'location').eq('subject_id', locationId).order('created_at', { ascending: false }),
+      supabase.from('leads').select('*').eq('location_id', locationId).order('created_at', { ascending: false }),
     ]);
     setLocation(l.data);
     setMembers(m.data || []);
     setModules(mods.data || []);
     setLocationModules(lm.data || []);
     setProjects(prj.data || []);
+    setLeads(ld.data || []);
     if (l.data?.company_id) {
       const [c, d, ob] = await Promise.all([
         supabase.from('companies').select('id, name').eq('id', l.data.company_id).single(),
@@ -100,6 +106,7 @@ export default function LocationDetail({ locationId, profile, onClose, onNavigat
           <div className="flex items-center gap-3 mb-1.5">
             <div className="text-xl font-bold text-paper truncate">{location.name}</div>
             <span className={`badge-status ${STATUS_COLORS[location.status] || ''}`}>{location.status}</span>
+            {primaryLead(leads) && <LeadBadge stage={primaryLead(leads).stage} full />}
           </div>
           <div className="flex items-center gap-3 flex-wrap">
             <span className="badge-company" onClick={() => onNavigate?.('company', location.company_id)}>
@@ -210,6 +217,7 @@ export default function LocationDetail({ locationId, profile, onClose, onNavigat
 
             {/* RIGHT: Deals + Onboardings + Projects */}
             <div className="col-span-4 space-y-4">
+              <LeadsCard leads={leads} />
               <Card title="Deals" count={deals.length}>
                 {deals.length > 0 ? (
                   <div className="space-y-2">
