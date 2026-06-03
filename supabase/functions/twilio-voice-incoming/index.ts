@@ -26,9 +26,29 @@ serve(async (req) => {
     const to = formData.get("To") as string;
     const callSid = formData.get("CallSid") as string;
     const callStatus = formData.get("CallStatus") as string;
+    const direction = formData.get("Direction") as string;
 
-    console.log(`Incoming call from ${from} to ${to}, SID: ${callSid}`);
+    console.log(`Call: from=${from}, to=${to}, direction=${direction}, SID: ${callSid}`);
 
+    // OUTBOUND CALL: agent dialing from browser
+    // When a Twilio Client makes an outbound call, "From" starts with "client:"
+    // and "To" is the phone number they want to call
+    if (from?.startsWith("client:") || direction === "outbound") {
+      const dialTo = to || formData.get("To") as string;
+      const callerId = Deno.env.get("TWILIO_FROM_NUMBER") || "+447576562085";
+
+      console.log(`Outbound call to ${dialTo} from ${callerId}`);
+
+      let twiml = '<?xml version="1.0" encoding="UTF-8"?><Response>';
+      twiml += `<Dial callerId="${callerId}">`;
+      twiml += `<Number>${dialTo}</Number>`;
+      twiml += `</Dial>`;
+      twiml += '</Response>';
+
+      return new Response(twiml, { headers: { "Content-Type": "text/xml" } });
+    }
+
+    // INBOUND CALL: customer calling the support number
     // Try to match caller to a contact
     let callerName = from;
     const normalizedFrom = from?.replace(/\s/g, "") || "";
