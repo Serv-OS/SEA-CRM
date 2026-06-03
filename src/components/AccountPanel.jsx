@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { TEAM_LABELS } from './UsersPanel.jsx';
 
 // My Account: a user sets their own contact details + notification preferences.
 // Email notifications go to profile.email; SMS notifications go to profile.mobile.
 export default function AccountPanel({ profile, onSaved }) {
   const [form, setForm] = useState({ display_name: '', phone: '', mobile: '' });
+  const [teams, setTeams] = useState([]);
   const [prefs, setPrefs] = useState({
     email_enabled: true,
     sms_enabled: false,
@@ -24,7 +26,7 @@ export default function AccountPanel({ profile, onSaved }) {
   const load = async () => {
     setLoading(true);
     const [p, np] = await Promise.all([
-      supabase.from('profiles').select('display_name, phone, mobile, email').eq('id', profile.id).single(),
+      supabase.from('profiles').select('display_name, phone, mobile, email, teams').eq('id', profile.id).single(),
       supabase.from('notification_preferences').select('*').eq('profile_id', profile.id).maybeSingle(),
     ]);
     if (p.data) {
@@ -33,6 +35,7 @@ export default function AccountPanel({ profile, onSaved }) {
         phone: p.data.phone || '',
         mobile: p.data.mobile || '',
       });
+      setTeams(p.data.teams || []);
     }
     if (np.data) {
       setPrefs({
@@ -117,6 +120,22 @@ export default function AccountPanel({ profile, onSaved }) {
                 <label className={label}>Display name</label>
                 <input className={input} value={form.display_name}
                   onChange={e => setForm({ ...form, display_name: e.target.value })} placeholder="Your name" />
+              </div>
+
+              <div>
+                <label className={label}>Teams</label>
+                {teams.length > 0 ? (
+                  <div className="flex flex-wrap gap-1.5">
+                    {teams.map(t => (
+                      <span key={t} className="px-2 py-0.5 text-xs font-medium rounded-lg bg-ember/15 text-ember border border-ember/25">
+                        {TEAM_LABELS[t] || t}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-sm text-dim italic">Not on any team yet</div>
+                )}
+                <div className="text-[11px] text-dim mt-1">Teams determine what work gets routed to you. An owner manages these.</div>
               </div>
 
               <div>
