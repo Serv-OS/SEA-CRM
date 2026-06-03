@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import Sidebar from './Sidebar.jsx';
 import PhoneBar from './PhoneBar.jsx';
+import AccountPanel from './AccountPanel.jsx';
 import Board from './Board.jsx';
 import UsersPanel from './UsersPanel.jsx';
 import FeaturesPanel from './FeaturesPanel.jsx';
@@ -39,11 +40,13 @@ export default function Shell({ session }) {
   const [openItem, setOpenItem] = useState(null);
   const [detailId, setDetailId] = useState(null);
 
+  const refreshProfile = async () => {
+    const { data } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
+    if (data) setProfile(data);
+  };
+
   useEffect(() => {
-    (async () => {
-      const { data } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
-      setProfile(data);
-    })();
+    refreshProfile();
   }, [session.user.id]);
 
   useEffect(() => {
@@ -131,6 +134,8 @@ export default function Shell({ session }) {
         return <ReportingDashboard profile={profile} />;
       case 'settings':
         return <SettingsPanel profile={profile} />;
+      case 'account':
+        return <AccountPanel profile={profile} onSaved={refreshProfile} />;
       case 'tasks':
         return <TaskList profile={profile} onSelect={(id) => { setView('task_detail'); setDetailId(id); }} />;
       case 'task_detail':

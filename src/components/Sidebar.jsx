@@ -242,7 +242,7 @@ export default function Sidebar({ profile, projects, activeProject, setActivePro
       </div>
 
       <div className="px-3 py-3 border-t border-bdr">
-        <div className="flex items-center gap-2 mb-2">
+        <button onClick={() => setView('account')} className="w-full flex items-center gap-2 mb-2 text-left">
           <div className="w-7 h-7 rounded-full bg-ember flex items-center justify-center text-ink text-xs font-bold">
             {(profile.display_name || profile.email)[0].toUpperCase()}
           </div>
@@ -250,7 +250,14 @@ export default function Sidebar({ profile, projects, activeProject, setActivePro
             <div className="text-xs text-paper truncate">{profile.display_name || profile.email}</div>
             <div className="text-[10px] text-dim font-mono uppercase tracking-[0.18em]">{profile.role}</div>
           </div>
-        </div>
+        </button>
+        <button onClick={() => setView('account')}
+          className={`w-full px-2 py-1.5 mb-1.5 text-xs rounded-xl flex items-center gap-2 ${
+            view === 'account' ? 'bg-card text-paper' : 'text-muted hover:bg-card hover:text-paper'
+          }`}>
+          <span>{'\u{1F464}'}</span>
+          <span>My Account</span>
+        </button>
         <button onClick={onSignOut} className="w-full px-2 py-1.5 text-xs btn-ghost rounded-xl">
           Sign out
         </button>

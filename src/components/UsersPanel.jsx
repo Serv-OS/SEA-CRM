@@ -56,6 +56,12 @@ export default function UsersPanel({ profile }) {
     load();
   };
 
+  const saveMobile = async (id, mobile) => {
+    const clean = (mobile || '').replace(/[^\d+]/g, '') || null;
+    await supabase.from('profiles').update({ mobile: clean }).eq('id', id);
+    load();
+  };
+
   const removeUser = async (u) => {
     if (!confirm(`Remove ${u.email}? They'll lose access immediately. Their items and comments stay, but they'll need a new invite to return.`)) return;
     setError('');
@@ -162,24 +168,25 @@ export default function UsersPanel({ profile }) {
 
           <div className="bg-card border border-bdr rounded-xl overflow-hidden">
             <div className="px-4 py-2.5 border-b border-bdr grid grid-cols-12 gap-3 text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-dim">
-              <div className="col-span-5">User</div>
-              <div className="col-span-3">Role</div>
+              <div className="col-span-4">User</div>
+              <div className="col-span-2">Role</div>
+              <div className="col-span-3">Mobile (SMS)</div>
               <div className="col-span-2">Joined</div>
-              <div className="col-span-2 text-right">Actions</div>
+              <div className="col-span-1 text-right">Actions</div>
             </div>
             {loading && <div className="px-4 py-8 text-center text-dim text-sm">Loading…</div>}
             {!loading && users.map(u => (
               <div key={u.id} className="px-4 py-3 border-b border-bdr last:border-b-0 grid grid-cols-12 gap-3 items-center">
-                <div className="col-span-5 flex items-center gap-2 min-w-0">
+                <div className="col-span-4 flex items-center gap-2 min-w-0">
                   <div className="w-7 h-7 rounded-full bg-ember text-ink text-xs font-bold flex items-center justify-center shrink-0">
                     {(u.display_name || u.email)[0].toUpperCase()}
                   </div>
                   <div className="min-w-0">
                     <div className="text-sm text-paper truncate">{u.display_name || u.email.split('@')[0]}</div>
-                    <div className="text-xs text-muted">{u.email}</div>
+                    <div className="text-xs text-muted truncate">{u.email}</div>
                   </div>
                 </div>
-                <div className="col-span-3">
+                <div className="col-span-2">
                   {u.id === profile.id ? (
                     <span className="px-2 py-0.5 bg-ember/20 text-ember text-[10px] font-bold uppercase rounded">{u.role} (you)</span>
                   ) : (
@@ -191,14 +198,21 @@ export default function UsersPanel({ profile }) {
                     </select>
                   )}
                 </div>
+                <div className="col-span-3">
+                  <input
+                    defaultValue={u.mobile || ''}
+                    placeholder="+44..."
+                    onBlur={e => { if ((e.target.value || '') !== (u.mobile || '')) saveMobile(u.id, e.target.value); }}
+                    className={`w-full px-2 py-1 ${input} text-xs font-mono`} />
+                </div>
                 <div className="col-span-2 text-xs text-dim">
                   {new Date(u.created_at).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'2-digit' })}
                 </div>
-                <div className="col-span-2 flex justify-end">
+                <div className="col-span-1 flex justify-end">
                   {u.id !== profile.id && (
                     <button onClick={() => removeUser(u)}
                       className="px-2 py-1 text-xs text-red-600 hover:text-red-600 border border-red-200 hover:bg-red-50 rounded">
-                      Remove
+                      &times;
                     </button>
                   )}
                 </div>
