@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { LogoLockup } from './ServOSLogo.jsx';
 
 export default function Sidebar({ profile, projects, activeProject, setActiveProject, view, setView, onSignOut, onRefresh }) {
+  const [logoUrl, setLogoUrl] = useState(null);
+  useEffect(() => { supabase.from('support_settings').select('logo_url').eq('id', 1).maybeSingle().then(r => setLogoUrl(r.data?.logo_url || null)); }, []);
   const [adding, setAdding] = useState(false);
   const [name, setName]     = useState('');
   const [icon, setIcon]     = useState('📦');
@@ -77,8 +79,7 @@ export default function Sidebar({ profile, projects, activeProject, setActivePro
   return (
     <aside className="w-64 shrink-0 glass border-r border-bdr flex flex-col">
       <div className="px-4 py-4 border-b border-bdr">
-        <LogoLockup size={24}/>
-        <div className="text-[9px] font-mono uppercase tracking-[0.18em] text-dim mt-1.5">Posupject</div>
+        {logoUrl ? <img src={logoUrl} alt="Logo" className="h-8 object-contain" /> : <LogoLockup size={24}/>}
       </div>
 
       <div className="flex-1 overflow-y-auto px-2 py-3" onClick={() => setMenuId(null)}>

@@ -74,8 +74,21 @@ export default function SettingsPanel({ profile }) {
       business_email: next.business_email ?? null,
       business_phone: next.business_phone ?? null,
       quote_accent: next.quote_accent ?? null,
+      logo_url: next.logo_url ?? null,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'id' });
+  };
+
+  const uploadLogo = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const ext = (file.name.split('.').pop() || 'png').toLowerCase();
+    const path = `logo-${Date.now()}.${ext}`;
+    const { error } = await supabase.storage.from('branding').upload(path, file, { upsert: true, contentType: file.type });
+    if (error) { alert('Upload failed: ' + error.message); return; }
+    const { data } = supabase.storage.from('branding').getPublicUrl(path);
+    setSettings(s => ({ ...s, logo_url: data.publicUrl }));
+    saveSettings({ logo_url: data.publicUrl });
   };
 
   const fnUrl = (p) => `${SUPABASE_URL}/functions/v1/${p}`;
@@ -374,6 +387,16 @@ export default function SettingsPanel({ profile }) {
                 </div>
               </div>
               <div className="p-5 space-y-3">
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 rounded-xl bg-card border border-bdr flex items-center justify-center overflow-hidden shrink-0">
+                    {settings.logo_url ? <img src={settings.logo_url} alt="Logo" className="w-full h-full object-contain" /> : <span className="text-[10px] text-dim text-center">No logo</span>}
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-dim mb-1 block">Logo</label>
+                    {isOwner && <input type="file" accept="image/*" onChange={uploadLogo} className="text-sm text-paper file:mr-3 file:px-3 file:py-1.5 file:rounded-lg file:border-0 file:bg-ember file:text-white file:text-sm file:font-semibold" />}
+                    <div className="text-[11px] text-dim mt-1">Shown on quotes and in the app. PNG/SVG with transparent background works best.</div>
+                  </div>
+                </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div><label className="text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-dim mb-1 block">Business name</label>
                     <input disabled={!isOwner} className="w-full px-3 py-2 bg-card border border-bdr rounded-xl text-sm text-paper focus:outline-none focus:border-ember disabled:opacity-60"

@@ -1,9 +1,10 @@
 export function LogoMark({ size = 32, className = '' }) {
   return (
     <svg viewBox="0 0 80 80" width={size} height={size} className={className}>
-      <rect x="4" y="4" width="72" height="72" rx="14" fill="#E8743C"/>
-      <path d="M22 25 Q22 20 27 20 L53 20 Q58 20 58 25 L58 36 Q58 40 54 40 L26 40 Q22 40 22 44 L22 55 Q22 60 27 60 L53 60 Q58 60 58 55"
-            fill="none" stroke="#0E0D0A" strokeWidth="6" strokeLinecap="square"/>
+      <rect x="4" y="4" width="72" height="72" rx="16" fill="#E8743C"/>
+      {/* Squared "2" glyph */}
+      <path d="M25 29 Q25 20 35 20 L47 20 Q57 20 57 31 Q57 40 47 47 L29 58 L58 58"
+            fill="none" stroke="#0E0D0A" strokeWidth="9" strokeLinecap="square" strokeLinejoin="round"/>
     </svg>
   );
 }
