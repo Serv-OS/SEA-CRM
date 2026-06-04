@@ -38,6 +38,7 @@ import FormBuilder from './crm/FormBuilder.jsx';
 import TemplatesPanel from './crm/TemplatesPanel.jsx';
 import MyWork from './crm/MyWork.jsx';
 import DataPanel from './crm/DataPanel.jsx';
+import LeadDetail from './crm/LeadDetail.jsx';
 
 export default function Shell({ session }) {
   const [profile, setProfile]   = useState(null);
@@ -89,7 +90,7 @@ export default function Shell({ session }) {
     else if (type === 'ticket') { setView('ticket_detail'); setDetailId(id); }
     else if (type === 'project') { setView('project_detail'); setDetailId(id); }
     else if (type === 'task') { setView('task_detail'); setDetailId(id); }
-    else if (type === 'lead') { setView('leads'); } // no detail view; open the board
+    else if (type === 'lead') { if (id) { setView('lead_detail'); setDetailId(id); } else setView('leads'); }
     // List shortcuts (used by My Work "View all")
     else if (type === 'ticket_list') { setView('tickets'); }
     else if (type === 'task_list') { setView('tasks'); }
@@ -124,6 +125,8 @@ export default function Shell({ session }) {
           onClose={() => setView('locations')} onNavigate={navigateTo} />;
       case 'leads':
         return <LeadBoard profile={profile} onNavigate={navigateTo} />;
+      case 'lead_detail':
+        return <LeadDetail leadId={detailId} profile={profile} onClose={() => setView('leads')} onNavigate={navigateTo} />;
       case 'deals':
         return <DealBoard profile={profile} onSelectDeal={(id) => { setView('deal_detail'); setDetailId(id); }} onNavigate={navigateTo} />;
       case 'deal_detail':

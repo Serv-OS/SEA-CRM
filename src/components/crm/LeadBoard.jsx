@@ -362,6 +362,7 @@ export default function LeadBoard({ profile, onNavigate }) {
                 <div className="flex-1 overflow-y-auto p-1.5 space-y-1.5">
                   {(byStage[stage.key] || []).map(lead => (
                     <div key={lead.id} draggable={canWrite} onDragStart={e => onDragStart(e, lead)}
+                      onClick={() => onNavigate?.('lead', lead.id)}
                       className="glass-inner rounded-2xl p-3 cursor-pointer">
                       <div className="flex items-start justify-between gap-1 mb-1">
                         <div className="text-sm font-semibold text-paper leading-snug">{lead.name}</div>
@@ -417,7 +418,7 @@ export default function LeadBoard({ profile, onNavigate }) {
             </thead>
             <tbody>
               {filtered.map(lead => (
-                <tr key={lead.id} className="border-b border-bdr hover:bg-card/50 cursor-pointer transition">
+                <tr key={lead.id} onClick={() => onNavigate?.('lead', lead.id)} className="border-b border-bdr hover:bg-card/50 cursor-pointer transition">
                   <td className="px-6 py-3 text-sm text-paper font-medium">{lead.name}</td>
                   <td className="px-3 py-3 text-xs text-muted">{companyName(lead.company_id)}</td>
                   <td className="px-3 py-3 text-xs text-muted">{contactFullName(lead.contact_id)}</td>
@@ -428,7 +429,7 @@ export default function LeadBoard({ profile, onNavigate }) {
                   <td className="px-3 py-3 text-xs text-muted">{ownerName(lead.owner_id)}</td>
                   <td className="px-3 py-3 text-right">
                     {lead.stage === 'sql' && canWrite && (
-                      <button onClick={() => convertToDeal(lead)} className="px-2 py-1 text-[10px] font-bold bg-emerald-100 text-emerald-700 rounded-lg">Convert</button>
+                      <button onClick={(e) => { e.stopPropagation(); convertToDeal(lead); }} className="px-2 py-1 text-[10px] font-bold bg-emerald-100 text-emerald-700 rounded-lg">Convert</button>
                     )}
                   </td>
                 </tr>
