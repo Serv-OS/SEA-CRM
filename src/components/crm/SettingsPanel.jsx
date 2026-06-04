@@ -58,6 +58,8 @@ export default function SettingsPanel({ profile }) {
       auto_assign_enabled: next.auto_assign_enabled,
       assign_team: next.assign_team,
       prefer_online: next.prefer_online,
+      voice_greeting: next.voice_greeting ?? null,
+      voicemail_prompt: next.voicemail_prompt ?? null,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'id' });
   };
@@ -168,6 +170,43 @@ export default function SettingsPanel({ profile }) {
                   </div>
                 </div>
                 {!isOwner && <div className="text-[11px] text-dim">Only owners can change these settings.</div>}
+              </div>
+            </div>
+          )}
+
+          {/* Phone greeting & voicemail */}
+          {settings && (
+            <div className="glass-card rounded-2xl overflow-hidden">
+              <div className="px-5 py-4 border-b border-bdr flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-lg">{'\u{1F4DE}'}</div>
+                <div className="flex-1">
+                  <div className="text-base font-bold text-paper">Phone &amp; voicemail</div>
+                  <div className="text-xs text-muted">What callers hear, spoken by an automated voice</div>
+                </div>
+              </div>
+              <div className="p-5 space-y-4">
+                <div>
+                  <label className="text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-dim mb-1 block">Greeting (while connecting to an agent)</label>
+                  <textarea disabled={!isOwner} rows={2}
+                    className="w-full px-3 py-2 bg-card border border-bdr rounded-xl text-sm text-paper placeholder-dim focus:outline-none focus:border-ember resize-none disabled:opacity-60"
+                    value={settings.voice_greeting || ''}
+                    onChange={e => setSettings(s => ({ ...s, voice_greeting: e.target.value }))}
+                    onBlur={e => saveSettings({ voice_greeting: e.target.value })}
+                    placeholder="Please hold while we connect you to an agent." />
+                </div>
+                <div>
+                  <label className="text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-dim mb-1 block">Voicemail message (before the beep)</label>
+                  <textarea disabled={!isOwner} rows={3}
+                    className="w-full px-3 py-2 bg-card border border-bdr rounded-xl text-sm text-paper placeholder-dim focus:outline-none focus:border-ember resize-none disabled:opacity-60"
+                    value={settings.voicemail_prompt || ''}
+                    onChange={e => setSettings(s => ({ ...s, voicemail_prompt: e.target.value }))}
+                    onBlur={e => saveSettings({ voicemail_prompt: e.target.value })}
+                    placeholder="Sorry, we can't take your call right now. Please leave a message after the beep." />
+                </div>
+                <div className="text-[11px] text-dim leading-relaxed pt-1 border-t border-bdr">
+                  The greeting plays when a call comes in and agents are online. The voicemail message plays when no one is available or the call isn't answered — the caller's message is then recorded, transcribed and attached to a support ticket.
+                  {!isOwner && <span className="block mt-1">Only owners can edit these.</span>}
+                </div>
               </div>
             </div>
           )}

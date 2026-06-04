@@ -7,6 +7,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+// Escape text for safe inclusion inside a TwiML <Say>
+const xmlEscape = (s: string) =>
+  (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", {
@@ -198,13 +202,19 @@ serve(async (req) => {
       });
     }
 
+    // Editable greeting + voicemail prompt (from support_settings)
+    const { data: vs } = await supabase.from("support_settings")
+      .select("voice_greeting, voicemail_prompt").eq("id", 1).single();
+    const greeting = xmlEscape(vs?.voice_greeting || "Please hold while we connect you to an agent.");
+    const vmPrompt = xmlEscape(vs?.voicemail_prompt || "Please leave a message after the beep and we'll get back to you.");
+
     // Build TwiML response
     const FN = `${Deno.env.get("SUPABASE_URL")}/functions/v1`;
     let twiml = '<?xml version="1.0" encoding="UTF-8"?><Response>';
 
     if (onlineAgents && onlineAgents.length > 0) {
       // Ring online agents; record the call; on no-answer fall through to voicemail
-      twiml += `<Say voice="alice">Please hold while we connect you to an agent.</Say>`;
+      twiml += `<Say voice="alice">${greeting}</Say>`;
       twiml += `<Dial timeout="25" record="record-from-answer"`;
       twiml += ` recordingStatusCallback="${FN}/twilio-recording" recordingStatusCallbackEvent="completed"`;
       twiml += ` action="${FN}/twilio-voice-status?ticket=${ticketId || ""}"`;
@@ -222,7 +232,7 @@ serve(async (req) => {
       twiml += `</Dial>`;
     } else {
       // No agents online - go straight to voicemail (recorded + transcribed)
-      twiml += `<Say voice="alice">Thank you for calling ServOS support. All agents are currently busy. Please leave a message after the beep and we'll get back to you.</Say>`;
+      twiml += `<Say voice="alice">${vmPrompt}</Say>`;
       twiml += `<Record maxLength="120" playBeep="true" transcribe="true"`;
       twiml += ` transcribeCallback="${FN}/twilio-voicemail?mode=transcription"`;
       twiml += ` action="${FN}/twilio-voicemail?ticket=${ticketId || ""}" />`;
