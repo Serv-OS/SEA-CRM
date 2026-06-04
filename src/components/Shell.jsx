@@ -37,6 +37,7 @@ import FormsList from './crm/FormsList.jsx';
 import FormBuilder from './crm/FormBuilder.jsx';
 import TemplatesPanel from './crm/TemplatesPanel.jsx';
 import MyWork from './crm/MyWork.jsx';
+import DataPanel from './crm/DataPanel.jsx';
 
 export default function Shell({ session }) {
   const [profile, setProfile]   = useState(null);
@@ -146,6 +147,8 @@ export default function Shell({ session }) {
         return <ReleaseDetail releaseId={detailId} profile={profile} onClose={() => setView('releases')} />;
       case 'reporting':
         return <ReportingDashboard profile={profile} />;
+      case 'data':
+        return <DataPanel profile={profile} />;
       case 'settings':
         return <SettingsPanel profile={profile} />;
       case 'account':

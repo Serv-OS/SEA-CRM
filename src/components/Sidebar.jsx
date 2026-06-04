@@ -203,6 +203,7 @@ export default function Sidebar({ profile, projects, activeProject, setActivePro
           { key: 'feature_requests', icon: '\u{1F4A1}', label: 'Feature Requests' },
           { key: 'releases',         icon: '\u{1F4E6}', label: 'Releases' },
           { key: 'reporting',        icon: '\u{1F4CA}', label: 'Reporting' },
+          { key: 'data',             icon: '\u{1F4E5}', label: 'Data tools' },
           { key: 'settings',         icon: '\u{2699}',  label: 'Settings' },
         ].map(item => (
           <button key={item.key} onClick={() => setView(item.key)}
