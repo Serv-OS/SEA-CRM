@@ -198,9 +198,18 @@ body {
    so every detail/list page works on a phone without per-file edits.
    ============================================================ */
 
-/* The sidebar drawer width on small screens */
+/* The sidebar drawer on small screens: wider + fully opaque so it's clearly
+   readable over the dimmed page (the glass style is too translucent here). */
 @media (max-width: 1023px) {
-  aside { width: 17rem; }
+  aside { width: 18rem; }
+  .fixed aside {
+    background: #f1ede5 !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    box-shadow: 8px 0 32px rgba(0, 0, 0, 0.28);
+  }
+  /* Stronger contrast for nav labels in the drawer */
+  .fixed aside .text-muted { color: #3a352c !important; }
 }
 
 /* Stack the 3-column (grid-cols-12) detail layouts under lg */
