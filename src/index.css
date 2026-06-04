@@ -206,7 +206,6 @@ body {
     background: #f1ede5 !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
-    box-shadow: 8px 0 32px rgba(0, 0, 0, 0.28);
   }
   /* Stronger contrast for nav labels in the drawer */
   .fixed aside .text-muted { color: #3a352c !important; }
