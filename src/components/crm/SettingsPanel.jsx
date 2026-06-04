@@ -13,6 +13,9 @@ export default function SettingsPanel({ profile }) {
   const [settings, setSettings] = useState(null);
   const [agentCounts, setAgentCounts] = useState({});
   const [slaPolicies, setSlaPolicies] = useState([]);
+  const [stripe, setStripe] = useState(null);
+  const [stripeKey, setStripeKey] = useState('');
+  const [stripeBusy, setStripeBusy] = useState(false);
 
   const isOwner = profile.role === 'owner';
 
@@ -70,6 +73,38 @@ export default function SettingsPanel({ profile }) {
     }, { onConflict: 'id' });
   };
 
+  const fnUrl = (p) => `${SUPABASE_URL}/functions/v1/${p}`;
+  const authHeader = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    return { Authorization: `Bearer ${session?.access_token}` };
+  };
+
+  useEffect(() => { (async () => {
+    try {
+      const res = await fetch(fnUrl('stripe-connect'), { headers: await authHeader() });
+      if (res.ok) setStripe(await res.json());
+    } catch { /* ignore */ }
+  })(); }, []);
+
+  const connectStripe = async () => {
+    if (!stripeKey.trim()) return;
+    setStripeBusy(true);
+    const res = await fetch(fnUrl('stripe-connect'), {
+      method: 'POST', headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
+      body: JSON.stringify({ secret_key: stripeKey.trim() }),
+    });
+    const d = await res.json();
+    setStripeBusy(false);
+    if (!res.ok) { alert(d.error || 'Could not connect Stripe'); return; }
+    setStripeKey(''); setStripe({ connected: true, account_name: d.account_name, livemode: d.livemode });
+  };
+
+  const disconnectStripe = async () => {
+    if (!confirm('Disconnect Stripe? Quotes will no longer be able to take payment.')) return;
+    await fetch(fnUrl('stripe-connect'), { method: 'DELETE', headers: await authHeader() });
+    setStripe({ connected: false });
+  };
+
   const saveSla = async (priority, field, value) => {
     const v = parseInt(value);
     if (isNaN(v) || v < 0) return;
@@ -121,6 +156,42 @@ export default function SettingsPanel({ profile }) {
 
       <div className="flex-1 overflow-y-auto p-6">
         <div className="max-w-3xl space-y-6">
+
+          {/* Payments (Stripe) */}
+          <div className="glass-card rounded-2xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-bdr flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-200 flex items-center justify-center text-lg">{'\u{1F4B3}'}</div>
+              <div className="flex-1">
+                <div className="text-base font-bold text-paper">Payments (Stripe)</div>
+                <div className="text-xs text-muted">Take payment when customers accept a quote</div>
+              </div>
+              {stripe?.connected && <span className={`px-2 py-0.5 text-[9px] font-bold uppercase rounded ${stripe.livemode ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-amber-100 text-amber-700 border border-amber-200'}`}>{stripe.livemode ? 'Live' : 'Test'}</span>}
+            </div>
+            <div className="p-5">
+              {stripe?.connected ? (
+                <div className="flex items-center gap-3 p-3 glass-inner rounded-xl">
+                  <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-sm font-bold">{'\u{2713}'}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-paper">{stripe.account_name || 'Stripe account'}</div>
+                    <div className="text-xs text-muted">Connected · webhook configured automatically</div>
+                  </div>
+                  {isOwner && <button onClick={disconnectStripe} className="px-2 py-1 text-xs text-red-600 border border-red-200 rounded-xl hover:bg-red-50">Disconnect</button>}
+                </div>
+              ) : isOwner ? (
+                <div className="space-y-2">
+                  <div className="text-sm text-muted">Paste your Stripe <strong>secret key</strong> — we'll verify it and set up the payment webhook for you. No other steps.</div>
+                  <div className="flex gap-2">
+                    <input type="password" value={stripeKey} onChange={e => setStripeKey(e.target.value)} placeholder="sk_live_… or sk_test_…"
+                      className="flex-1 px-3 py-2 bg-card border border-bdr rounded-xl text-sm text-paper placeholder-dim focus:outline-none focus:border-ember font-mono" />
+                    <button onClick={connectStripe} disabled={stripeBusy || !stripeKey.trim()} className="btn-glass px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-50">{stripeBusy ? 'Connecting…' : 'Connect'}</button>
+                  </div>
+                  <div className="text-[11px] text-dim">Find it in Stripe → Developers → API keys. Use a test key first if you want to trial it. The key is stored securely server-side and never shown in the browser.</div>
+                </div>
+              ) : (
+                <div className="text-sm text-dim">Not connected. Ask an owner to connect Stripe.</div>
+              )}
+            </div>
+          </div>
 
           {/* Ticket auto-assignment */}
           {settings && (

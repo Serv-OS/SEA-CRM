@@ -17,11 +17,12 @@ const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   try {
-    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-    if (!stripeKey) return json({ error: "Stripe is not configured yet." }, 503);
-    const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16", httpClient: Stripe.createFetchHttpClient() });
-
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    // Prefer the in-app connected key; fall back to an env secret
+    const { data: conn } = await supabase.from("stripe_connection").select("secret_key").eq("id", 1).maybeSingle();
+    const stripeKey = conn?.secret_key || Deno.env.get("STRIPE_SECRET_KEY");
+    if (!stripeKey) return json({ error: "Stripe is not connected yet." }, 503);
+    const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16", httpClient: Stripe.createFetchHttpClient() });
     const { token, origin } = await req.json();
     if (!token) return json({ error: "Missing token" }, 400);
 

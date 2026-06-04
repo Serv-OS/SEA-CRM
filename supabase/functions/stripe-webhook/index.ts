@@ -8,12 +8,13 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@14?target=deno";
 
 serve(async (req) => {
-  const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-  const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
+  const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+  const { data: conn } = await supabase.from("stripe_connection").select("secret_key, webhook_secret").eq("id", 1).maybeSingle();
+  const stripeKey = conn?.secret_key || Deno.env.get("STRIPE_SECRET_KEY");
+  const webhookSecret = conn?.webhook_secret || Deno.env.get("STRIPE_WEBHOOK_SECRET");
   if (!stripeKey || !webhookSecret) return new Response("Stripe not configured", { status: 503 });
 
   const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16", httpClient: Stripe.createFetchHttpClient() });
-  const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
   const sig = req.headers.get("stripe-signature");
   const raw = await req.text();
