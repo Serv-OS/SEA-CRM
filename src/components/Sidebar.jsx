@@ -187,6 +187,7 @@ export default function Sidebar({ profile, projects, activeProject, setActivePro
         </div>
 
         {[
+          { key: 'mywork',           icon: '\u{1F3E0}', label: 'My Work' },
           { key: 'companies',        icon: '\u{1F3E2}', label: 'Companies' },
           { key: 'locations',        icon: '\u{1F4CD}', label: 'Locations' },
           { key: 'contacts',         icon: '\u{1F464}', label: 'Contacts' },

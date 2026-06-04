@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import Sidebar from './Sidebar.jsx';
 import PhoneBar from './PhoneBar.jsx';
 import NotificationBell from './NotificationBell.jsx';
+import GlobalSearch from './GlobalSearch.jsx';
 import AccountPanel from './AccountPanel.jsx';
 import Board from './Board.jsx';
 import UsersPanel from './UsersPanel.jsx';
@@ -35,12 +36,13 @@ import SettingsPanel from './crm/SettingsPanel.jsx';
 import FormsList from './crm/FormsList.jsx';
 import FormBuilder from './crm/FormBuilder.jsx';
 import TemplatesPanel from './crm/TemplatesPanel.jsx';
+import MyWork from './crm/MyWork.jsx';
 
 export default function Shell({ session }) {
   const [profile, setProfile]   = useState(null);
   const [projects, setProjects] = useState([]);
   const [activeProject, setActiveProject] = useState(null);
-  const [view, setView]         = useState('board');
+  const [view, setView]         = useState('mywork');
   const [openItem, setOpenItem] = useState(null);
   const [detailId, setDetailId] = useState(null);
 
@@ -86,12 +88,19 @@ export default function Shell({ session }) {
     else if (type === 'project') { setView('project_detail'); setDetailId(id); }
     else if (type === 'task') { setView('task_detail'); setDetailId(id); }
     else if (type === 'lead') { setView('leads'); } // no detail view; open the board
+    // List shortcuts (used by My Work "View all")
+    else if (type === 'ticket_list') { setView('tickets'); }
+    else if (type === 'task_list') { setView('tasks'); }
+    else if (type === 'deal_list') { setView('deals'); }
+    else if (type === 'lead_list') { setView('leads'); }
   };
 
   if (!profile) return <div className="h-full flex items-center justify-center text-muted text-sm">Loading profile...</div>;
 
   const renderMain = () => {
     switch (view) {
+      case 'mywork':
+        return <MyWork profile={profile} onNavigate={navigateTo} />;
       case 'users':
         return <UsersPanel profile={profile} />;
       case 'features':
@@ -181,7 +190,8 @@ export default function Shell({ session }) {
       <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
       <div className="flex items-stretch border-b border-bdr">
         <div className="flex-1 min-w-0"><PhoneBar profile={profile} /></div>
-        <div className="glass flex items-center px-3 shrink-0">
+        <div className="glass flex items-center gap-2 px-3 shrink-0">
+          <GlobalSearch onNavigate={navigateTo} />
           <NotificationBell profile={profile} onNavigate={navigateTo} />
         </div>
       </div>
