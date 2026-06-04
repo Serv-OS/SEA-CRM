@@ -138,6 +138,27 @@ serve(async (req) => {
 
     const accessToken = await getAccessToken(supabase);
 
+    // Build the set of internal senders that must NOT create support tickets:
+    // our own connected mailboxes + every system user's email. Combined with
+    // an own-domain check below, this stops staff emails (e.g. peter@serv-os.app)
+    // from being treated as customer tickets.
+    const internalEmails = new Set<string>();
+    const [{ data: conns }, { data: profs }] = await Promise.all([
+      supabase.from("gmail_connections").select("email"),
+      supabase.from("profiles").select("email"),
+    ]);
+    (conns || []).forEach((c: any) => c.email && internalEmails.add(c.email.toLowerCase()));
+    (profs || []).forEach((p: any) => p.email && internalEmails.add(p.email.toLowerCase()));
+
+    const OWN_DOMAINS = ["serv-os.app", "servos.app"];
+    const isInternalSender = (email: string) => {
+      const e = (email || "").toLowerCase().trim();
+      if (!e) return true; // no sender -> skip
+      if (internalEmails.has(e)) return true;
+      const domain = e.split("@")[1] || "";
+      return OWN_DOMAINS.includes(domain);
+    };
+
     // Get unread messages
     const messages = await getGmailMessages(accessToken);
     let processed = 0;
@@ -157,8 +178,10 @@ serve(async (req) => {
       const senderEmail = extractEmail(from);
       const senderName = extractName(from);
 
-      // Skip emails from ourselves (support@serv-os.app)
-      if (senderEmail.includes("support@serv-os") || senderEmail.includes("support@servos")) {
+      // Skip emails from internal senders: our own connected mailbox, any
+      // system user (e.g. peter@serv-os.app), or anything on our own domain.
+      // These are staff, not customers, so they must not create tickets.
+      if (isInternalSender(senderEmail)) {
         await markAsRead(accessToken, msg.id);
         continue;
       }
