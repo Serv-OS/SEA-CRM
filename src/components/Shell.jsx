@@ -41,6 +41,7 @@ import DataPanel from './crm/DataPanel.jsx';
 import LeadDetail from './crm/LeadDetail.jsx';
 import ProductsPanel from './crm/ProductsPanel.jsx';
 import QuoteBuilder from './crm/QuoteBuilder.jsx';
+import { Sun, Moon } from 'lucide-react';
 
 export default function Shell({ session }) {
   const [profile, setProfile]   = useState(null);
@@ -51,6 +52,12 @@ export default function Shell({ session }) {
   const [detailId, setDetailId] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [leadPrefill, setLeadPrefill] = useState(null);
+  const [theme, setTheme] = useState(() => localStorage.getItem('servos-crm-theme') || 'light');
+
+  useEffect(() => {
+    document.body.classList.toggle('dark', theme === 'dark');
+    localStorage.setItem('servos-crm-theme', theme);
+  }, [theme]);
 
   // Start a lead from a record (company/location/contact detail "Create lead")
   const startLead = (prefill) => { setLeadPrefill(prefill); setView('leads'); };
@@ -224,6 +231,11 @@ export default function Shell({ session }) {
         </div>
         <div className="order-2 lg:order-2 flex-1 lg:flex-none flex items-center justify-end gap-2 px-3 glass">
           <GlobalSearch onNavigate={navigateTo} />
+          <button onClick={() => setTheme(t => (t === 'dark' ? 'light' : 'dark'))}
+            className="w-9 h-9 rounded-xl flex items-center justify-center text-muted hover:text-paper hover:bg-card transition shrink-0"
+            title={theme === 'dark' ? 'Light mode' : 'Dark mode'}>
+            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
           <NotificationBell profile={profile} onNavigate={navigateTo} />
         </div>
       </div>
