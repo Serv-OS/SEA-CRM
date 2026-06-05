@@ -98,6 +98,7 @@ serve(async (req) => {
             first_name: mapped.first_name || null,
             last_name: mapped.last_name || null,
             email, phone,
+            job_title: mapped.job_title || null,
             source: sourceTag,
           }).select("id").single();
           contactId = c?.id || null;
@@ -110,12 +111,39 @@ serve(async (req) => {
         const { data: existing } = await supabase.from("companies").select("id").ilike("name", mapped.company_name).limit(1);
         if (existing && existing.length) companyId = existing[0].id;
         else {
-          const { data: co } = await supabase.from("companies").insert({ name: mapped.company_name }).select("id").single();
+          const { data: co } = await supabase.from("companies").insert({
+            name: mapped.company_name,
+            domain: mapped.company_domain || null,
+            city: mapped.company_city || null,
+          }).select("id").single();
           companyId = co?.id || null;
         }
         if (companyId && contactId) {
           await supabase.from("associations").insert({
             from_type: "contact", from_id: contactId, to_type: "company", to_id: companyId, label: "primary_contact",
+          });
+        }
+      }
+
+      // Resolve / create location (under the company)
+      let locationId: string | null = null;
+      if (mapped.location_name && companyId) {
+        const { data: existingLoc } = await supabase.from("locations")
+          .select("id").eq("company_id", companyId).ilike("name", mapped.location_name).limit(1);
+        if (existingLoc && existingLoc.length) locationId = existingLoc[0].id;
+        else {
+          const { data: loc } = await supabase.from("locations").insert({
+            name: mapped.location_name, company_id: companyId,
+            address: mapped.location_address || null,
+            city: mapped.location_city || null,
+            postcode: mapped.location_postcode || null,
+            status: "prospect",
+          }).select("id").single();
+          locationId = loc?.id || null;
+        }
+        if (locationId && contactId) {
+          await supabase.from("associations").insert({
+            from_type: "contact", from_id: contactId, to_type: "location", to_id: locationId, label: "primary_contact",
           });
         }
       }
@@ -148,6 +176,11 @@ serve(async (req) => {
             from_type: "ticket", from_id: ticket.id, to_type: "contact", to_id: contactId, label: "primary_contact",
           });
         }
+        if (locationId) {
+          await supabase.from("associations").insert({
+            from_type: "ticket", from_id: ticket.id, to_type: "location", to_id: locationId, label: "affected_location",
+          });
+        }
         submission.created_ticket_id = ticket.id;
         submission.created_contact_id = contactId;
         submission.created_company_id = companyId;
@@ -161,6 +194,7 @@ serve(async (req) => {
           source: sourceTag,
           company_id: companyId,
           contact_id: contactId,
+          location_id: locationId,
           venue_type: mapped.venue_type || null,
           covers: mapped.covers ? parseInt(mapped.covers) : null,
           current_pos: mapped.current_pos || null,

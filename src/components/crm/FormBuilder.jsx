@@ -4,19 +4,29 @@ import { supabase } from '../../lib/supabase';
 const FIELD_TYPES = ['text', 'email', 'tel', 'textarea', 'select'];
 const MAPS_COMMON = [
   { v: 'none', l: "Don't map (store as note)" },
-  { v: 'first_name', l: 'First name' },
-  { v: 'last_name', l: 'Last name' },
-  { v: 'email', l: 'Email' },
-  { v: 'phone', l: 'Phone' },
-  { v: 'company_name', l: 'Company name' },
+  // Contact
+  { v: 'first_name', l: 'Contact · First name' },
+  { v: 'last_name', l: 'Contact · Last name' },
+  { v: 'email', l: 'Contact · Email' },
+  { v: 'phone', l: 'Contact · Phone' },
+  { v: 'job_title', l: 'Contact · Job title' },
+  // Company
+  { v: 'company_name', l: 'Company · Name' },
+  { v: 'company_domain', l: 'Company · Domain' },
+  { v: 'company_city', l: 'Company · City' },
+  // Location
+  { v: 'location_name', l: 'Location · Name' },
+  { v: 'location_address', l: 'Location · Address' },
+  { v: 'location_city', l: 'Location · City' },
+  { v: 'location_postcode', l: 'Location · Postcode' },
   { v: 'message', l: 'Message / notes' },
 ];
 const MAPS_LEAD = [
-  { v: 'venue_type', l: 'Venue type' },
-  { v: 'covers', l: 'Covers' },
-  { v: 'current_pos', l: 'Current POS' },
+  { v: 'venue_type', l: 'Lead · Venue type' },
+  { v: 'covers', l: 'Lead · Covers' },
+  { v: 'current_pos', l: 'Lead · Current POS' },
 ];
-const MAPS_SUPPORT = [{ v: 'subject', l: 'Ticket subject' }];
+const MAPS_SUPPORT = [{ v: 'subject', l: 'Ticket · Subject' }];
 
 function fieldKey(label, existing) {
   let base = (label || 'field').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 30) || 'field';
