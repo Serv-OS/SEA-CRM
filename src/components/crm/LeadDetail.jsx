@@ -4,6 +4,7 @@ import ActivityTimeline from './ActivityTimeline.jsx';
 import AssociationManager from './AssociationManager.jsx';
 import AttachmentsCard from './AttachmentsCard.jsx';
 import CallButton from '../CallButton.jsx';
+import ScheduleMeeting from './ScheduleMeeting.jsx';
 import LeadBadge from './LeadBadge.jsx';
 import { LEAD_STAGES, LEAD_STAGE_MAP } from '../../lib/leadStages';
 
@@ -131,6 +132,10 @@ export default function LeadDetail({ leadId, profile, onClose, onNavigate }) {
             {lead.priority} priority / Owner: {ownerName(lead.owner_id)}
           </div>
         </div>
+        {!editing && (
+          <ScheduleMeeting subjectType="lead" subjectId={leadId} contactId={lead.contact_id}
+            attendeeEmail={contact?.email} defaultTitle={`Meeting: ${lead.name}`} />
+        )}
         {!editing && phone && <CallButton number={phone} className="px-3 py-2 text-sm" />}
         {canWrite && !editing && (
           <div className="flex gap-2">

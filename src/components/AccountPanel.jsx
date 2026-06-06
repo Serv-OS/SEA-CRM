@@ -2,6 +2,10 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { TEAM_LABELS } from './UsersPanel.jsx';
 
+const GOOGLE_CLIENT_ID = '836252293153-ekl6o41r2kra549aqnjr9bvpiq2t4nfg.apps.googleusercontent.com';
+const REDIRECT_URI = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gmail-oauth-callback`;
+const PERSONAL_SCOPES = 'openid email https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/calendar.events';
+
 // My Account: a user sets their own contact details + notification preferences.
 // Email notifications go to profile.email; SMS notifications go to profile.mobile.
 export default function AccountPanel({ profile, onSaved }) {
@@ -20,15 +24,45 @@ export default function AccountPanel({ profile, onSaved }) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
+  const [google, setGoogle] = useState(null);
 
-  useEffect(() => { load(); }, [profile.id]);
+  useEffect(() => {
+    load();
+    const handler = (e) => {
+      if (e.data?.type === 'google-oauth-result') {
+        if (e.data.success) load(); else setError('Google connection failed: ' + e.data.detail);
+      }
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, [profile.id]);
+
+  const connectGoogle = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const url = 'https://accounts.google.com/o/oauth2/v2/auth?' +
+      `client_id=${encodeURIComponent(GOOGLE_CLIENT_ID)}` +
+      `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
+      `&response_type=code&access_type=offline&prompt=consent` +
+      `&scope=${encodeURIComponent(PERSONAL_SCOPES)}` +
+      `&state=${encodeURIComponent('personal:' + (session?.access_token || ''))}`;
+    const w = 500, h = 640;
+    window.open(url, 'google-oauth', `width=${w},height=${h},left=${(screen.width - w) / 2},top=${(screen.height - h) / 2}`);
+  };
+
+  const disconnectGoogle = async () => {
+    if (!confirm('Disconnect your Google account? Your inbox and calendar features will stop working.')) return;
+    await supabase.from('user_integrations').delete().eq('profile_id', profile.id);
+    setGoogle(null);
+  };
 
   const load = async () => {
     setLoading(true);
-    const [p, np] = await Promise.all([
+    const [p, np, gi] = await Promise.all([
       supabase.from('profiles').select('display_name, phone, mobile, email, teams').eq('id', profile.id).single(),
       supabase.from('notification_preferences').select('*').eq('profile_id', profile.id).maybeSingle(),
+      supabase.from('user_integrations').select('email, scope').eq('profile_id', profile.id).maybeSingle(),
     ]);
+    setGoogle(gi.data || null);
     if (p.data) {
       setForm({
         display_name: p.data.display_name || '',
@@ -157,6 +191,34 @@ export default function AccountPanel({ profile, onSaved }) {
                     onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="Desk / landline" />
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Google connection (personal inbox + calendar) */}
+          <div className="glass-card rounded-2xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-bdr flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-white border border-bdr flex items-center justify-center text-lg">{'\u{1F4C5}'}</div>
+              <div className="flex-1">
+                <div className="text-base font-bold text-paper">Google account</div>
+                <div className="text-xs text-muted">Connect your inbox &amp; calendar — schedule meetings and triage email in one place</div>
+              </div>
+            </div>
+            <div className="p-5">
+              {google ? (
+                <div className="flex items-center gap-3 p-3 glass-inner rounded-xl">
+                  <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-sm font-bold">{'\u{2713}'}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-paper">{google.email}</div>
+                    <div className="text-xs text-muted">Inbox &amp; calendar connected</div>
+                  </div>
+                  <button onClick={disconnectGoogle} className="px-2 py-1 text-xs text-red-600 border border-red-200 rounded-xl hover:bg-red-50">Disconnect</button>
+                </div>
+              ) : (
+                <div>
+                  <button onClick={connectGoogle} className="btn-glass px-5 py-2.5 rounded-xl text-sm font-semibold">Connect Google</button>
+                  <div className="text-[11px] text-dim mt-2">Connects your own Gmail + Google Calendar (separate from the shared support inbox). You'll be asked to allow email and calendar access.</div>
+                </div>
+              )}
             </div>
           </div>
 

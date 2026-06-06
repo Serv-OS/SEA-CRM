@@ -5,6 +5,7 @@ import ActivityTimeline from './ActivityTimeline.jsx';
 import CallButton from '../CallButton.jsx';
 import LeadBadge from './LeadBadge.jsx';
 import LeadsCard from './LeadsCard.jsx';
+import ScheduleMeeting from './ScheduleMeeting.jsx';
 import { primaryLead } from '../../lib/leadStages';
 
 export default function ContactDetail({ contactId, profile, onClose, onNavigate, onCreateLead }) {
@@ -70,6 +71,10 @@ export default function ContactDetail({ contactId, profile, onClose, onNavigate,
             {contact.phone && <span> / {contact.phone}</span>}
           </div>
         </div>
+        {!editing && (
+          <ScheduleMeeting subjectType="contact" subjectId={contactId} contactId={contactId}
+            attendeeEmail={contact.email} defaultTitle={`Meeting with ${fullName}`} />
+        )}
         {!editing && contact.phone && (
           <CallButton number={contact.phone} className="px-3 py-2 text-sm" />
         )}

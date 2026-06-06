@@ -66,16 +66,34 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Get the user who initiated the connection (from state param)
+    // state may be "personal:<jwt>" (per-user inbox/calendar) or just "<jwt>" (shared support inbox)
+    let mode = "support";
+    let jwt = state || "";
+    if (state && state.startsWith("personal:")) { mode = "personal"; jwt = state.slice("personal:".length); }
+
     let connectedBy = null;
-    if (state) {
-      try {
-        const { data: { user } } = await supabase.auth.getUser(state);
-        connectedBy = user?.id || null;
-      } catch {}
+    if (jwt) {
+      try { const { data: { user } } = await supabase.auth.getUser(jwt); connectedBy = user?.id || null; } catch {}
     }
 
-    // Upsert: if same email already connected, update tokens
+    if (mode === "personal") {
+      if (!connectedBy) {
+        return new Response(redirectHtml(appUrl, false, "Not signed in", "google-oauth-result"), { headers: { "Content-Type": "text/html" } });
+      }
+      await supabase.from("user_integrations").upsert({
+        profile_id: connectedBy,
+        provider: "google",
+        email,
+        access_token: tokens.access_token,
+        refresh_token: tokens.refresh_token,
+        token_expires_at: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
+        scope: tokens.scope || null,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "profile_id" });
+      return new Response(redirectHtml(appUrl, true, email, "google-oauth-result"), { headers: { "Content-Type": "text/html" } });
+    }
+
+    // Shared support inbox (unchanged)
     await supabase.from("gmail_connections").upsert({
       email,
       access_token: tokens.access_token,
@@ -85,9 +103,6 @@ serve(async (req) => {
       is_active: true,
       updated_at: new Date().toISOString(),
     }, { onConflict: "email" });
-
-    // Also update the edge function secrets for backward compatibility
-    // (The gmail-check and gmail-send functions will be updated to read from DB)
 
     return new Response(redirectHtml(appUrl, true, email), {
       headers: { "Content-Type": "text/html" },
@@ -100,15 +115,15 @@ serve(async (req) => {
   }
 });
 
-function redirectHtml(appUrl: string, success: boolean, detail: string): string {
+function redirectHtml(appUrl: string, success: boolean, detail: string, messageType = "gmail-oauth-result"): string {
   return `<!DOCTYPE html>
 <html>
-<head><title>Gmail Connection</title></head>
+<head><title>Google Connection</title></head>
 <body>
 <script>
   if (window.opener) {
     window.opener.postMessage({
-      type: 'gmail-oauth-result',
+      type: '${messageType}',
       success: ${success},
       detail: '${detail.replace(/'/g, "\\'")}'
     }, '${appUrl}');
