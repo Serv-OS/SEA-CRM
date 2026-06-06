@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useGoogleConnection } from '../../lib/useGoogle';
-import { Mail, RefreshCw, Archive, Reply, Search, Link2, Plus, ExternalLink } from 'lucide-react';
+import { Mail, RefreshCw, Archive, Reply, Search, Link2, Plus, ExternalLink, Ticket, CheckSquare } from 'lucide-react';
 
 const FN = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gmail-personal`;
 
@@ -26,6 +26,7 @@ function fmtDate(d) {
 export default function InboxPanel({ profile, onNavigate }) {
   const { connected, connect } = useGoogleConnection(profile.id);
   const [messages, setMessages] = useState([]);
+  const [signature, setSignature] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
@@ -55,6 +56,11 @@ export default function InboxPanel({ profile, onNavigate }) {
   }, [callFn]);
 
   useEffect(() => { if (connected) loadList(activeQ); }, [connected, activeQ, loadList]);
+
+  useEffect(() => {
+    supabase.from('profiles').select('email_signature').eq('id', profile.id).maybeSingle()
+      .then(r => setSignature(r.data?.email_signature || '')).catch(() => {});
+  }, [profile.id]);
 
   const openMessage = async (m) => {
     setSelLoading(true); setSelected({ id: m.id, _loading: true });
@@ -150,7 +156,7 @@ export default function InboxPanel({ profile, onNavigate }) {
           ) : (
             <MessageView msg={selected} profile={profile} onNavigate={onNavigate}
               onBack={() => setSelected(null)} onArchive={() => archive(selected.id)}
-              callFn={callFn} />
+              callFn={callFn} signature={signature} />
           )}
         </div>
       </div>
@@ -158,7 +164,7 @@ export default function InboxPanel({ profile, onNavigate }) {
   );
 }
 
-function MessageView({ msg, profile, onNavigate, onBack, onArchive, callFn }) {
+function MessageView({ msg, profile, onNavigate, onBack, onArchive, callFn, signature }) {
   const from = parseAddr(msg.from);
   const [replyOpen, setReplyOpen] = useState(false);
   const [replyBody, setReplyBody] = useState('');
@@ -170,13 +176,68 @@ function MessageView({ msg, profile, onNavigate, onBack, onArchive, callFn }) {
   const [contact, setContact] = useState(undefined); // undefined=loading, null=none, obj=found
   const [linkMsg, setLinkMsg] = useState('');
   const [linking, setLinking] = useState(false);
+  const [created, setCreated] = useState(null); // { type, id, label } after triage
+
+  const sigBlock = signature ? `\n\n--\n${signature}` : '';
 
   useEffect(() => {
-    setReplyOpen(false); setReplyBody(''); setSent(false); setErr(''); setLinkMsg('');
+    setReplyOpen(false); setReplyBody(''); setSent(false); setErr(''); setLinkMsg(''); setCreated(null);
     setContact(undefined);
     supabase.from('contacts').select('id, first_name, last_name, email').ilike('email', from.email).limit(1)
       .then(r => setContact(r.data?.[0] || null));
   }, [msg.id]);
+
+  const openReply = () => {
+    setReplyOpen(o => {
+      const next = !o;
+      if (next && !replyBody) setReplyBody(sigBlock);
+      return next;
+    });
+  };
+
+  // Find a company linked to the matched contact (for ticket routing).
+  const findCompanyId = async () => {
+    if (!contact?.id) return null;
+    const { data } = await supabase.from('associations').select('from_id, to_id, from_type, to_type')
+      .or(`and(from_type.eq.contact,from_id.eq.${contact.id},to_type.eq.company),and(to_type.eq.contact,to_id.eq.${contact.id},from_type.eq.company)`).limit(1);
+    return data && data.length ? (data[0].from_type === 'company' ? data[0].from_id : data[0].to_id) : null;
+  };
+
+  const createTicket = async () => {
+    setLinking(true); setErr('');
+    try {
+      const companyId = await findCompanyId();
+      const { data: t, error } = await supabase.from('tickets').insert({
+        subject: msg.subject || `Email from ${from.name}`,
+        description: msg.text || '',
+        channel: 'email', source: 'inbox',
+        customer_email: from.email,
+        contact_id: contact?.id || null,
+        company_id: companyId,
+        priority: 'P2', ticket_type: 'support', owner_id: profile.id,
+      }).select('id, ticket_number').single();
+      if (error) throw error;
+      await supabase.from('stage_history').insert({ object_type: 'ticket', object_id: t.id, from_stage: null, to_stage: 'new', changed_by: profile.id });
+      if (contact?.id) await supabase.from('associations').insert({ from_type: 'ticket', from_id: t.id, to_type: 'contact', to_id: contact.id, label: 'primary_contact' });
+      setCreated({ type: 'ticket', id: t.id, label: t.ticket_number ? `Ticket #${t.ticket_number}` : 'Ticket' });
+    } catch (e) { setErr('Could not create ticket: ' + e.message); }
+    setLinking(false);
+  };
+
+  const createTask = async () => {
+    setLinking(true); setErr('');
+    try {
+      const { data: t, error } = await supabase.from('tasks').insert({
+        title: msg.subject || `Follow up: ${from.name}`,
+        description: (msg.text || '') + `\n\n(From email: ${from.email})`,
+        priority: 'P2', owner_id: profile.id,
+      }).select('id').single();
+      if (error) throw error;
+      if (contact?.id) await supabase.from('associations').insert({ from_type: 'task', from_id: t.id, to_type: 'contact', to_id: contact.id, label: 'related' });
+      setCreated({ type: 'task', id: t.id, label: 'Task' });
+    } catch (e) { setErr('Could not create task: ' + e.message); }
+    setLinking(false);
+  };
 
   const send = async () => {
     if (!replyBody.trim()) return;
@@ -249,10 +310,16 @@ function MessageView({ msg, profile, onNavigate, onBack, onArchive, callFn }) {
           </div>
         </div>
         <div className="flex items-center gap-2 mt-3 flex-wrap">
-          <button onClick={() => setReplyOpen(o => !o)} className="btn-glass px-3 py-1.5 rounded-xl text-sm font-semibold flex items-center gap-1.5"><Reply size={14} /> Reply</button>
+          <button onClick={openReply} className="btn-glass px-3 py-1.5 rounded-xl text-sm font-semibold flex items-center gap-1.5"><Reply size={14} /> Reply</button>
           <button onClick={onArchive} className="btn-ghost px-3 py-1.5 rounded-xl text-sm flex items-center gap-1.5"><Archive size={14} /> Archive</button>
 
+          {/* Triage: turn the email into work */}
+          <span className="w-px h-5 bg-bdr mx-0.5" />
+          <button onClick={createTicket} disabled={linking} className="px-3 py-1.5 rounded-xl text-sm bg-blue-100 text-blue-700 border border-blue-200 hover:bg-blue-200 flex items-center gap-1.5"><Ticket size={14} /> Ticket</button>
+          <button onClick={createTask} disabled={linking} className="px-3 py-1.5 rounded-xl text-sm bg-violet-100 text-violet-700 border border-violet-200 hover:bg-violet-200 flex items-center gap-1.5"><CheckSquare size={14} /> Task</button>
+
           {/* CRM link */}
+          <span className="w-px h-5 bg-bdr mx-0.5" />
           {contact === undefined ? null : contact ? (
             <>
               <button onClick={() => onNavigate?.('contact', contact.id)} className="px-3 py-1.5 rounded-xl text-sm bg-emerald-100 text-emerald-700 border border-emerald-200 hover:bg-emerald-200 flex items-center gap-1.5">
@@ -265,6 +332,11 @@ function MessageView({ msg, profile, onNavigate, onBack, onArchive, callFn }) {
           )}
           {linkMsg && <span className="text-sm text-emerald-600 font-medium">{linkMsg}</span>}
           {sent && <span className="text-sm text-emerald-600 font-medium">Reply sent ✓</span>}
+          {created && (
+            <button onClick={() => onNavigate?.(created.type, created.id)} className="text-sm text-emerald-600 font-medium underline flex items-center gap-1">
+              {created.label} created — open <ExternalLink size={13} />
+            </button>
+          )}
         </div>
       </div>
 

@@ -25,6 +25,7 @@ export default function AccountPanel({ profile, onSaved }) {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
   const [google, setGoogle] = useState(null);
+  const [signature, setSignature] = useState('');
 
   useEffect(() => {
     load();
@@ -63,6 +64,11 @@ export default function AccountPanel({ profile, onSaved }) {
       supabase.from('user_integrations').select('email, scope').eq('profile_id', profile.id).maybeSingle(),
     ]);
     setGoogle(gi.data || null);
+    // Signature loaded separately so a missing column never breaks the page.
+    try {
+      const { data: sig } = await supabase.from('profiles').select('email_signature').eq('id', profile.id).maybeSingle();
+      setSignature(sig?.email_signature || '');
+    } catch { /* column may not exist yet */ }
     if (p.data) {
       setForm({
         display_name: p.data.display_name || '',
@@ -107,6 +113,10 @@ export default function AccountPanel({ profile, onSaved }) {
     }).eq('id', profile.id);
 
     if (pErr) { setError('Could not save profile: ' + pErr.message); setSaving(false); return; }
+
+    // Signature saved separately so a not-yet-migrated column can't block the core save.
+    const { error: sigErr } = await supabase.from('profiles').update({ email_signature: signature || null }).eq('id', profile.id);
+    if (sigErr) { setError('Profile saved, but signature could not save (run migration 029): ' + sigErr.message); setSaving(false); return; }
 
     const { error: npErr } = await supabase.from('notification_preferences').upsert({
       profile_id: profile.id,
@@ -219,6 +229,20 @@ export default function AccountPanel({ profile, onSaved }) {
                   <div className="text-[11px] text-dim mt-2">Connects your own Gmail + Google Calendar (separate from the shared support inbox). You'll be asked to allow email and calendar access.</div>
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* Email signature */}
+          <div className="glass-card rounded-2xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-bdr">
+              <div className="text-base font-bold text-paper">Email signature</div>
+              <div className="text-xs text-muted">Added to the bottom of replies you send from the Inbox</div>
+            </div>
+            <div className="p-5">
+              <textarea className={input + ' resize-none font-mono text-[13px]'} rows={5} value={signature}
+                onChange={e => setSignature(e.target.value)}
+                placeholder={`Peter Roberts\nServOS\npeter@serv-os.app · 0800 000 0000`} />
+              <div className="text-[11px] text-dim mt-2">Plain text. A separator line is added automatically before it.</div>
             </div>
           </div>
 
