@@ -63,13 +63,39 @@ async function listMembers(space: string, H: Record<string, string>) {
   try {
     const r = await fetch(`${CHAT}/${space}/members?pageSize=100`, { headers: H });
     const d = await r.json();
-    if (!r.ok) return [];
+    if (!r.ok) { console.log("DBG members.list FAIL", space, r.status, JSON.stringify(d).slice(0, 400)); return []; }
     return (d.memberships || []).map((m: any) => ({
       id: m.member?.name || "",
       displayName: m.member?.displayName || "",
       type: m.member?.type || "HUMAN",
     }));
-  } catch { return []; }
+  } catch (e) { console.log("DBG members.list THREW", space, (e as Error).message); return []; }
+}
+
+// Resolve Chat user ids ("users/123") -> display names via the People API
+// directory (Chat omits display names under user auth). Returns {} on failure.
+async function resolveNames(ids: string[], H: Record<string, string>): Promise<Record<string, string>> {
+  const map: Record<string, string> = {};
+  const unique = [...new Set(ids.map((i) => (i || "").replace("users/", "")).filter(Boolean))];
+  if (!unique.length) return map;
+  for (let i = 0; i < unique.length; i += 50) {
+    const batch = unique.slice(i, i + 50);
+    const params = new URLSearchParams();
+    batch.forEach((id) => params.append("resourceNames", `people/${id}`));
+    params.append("personFields", "names,emailAddresses");
+    try {
+      const r = await fetch(`https://people.googleapis.com/v1/people:batchGet?${params}`, { headers: H });
+      const d = await r.json();
+      if (!r.ok) { console.log("DBG people FAIL", r.status, JSON.stringify(d).slice(0, 300)); continue; }
+      for (const resp of (d.responses || [])) {
+        const rn = resp.requestedResourceName || resp.person?.resourceName || "";
+        const idNum = rn.replace("people/", "");
+        const name = resp.person?.names?.[0]?.displayName || resp.person?.emailAddresses?.[0]?.value || "";
+        if (idNum && name) map[`users/${idNum}`] = name;
+      }
+    } catch (e) { console.log("DBG people THREW", (e as Error).message); }
+  }
+  return map;
 }
 
 serve(async (req) => {
@@ -104,15 +130,22 @@ serve(async (req) => {
         single: s.singleUserBotDm || false,
       })).filter((s: any) => s.type !== "SPACE" || s.displayName);
 
-      // Name DMs (and unnamed group chats) by their members.
+      // Name DMs (and unnamed group chats) by the other member(s), resolving
+      // ids -> names via the People API directory.
       const selfId = await getSelfUserId(H);
-      await Promise.all(spaces
-        .filter((s: any) => s.type === "DIRECT_MESSAGE" || s.displayName === "Untitled space")
-        .map(async (s: any) => {
-          const members = await listMembers(s.name, H);
-          const others = members.filter((m: any) => m.id !== selfId && m.displayName);
-          if (others.length) s.displayName = others.map((m: any) => m.displayName).join(", ");
-        }));
+      const toName = spaces.filter((s: any) => s.type === "DIRECT_MESSAGE" || s.displayName === "Untitled space");
+      const memberLists = await Promise.all(toName.map((s: any) => listMembers(s.name, H)));
+      const peerIds: string[] = [];
+      toName.forEach((s: any, i: number) => {
+        s._peers = memberLists[i].filter((m: any) => m.id && m.id !== selfId).map((m: any) => m.id);
+        peerIds.push(...s._peers);
+      });
+      const nameMap = await resolveNames(peerIds, H);
+      toName.forEach((s: any) => {
+        const names = (s._peers || []).map((id: string) => nameMap[id]).filter(Boolean);
+        if (names.length) s.displayName = names.join(", ");
+        delete s._peers;
+      });
 
       return json({ spaces });
     }
@@ -124,10 +157,9 @@ serve(async (req) => {
       const r = await fetch(`${CHAT}/${body.space}/messages?${params}`, { headers: H });
       const d = await r.json();
       if (!r.ok) return json({ error: scopeHint(d.error?.message || "Could not load messages.") }, 400);
-      // Build a sender-id -> name map from the space members.
-      const members = await listMembers(body.space, H);
-      const nameById: Record<string, string> = {};
-      for (const m of members) if (m.id) nameById[m.id] = m.displayName;
+      // Resolve sender ids -> names via the People API directory.
+      const senderIds = (d.messages || []).map((m: any) => m.sender?.name).filter(Boolean);
+      const nameById = await resolveNames(senderIds, H);
       const messages = (d.messages || []).map((m: any) => ({
         name: m.name,
         text: m.text || m.formattedText || "",
