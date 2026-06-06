@@ -47,6 +47,31 @@ function scopeHint(detail: string): string {
   return detail;
 }
 
+// The caller's own Chat user id ("users/<sub>") — used to find the *other*
+// person in a DM. `sub` comes free with the openid/email scopes (no profile).
+async function getSelfUserId(H: Record<string, string>): Promise<string | null> {
+  try {
+    const r = await fetch("https://openidconnect.googleapis.com/v1/userinfo", { headers: H });
+    const d = await r.json();
+    return d.sub ? `users/${d.sub}` : null;
+  } catch { return null; }
+}
+
+// Members of a space -> [{ id:"users/..", displayName, type }]. Returns [] on
+// any error (e.g. chat.memberships.readonly not granted) so callers degrade.
+async function listMembers(space: string, H: Record<string, string>) {
+  try {
+    const r = await fetch(`${CHAT}/${space}/members?pageSize=100`, { headers: H });
+    const d = await r.json();
+    if (!r.ok) return [];
+    return (d.memberships || []).map((m: any) => ({
+      id: m.member?.name || "",
+      displayName: m.member?.displayName || "",
+      type: m.member?.type || "HUMAN",
+    }));
+  } catch { return []; }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -78,6 +103,17 @@ serve(async (req) => {
         type: s.spaceType || s.type || "SPACE",
         single: s.singleUserBotDm || false,
       })).filter((s: any) => s.type !== "SPACE" || s.displayName);
+
+      // Name DMs (and unnamed group chats) by their members.
+      const selfId = await getSelfUserId(H);
+      await Promise.all(spaces
+        .filter((s: any) => s.type === "DIRECT_MESSAGE" || s.displayName === "Untitled space")
+        .map(async (s: any) => {
+          const members = await listMembers(s.name, H);
+          const others = members.filter((m: any) => m.id !== selfId && m.displayName);
+          if (others.length) s.displayName = others.map((m: any) => m.displayName).join(", ");
+        }));
+
       return json({ spaces });
     }
 
@@ -88,11 +124,15 @@ serve(async (req) => {
       const r = await fetch(`${CHAT}/${body.space}/messages?${params}`, { headers: H });
       const d = await r.json();
       if (!r.ok) return json({ error: scopeHint(d.error?.message || "Could not load messages.") }, 400);
+      // Build a sender-id -> name map from the space members.
+      const members = await listMembers(body.space, H);
+      const nameById: Record<string, string> = {};
+      for (const m of members) if (m.id) nameById[m.id] = m.displayName;
       const messages = (d.messages || []).map((m: any) => ({
         name: m.name,
         text: m.text || m.formattedText || "",
         createTime: m.createTime,
-        sender: m.sender?.displayName || (m.sender?.type === "BOT" ? "App" : "Someone"),
+        sender: m.sender?.displayName || nameById[m.sender?.name] || (m.sender?.type === "BOT" ? "App" : "Someone"),
         senderId: m.sender?.name || null,
       })).reverse(); // oldest -> newest for display
       return json({ messages });
