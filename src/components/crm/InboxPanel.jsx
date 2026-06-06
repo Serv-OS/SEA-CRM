@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
+import { useGoogleConnection } from '../../lib/useGoogle';
 import { Mail, RefreshCw, Archive, Reply, Search, Link2, Plus, ExternalLink } from 'lucide-react';
 
 const FN = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gmail-personal`;
@@ -23,7 +24,7 @@ function fmtDate(d) {
 }
 
 export default function InboxPanel({ profile, onNavigate }) {
-  const [connected, setConnected] = useState(null); // null=loading, false=not connected, obj=connected
+  const { connected, connect } = useGoogleConnection(profile.id);
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -43,11 +44,6 @@ export default function InboxPanel({ profile, onNavigate }) {
     if (!res.ok) throw new Error(d.error || 'Request failed');
     return d;
   }, []);
-
-  useEffect(() => {
-    supabase.from('user_integrations').select('email, provider').eq('profile_id', profile.id).maybeSingle()
-      .then(r => setConnected(r.data || false));
-  }, [profile.id]);
 
   const loadList = useCallback(async (q) => {
     setLoading(true); setError('');
@@ -91,7 +87,10 @@ export default function InboxPanel({ profile, onNavigate }) {
       <div className="w-14 h-14 rounded-2xl glass-inner flex items-center justify-center mb-4"><Mail size={26} className="text-ember" /></div>
       <div className="text-lg font-bold text-paper mb-1">Connect your inbox</div>
       <div className="text-sm text-muted max-w-sm mb-4">Link your Google account to read, reply to and triage your email here — and turn messages into CRM records.</div>
-      <button onClick={() => onNavigate?.('account')} className="btn-glass px-5 py-2.5 rounded-xl text-sm font-semibold">Go to My Account → Connect Google</button>
+      <button onClick={connect} className="btn-glass px-5 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2">
+        <Mail size={16} /> Connect Google
+      </button>
+      <div className="text-[11px] text-dim mt-2">Opens a Google sign-in window. Takes a few seconds.</div>
     </div>
   );
 

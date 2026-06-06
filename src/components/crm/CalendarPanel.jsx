@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
+import { useGoogleConnection } from '../../lib/useGoogle';
 import { Calendar as CalIcon, RefreshCw, ChevronLeft, ChevronRight, MapPin, Users, Video, ExternalLink } from 'lucide-react';
 import ScheduleMeeting from './ScheduleMeeting.jsx';
 
@@ -18,7 +19,7 @@ const fmtDayHeading = (iso) => {
 const fmtTime = (d) => new Date(d).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 
 export default function CalendarPanel({ profile, onNavigate }) {
-  const [connected, setConnected] = useState(null);
+  const { connected, connect } = useGoogleConnection(profile.id);
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -40,11 +41,6 @@ export default function CalendarPanel({ profile, onNavigate }) {
     return d;
   }, []);
 
-  useEffect(() => {
-    supabase.from('user_integrations').select('email').eq('profile_id', profile.id).maybeSingle()
-      .then(r => setConnected(r.data || false));
-  }, [profile.id]);
-
   const load = useCallback(async () => {
     setLoading(true); setError('');
     try {
@@ -63,7 +59,10 @@ export default function CalendarPanel({ profile, onNavigate }) {
       <div className="w-14 h-14 rounded-2xl glass-inner flex items-center justify-center mb-4"><CalIcon size={26} className="text-ember" /></div>
       <div className="text-lg font-bold text-paper mb-1">Connect your calendar</div>
       <div className="text-sm text-muted max-w-sm mb-4">Link your Google account to see your schedule and book meetings (with invites) right here.</div>
-      <button onClick={() => onNavigate?.('account')} className="btn-glass px-5 py-2.5 rounded-xl text-sm font-semibold">Go to My Account → Connect Google</button>
+      <button onClick={connect} className="btn-glass px-5 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2">
+        <CalIcon size={16} /> Connect Google
+      </button>
+      <div className="text-[11px] text-dim mt-2">Opens a Google sign-in window. Takes a few seconds.</div>
     </div>
   );
 

@@ -1,0 +1,45 @@
+import { useState, useEffect, useCallback } from 'react';
+import { supabase } from './supabase';
+
+// Single source of truth for the personal Google (Gmail + Calendar) connection.
+const CLIENT_ID = '836252293153-ekl6o41r2kra549aqnjr9bvpiq2t4nfg.apps.googleusercontent.com';
+const REDIRECT_URI = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gmail-oauth-callback`;
+const SCOPES = 'openid email https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/calendar.events';
+
+// Launch the Google OAuth popup. Resolves the user's session token into the
+// `state` so the callback knows which profile to attach the tokens to.
+export async function connectGoogle() {
+  const { data: { session } } = await supabase.auth.getSession();
+  const url = 'https://accounts.google.com/o/oauth2/v2/auth?' +
+    `client_id=${encodeURIComponent(CLIENT_ID)}` +
+    `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
+    `&response_type=code&access_type=offline&prompt=consent` +
+    `&scope=${encodeURIComponent(SCOPES)}` +
+    `&state=${encodeURIComponent('personal:' + (session?.access_token || ''))}`;
+  const w = 500, h = 640;
+  window.open(url, 'google-oauth', `width=${w},height=${h},left=${(screen.width - w) / 2},top=${(screen.height - h) / 2}`);
+}
+
+// Hook: tracks whether the current user has connected Google, auto-refreshing
+// when the OAuth popup reports success. Returns { connected, connect, refresh }.
+//   connected: null = loading, false = not connected, object = connected ({ email })
+export function useGoogleConnection(profileId) {
+  const [connected, setConnected] = useState(null);
+
+  const refresh = useCallback(() => {
+    if (!profileId) return;
+    supabase.from('user_integrations').select('email').eq('profile_id', profileId).maybeSingle()
+      .then(r => setConnected(r.data || false));
+  }, [profileId]);
+
+  useEffect(() => {
+    refresh();
+    const handler = (e) => {
+      if (e.data?.type === 'google-oauth-result' && e.data.success) setTimeout(refresh, 500);
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, [profileId, refresh]);
+
+  return { connected, connect: connectGoogle, refresh };
+}
