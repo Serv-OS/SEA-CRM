@@ -4,7 +4,7 @@ import { LogoLockup } from './ServOSLogo.jsx';
 import {
   Home, Building2, MapPin, User, Target, Banknote, Box, Rocket, Folder, CheckSquare,
   Ticket, ClipboardList, FileText, LayoutGrid, Sparkles, Flag, BarChart3,
-  Bug, Star, List, Layout, Layers, Package, ChevronRight, Plus, Mail, Calendar, MessageSquare, Clock,
+  Bug, Star, List, Layout, Layers, Package, ChevronRight, Plus, Mail, Calendar, MessageSquare, Clock, Plane,
   Settings as SettingsIcon, Users as UsersIcon,
 } from 'lucide-react';
 
@@ -22,6 +22,10 @@ const COLLAPSIBLE = [
   ] },
   { id: 'product', label: 'Product', items: [
     ['modules', 'Modules', LayoutGrid], ['feature_requests', 'Feature Requests', Sparkles], ['releases', 'Releases', Flag],
+  ] },
+  { id: 'staffing', label: 'Staffing', items: [
+    ['schedule', 'Schedule', Calendar], ['timeoff', 'Time Off', Plane],
+    ['staff', 'Staff', User], ['departments', 'Departments & Areas', Building2],
   ] },
   { id: 'workforce', label: 'Workforce', items: [
     ['time', 'Time Tracking', Clock],
@@ -42,7 +46,7 @@ const ACTIVE_MAP = {
   release_detail: 'releases',
 };
 
-const DEFAULT_GROUPS = { appbuild: false, sales: true, delivery: false, support: false, product: false, workforce: false, insights: false };
+const DEFAULT_GROUPS = { appbuild: false, sales: true, delivery: false, support: false, product: false, staffing: false, workforce: false, insights: false };
 
 export default function Sidebar({ profile, projects, activeProject, setActiveProject, view, setView, onSignOut, onRefresh, theme }) {
   const [logos, setLogos] = useState({ light: null, dark: null });

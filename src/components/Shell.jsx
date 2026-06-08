@@ -5,6 +5,10 @@ import PhoneBar from './PhoneBar.jsx';
 import NotificationBell from './NotificationBell.jsx';
 import TimerWidget from './TimerWidget.jsx';
 import TimePanel from './crm/TimePanel.jsx';
+import ScheduleView from './staffing/ScheduleView.jsx';
+import TimeOffView from './staffing/TimeOffView.jsx';
+import StaffView from './staffing/StaffView.jsx';
+import DepartmentsView from './staffing/DepartmentsView.jsx';
 import GlobalSearch from './GlobalSearch.jsx';
 import AccountPanel from './AccountPanel.jsx';
 import Board from './Board.jsx';
@@ -192,6 +196,14 @@ export default function Shell({ session }) {
         return <AccountPanel profile={profile} onSaved={refreshProfile} />;
       case 'time':
         return <TimePanel profile={profile} onNavigate={navigateTo} />;
+      case 'schedule':
+        return <ScheduleView profile={profile} />;
+      case 'timeoff':
+        return <TimeOffView profile={profile} />;
+      case 'staff':
+        return <StaffView profile={profile} onOpenUsers={() => setView('users')} />;
+      case 'departments':
+        return <DepartmentsView profile={profile} />;
       case 'templates':
         return <TemplatesPanel profile={profile} />;
       case 'forms':
