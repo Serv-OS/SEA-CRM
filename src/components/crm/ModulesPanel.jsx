@@ -168,7 +168,7 @@ export default function ModulesPanel({ profile }) {
           <table className="w-full">
             <thead>
               <tr className="border-b border-bdr text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-dim">
-                <th className="px-4 py-2.5 text-left sticky left-0 bg-ink z-10">Location</th>
+                <th className="px-4 py-2.5 text-left sticky left-0 bg-panel z-10">Location</th>
                 {modules.map(m => (
                   <th key={m.id} className="px-2 py-2.5 text-center whitespace-nowrap">
                     <div className="w-16 truncate" title={m.name}>{m.name.split(' ')[0]}</div>
@@ -179,8 +179,8 @@ export default function ModulesPanel({ profile }) {
             <tbody>
               {(selectedLocation === 'all' ? locations : locations.filter(l => l.id === selectedLocation)).map(loc => (
                 <tr key={loc.id} className="border-b border-bdr hover:bg-card/30">
-                  <td className="px-4 py-2.5 sticky left-0 bg-ink z-10">
-                    <div className="text-sm font-medium text-paper">{loc.name}</div>
+                  <td className="px-4 py-2.5 sticky left-0 bg-panel z-10">
+                    <div className="text-sm font-semibold text-paper">{loc.name}</div>
                     <div className="text-[11px] text-dim">{companyName(loc.company_id)}</div>
                   </td>
                   {modules.map(mod => {
