@@ -11,8 +11,8 @@ import {
 // Collapsible groups (App Build is dynamic; My Work + My Account are pinned)
 const COLLAPSIBLE = [
   { id: 'sales', label: 'Sales', items: [
-    ['leads', 'Leads', Target], ['deals', 'Deals', Banknote], ['contacts', 'Contacts', User],
-    ['companies', 'Companies', Building2], ['locations', 'Locations', MapPin], ['products', 'Products', Box],
+    ['companies', 'Companies', Building2], ['locations', 'Locations', MapPin], ['contacts', 'Contacts', User],
+    ['leads', 'Leads', Target], ['deals', 'Deals', Banknote], ['products', 'Products', Box],
   ] },
   { id: 'delivery', label: 'Delivery', items: [
     ['onboarding', 'Onboarding', Rocket], ['projects', 'Projects', Folder], ['tasks', 'Tasks', CheckSquare],
