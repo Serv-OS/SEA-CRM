@@ -4,7 +4,7 @@ import { LogoLockup } from './ServOSLogo.jsx';
 import {
   Home, Building2, MapPin, User, Target, Banknote, Box, Rocket, Folder, CheckSquare,
   Ticket, ClipboardList, FileText, LayoutGrid, Sparkles, Flag, BarChart3,
-  Bug, Star, List, Layout, Layers, Package, ChevronRight, Plus, Mail, Calendar, MessageSquare, Clock, Plane,
+  Bug, Star, List, Layout, Layers, Package, ChevronRight, Plus, Mail, Calendar, MessageSquare, Clock, Plane, CreditCard,
   Settings as SettingsIcon, Users as UsersIcon,
 } from 'lucide-react';
 
@@ -13,6 +13,9 @@ const COLLAPSIBLE = [
   { id: 'sales', label: 'Sales', items: [
     ['companies', 'Companies', Building2], ['locations', 'Locations', MapPin], ['contacts', 'Contacts', User],
     ['leads', 'Leads', Target], ['deals', 'Deals', Banknote], ['products', 'Products', Box],
+  ] },
+  { id: 'payments', label: 'Payments', items: [
+    ['processing', 'Card Processing', CreditCard],
   ] },
   { id: 'delivery', label: 'Delivery', items: [
     ['onboarding', 'Onboarding', Rocket], ['projects', 'Projects', Folder], ['tasks', 'Tasks', CheckSquare],
@@ -43,7 +46,7 @@ const ACTIVE_MAP = {
   release_detail: 'releases',
 };
 
-const DEFAULT_GROUPS = { appbuild: false, sales: true, delivery: false, support: false, product: false, workforce: false, insights: false };
+const DEFAULT_GROUPS = { appbuild: false, sales: true, payments: false, delivery: false, support: false, product: false, workforce: false, insights: false };
 
 export default function Sidebar({ profile, projects, activeProject, setActiveProject, view, setView, onSignOut, onRefresh, theme }) {
   const [logos, setLogos] = useState({ light: null, dark: null });
