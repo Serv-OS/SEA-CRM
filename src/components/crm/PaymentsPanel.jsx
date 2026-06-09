@@ -9,8 +9,7 @@ export const gbp0 = (n) => '£' + (Number(n) || 0).toLocaleString('en-GB', { max
 export const RATE_CATEGORIES = [
   { key: 'visa_mc_cp', label: 'Visa / Mastercard — Card present' },
   { key: 'visa_mc_cnp', label: 'Visa / Mastercard — Card not present' },
-  { key: 'amex_cp', label: 'Amex — Card present' },
-  { key: 'amex_cnp', label: 'Amex — Card not present' },
+  { key: 'amex', label: 'American Express' },
 ];
 
 // Blended (averaged) value of a per-category rate field across defined lines.
