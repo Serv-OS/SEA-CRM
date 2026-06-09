@@ -39,7 +39,7 @@ export default function FeatureRequestList({ profile, onSelect }) {
       supabase.from('feature_requests').select('*').order('created_at', { ascending: false }),
       supabase.from('contacts').select('id, first_name, last_name, email'),
       supabase.from('profiles').select('id, email, display_name'),
-      supabase.from('associations').select('*').eq('from_type', 'feature_request'),
+      supabase.from('associations').select('*').or('from_type.eq.feature_request,to_type.eq.feature_request'),
       supabase.from('companies').select('id, name'),
     ]);
     setRequests(r.data || []);
@@ -66,17 +66,20 @@ export default function FeatureRequestList({ profile, onSelect }) {
     return c ? [c.first_name, c.last_name].filter(Boolean).join(' ') || c.email : '';
   };
 
-  const getLinkedCompanies = (frId) => {
-    return associations
-      .filter(a => a.from_id === frId && a.to_type === 'company')
-      .map(a => companies.find(c => c.id === a.to_id)?.name)
-      .filter(Boolean)
-      .join(', ');
+  // ids of `targetType` linked to a feature request, whichever direction stored
+  const frLinkedIds = (frId, targetType) => {
+    const ids = new Set();
+    for (const a of associations) {
+      if (a.from_type === 'feature_request' && a.from_id === frId && a.to_type === targetType) ids.add(a.to_id);
+      else if (a.to_type === 'feature_request' && a.to_id === frId && a.from_type === targetType) ids.add(a.from_id);
+    }
+    return ids;
   };
 
-  const demandCount = (frId) => {
-    return associations.filter(a => a.from_id === frId && (a.to_type === 'company' || a.to_type === 'deal')).length;
-  };
+  const getLinkedCompanies = (frId) =>
+    [...frLinkedIds(frId, 'company')].map(id => companies.find(c => c.id === id)?.name).filter(Boolean).join(', ');
+
+  const demandCount = (frId) => frLinkedIds(frId, 'company').size + frLinkedIds(frId, 'deal').size;
 
   const create = async (e) => {
     e.preventDefault();

@@ -39,7 +39,8 @@ export default function DealBoard({ profile, onSelectDeal, onNavigate }) {
       supabase.from('companies').select('id, name').order('name'),
       supabase.from('locations').select('id, name, company_id').order('name'),
       supabase.from('profiles').select('id, email, display_name'),
-      supabase.from('associations').select('*').eq('from_type', 'deal').eq('to_type', 'location'),
+      supabase.from('associations').select('*')
+        .or('and(from_type.eq.deal,to_type.eq.location),and(from_type.eq.location,to_type.eq.deal)'),
     ]);
     setDeals(d.data || []);
     setLocations(l.data || []);
@@ -70,8 +71,11 @@ export default function DealBoard({ profile, onSelectDeal, onNavigate }) {
     return m ? (m.display_name || m.email.split('@')[0]) : '';
   };
   const dealLocation = (dealId) => {
-    const assoc = associations.find(a => a.from_id === dealId);
-    return assoc ? locations.find(l => l.id === assoc.to_id) : null;
+    for (const a of associations) {
+      if (a.from_type === 'deal' && a.from_id === dealId && a.to_type === 'location') return locations.find(l => l.id === a.to_id) || null;
+      if (a.to_type === 'deal' && a.to_id === dealId && a.from_type === 'location') return locations.find(l => l.id === a.from_id) || null;
+    }
+    return null;
   };
   const fmt = (v) => v ? `\u{00A3}${Number(v).toLocaleString('en-GB', { minimumFractionDigits: 0 })}` : '';
 
