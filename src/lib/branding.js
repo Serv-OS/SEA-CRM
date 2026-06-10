@@ -47,9 +47,8 @@ export function applyBrandingValues(s = {}) {
 export async function loadBranding() {
   try {
     const { data } = await supabase
-      .from('support_settings')
+      .from('public_branding')
       .select('app_name, business_name, primary_color, secondary_color')
-      .eq('id', 1)
       .maybeSingle();
     if (data) applyBrandingValues(data);
   } catch {

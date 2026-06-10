@@ -1,8 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase, APP_URL } from '../lib/supabase';
 import { LogoMark, Wordmark } from './ServOSLogo.jsx';
 
 export default function Auth() {
+  const [branding, setBranding] = useState(null);
+  useEffect(() => {
+    supabase.from('public_branding').select('*').maybeSingle()
+      .then(({ data }) => setBranding(data || {}));
+  }, []);
   const [email, setEmail]     = useState('');
   const [code, setCode]       = useState('');
   const [step, setStep]       = useState('email'); // 'email' | 'code'
@@ -36,8 +41,14 @@ export default function Auth() {
     <div className="h-full flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8 flex flex-col items-center">
-          <LogoMark size={56}/>
-          <div className="mt-4"><Wordmark className="!text-4xl"/></div>
+          {branding?.logo_url ? (
+            <img src={branding.logo_url} alt={branding.app_name || branding.business_name || 'Logo'} className="h-16 object-contain" />
+          ) : branding !== null ? (
+            <>
+              <LogoMark size={56}/>
+              <div className="mt-4"><Wordmark className="!text-4xl"/></div>
+            </>
+          ) : <div className="h-16" />}
           <div className="text-sm mt-2 font-mono text-[10px] uppercase tracking-[0.18em] text-muted">CRM</div>
         </div>
 
