@@ -615,14 +615,20 @@ export default function SettingsPanel({ profile }) {
                   {'\u{1F4F1}'}
                 </div>
                 <div className="flex-1">
-                  <div className="text-sm font-medium text-paper">+44 7576 562085</div>
-                  <div className="text-xs text-muted">Support SMS number</div>
+                  <input className="w-full bg-transparent text-sm font-medium text-paper outline-none placeholder:text-dim"
+                    value={settings.twilio_number || ''}
+                    onChange={e => setSettings(s => ({ ...s, twilio_number: e.target.value }))}
+                    onBlur={e => saveSettings({ twilio_number: e.target.value.trim() || null })}
+                    placeholder="No number connected — enter your Twilio number" />
+                  <div className="text-xs text-muted">Support SMS number (unique per instance)</div>
                 </div>
-                <span className="px-2 py-0.5 text-[9px] font-bold uppercase rounded bg-blue-100 text-blue-700 border border-blue-200">Configured</span>
+                {settings.twilio_number
+                  ? <span className="px-2 py-0.5 text-[9px] font-bold uppercase rounded bg-blue-100 text-blue-700 border border-blue-200">Configured</span>
+                  : <span className="px-2 py-0.5 text-[9px] font-bold uppercase rounded bg-amber-100 text-amber-700 border border-amber-200">Not set</span>}
               </div>
 
               <div className="text-xs text-muted leading-relaxed">
-                <strong>How it works:</strong> When a customer texts +44 7576 562085, a support ticket is automatically created in the CRM.
+                <strong>How it works:</strong> When a customer texts {settings.twilio_number || 'your Twilio number'}, a support ticket is automatically created in the CRM.
                 Agents reply from the SMS tab in the ticket, and the reply is sent from the same number.
                 The customer sees a normal text conversation.
               </div>
@@ -630,8 +636,9 @@ export default function SettingsPanel({ profile }) {
               <div className="mt-4 pt-3 border-t border-bdr">
                 <div className="text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-dim mb-2">Setup</div>
                 <div className="text-xs text-muted space-y-1">
-                  <div>1. Add Twilio secrets in Supabase: <code className="bg-slate-100 px-1 rounded">TWILIO_ACCOUNT_SID</code>, <code className="bg-slate-100 px-1 rounded">TWILIO_AUTH_TOKEN</code>, <code className="bg-slate-100 px-1 rounded">TWILIO_FROM_NUMBER</code></div>
-                  <div>2. In Twilio console, set the SMS webhook URL for +447576562085 to:</div>
+                  <div>1. Buy a dedicated number in the Twilio console (each CRM instance needs its own)</div>
+                  <div>2. Add Twilio secrets in Supabase: <code className="bg-slate-100 px-1 rounded">TWILIO_ACCOUNT_SID</code>, <code className="bg-slate-100 px-1 rounded">TWILIO_AUTH_TOKEN</code>, <code className="bg-slate-100 px-1 rounded">TWILIO_FROM_NUMBER</code></div>
+                  <div>3. In Twilio console, set the SMS webhook URL for the number to:</div>
                   <div className="bg-slate-50 border border-slate-200 rounded p-2 font-mono text-[10px] break-all mt-1">
                     {import.meta.env.VITE_SUPABASE_URL}/functions/v1/twilio-inbound-sms
                   </div>
