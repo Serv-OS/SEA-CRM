@@ -79,6 +79,7 @@ export default function SettingsPanel({ profile }) {
       quote_accent: next.quote_accent ?? null,
       logo_url: next.logo_url ?? null,
       logo_url_dark: next.logo_url_dark ?? null,
+      twilio_number: next.twilio_number ?? null,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'id' });
   };
@@ -616,19 +617,19 @@ export default function SettingsPanel({ profile }) {
                 </div>
                 <div className="flex-1">
                   <input className="w-full bg-transparent text-sm font-medium text-paper outline-none placeholder:text-dim"
-                    value={settings.twilio_number || ''}
+                    value={settings?.twilio_number || ''}
                     onChange={e => setSettings(s => ({ ...s, twilio_number: e.target.value }))}
                     onBlur={e => saveSettings({ twilio_number: e.target.value.trim() || null })}
                     placeholder="No number connected — enter your Twilio number" />
                   <div className="text-xs text-muted">Support SMS number (unique per instance)</div>
                 </div>
-                {settings.twilio_number
+                {settings?.twilio_number
                   ? <span className="px-2 py-0.5 text-[9px] font-bold uppercase rounded bg-blue-100 text-blue-700 border border-blue-200">Configured</span>
                   : <span className="px-2 py-0.5 text-[9px] font-bold uppercase rounded bg-amber-100 text-amber-700 border border-amber-200">Not set</span>}
               </div>
 
               <div className="text-xs text-muted leading-relaxed">
-                <strong>How it works:</strong> When a customer texts {settings.twilio_number || 'your Twilio number'}, a support ticket is automatically created in the CRM.
+                <strong>How it works:</strong> When a customer texts {settings?.twilio_number || 'your Twilio number'}, a support ticket is automatically created in the CRM.
                 Agents reply from the SMS tab in the ticket, and the reply is sent from the same number.
                 The customer sees a normal text conversation.
               </div>
