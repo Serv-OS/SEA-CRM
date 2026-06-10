@@ -38,6 +38,15 @@ serve(async (req) => {
       // Close the deal + create onboarding
       await supabase.rpc("execute_quote", { p_quote_id: quoteId });
     }
+    // Invoice payments (one-off + recurring)
+    const invoiceId = session.metadata?.invoice_id;
+    if (invoiceId) {
+      await supabase.from("invoices").update({
+        status: "paid",
+        paid_at: new Date().toISOString(),
+        amount_paid: (session.amount_total || 0) / 100,
+      }).eq("id", invoiceId);
+    }
   }
 
   return new Response(JSON.stringify({ received: true }), { headers: { "Content-Type": "application/json" } });

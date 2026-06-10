@@ -6,6 +6,8 @@ import NotificationBell from './NotificationBell.jsx';
 import TimerWidget from './TimerWidget.jsx';
 import TimePanel from './crm/TimePanel.jsx';
 import PaymentsPanel from './crm/PaymentsPanel.jsx';
+import InvoicesPanel from './crm/InvoicesPanel.jsx';
+import InvoiceBuilder from './crm/InvoiceBuilder.jsx';
 import ScheduleView from './staffing/ScheduleView.jsx';
 import TimeOffView from './staffing/TimeOffView.jsx';
 import StaffView from './staffing/StaffView.jsx';
@@ -116,6 +118,7 @@ export default function Shell({ session }) {
     else if (type === 'lead') { if (id) { setView('lead_detail'); setDetailId(id); } else setView('leads'); }
     else if (type === 'quote') { setView('quote_detail'); setDetailId(id); }
     else if (type === 'processing') { setView('processing'); }
+    else if (type === 'invoice') { setView('invoice_detail'); setDetailId(id); }
     else if (type === 'account') { setView('account'); }
     else if (type === 'inbox') { setView('inbox'); }
     else if (type === 'calendar') { setView('calendar'); }
@@ -200,6 +203,10 @@ export default function Shell({ session }) {
         return <TimePanel profile={profile} onNavigate={navigateTo} />;
       case 'processing':
         return <PaymentsPanel profile={profile} onNavigate={navigateTo} />;
+      case 'invoices':
+        return <InvoicesPanel profile={profile} onNavigate={navigateTo} />;
+      case 'invoice_detail':
+        return <InvoiceBuilder invoiceId={detailId} profile={profile} onClose={() => setView('invoices')} onNavigate={navigateTo} />;
       case 'schedule':
         return <ScheduleView profile={profile} />;
       case 'timeoff':

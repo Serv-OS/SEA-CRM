@@ -1,0 +1,69 @@
+// Shared helper: send a branded invoice email from the connected support
+// mailbox (gmail_connections). Used by invoice-send and invoice-recurring.
+
+export async function getGmailAccessToken(supabase: any): Promise<string> {
+  const clientId = Deno.env.get("GMAIL_CLIENT_ID")!;
+  const clientSecret = Deno.env.get("GMAIL_CLIENT_SECRET")!;
+  const { data: conn } = await supabase
+    .from("gmail_connections").select("refresh_token")
+    .eq("is_active", true).order("updated_at", { ascending: false }).limit(1).single();
+  const refreshToken = conn?.refresh_token;
+  if (!refreshToken) throw new Error("No support mailbox connected. Connect one in Settings.");
+  const res = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: clientId, client_secret: clientSecret,
+      refresh_token: refreshToken, grant_type: "refresh_token",
+    }),
+  });
+  const data = await res.json();
+  if (!data.access_token) throw new Error("Failed to get Gmail access token");
+  return data.access_token;
+}
+
+const gbp = (n: number) => "£" + (Number(n) || 0).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtDate = (d: string | null) => d ? new Date(d + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : "";
+
+export function invoiceEmailHtml(inv: any, seller: any, link: string): { subject: string; html: string } {
+  const accent = seller.quote_accent || "#15C26A";
+  const name = seller.business_name || "ServOS";
+  const subject = `Invoice INV-${inv.invoice_number} from ${name} — ${gbp(inv.total)}`;
+  const html = `
+<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1a1a1a">
+  ${seller.logo_url ? `<img src="${seller.logo_url}" alt="${name}" style="height:40px;margin-bottom:20px" />` : `<div style="font-size:20px;font-weight:700;margin-bottom:20px">${name}</div>`}
+  <div style="border:1px solid #e5e5e5;border-radius:12px;padding:24px">
+    <div style="font-size:13px;color:#777;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Invoice INV-${inv.invoice_number}</div>
+    <div style="font-size:30px;font-weight:700;margin-bottom:4px">${gbp(inv.total)}</div>
+    ${inv.due_date ? `<div style="font-size:14px;color:#555;margin-bottom:18px">Due ${fmtDate(inv.due_date)}</div>` : `<div style="margin-bottom:18px"></div>`}
+    <a href="${link}" style="display:inline-block;background:${accent};color:#fff;text-decoration:none;font-weight:600;padding:12px 28px;border-radius:10px">View &amp; pay invoice</a>
+    <div style="font-size:12px;color:#999;margin-top:16px">Or copy this link: <a href="${link}" style="color:${accent}">${link}</a></div>
+  </div>
+  <div style="font-size:12px;color:#999;margin-top:18px">${name}${seller.business_email ? ` · ${seller.business_email}` : ""}${seller.business_phone ? ` · ${seller.business_phone}` : ""}</div>
+</div>`;
+  return { subject, html };
+}
+
+export async function sendInvoiceEmail(supabase: any, to: string, subject: string, html: string) {
+  const accessToken = await getGmailAccessToken(supabase);
+  const headers = [
+    `From: ServOS <support@serv-os.app>`,
+    `To: ${to}`,
+    `Subject: ${subject}`,
+    `MIME-Version: 1.0`,
+    `Content-Type: text/html; charset=UTF-8`,
+    `Message-ID: <${crypto.randomUUID()}@serv-os.app>`,
+  ];
+  const raw = headers.join("\r\n") + "\r\n\r\n" + html;
+  const encoded = btoa(unescape(encodeURIComponent(raw)))
+    .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  const res = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ raw: encoded }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error?.message || "Gmail send failed");
+  }
+}

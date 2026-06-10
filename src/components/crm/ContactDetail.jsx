@@ -5,6 +5,7 @@ import ActivityTimeline from './ActivityTimeline.jsx';
 import CallButton from '../CallButton.jsx';
 import LeadBadge from './LeadBadge.jsx';
 import LeadsCard from './LeadsCard.jsx';
+import InvoicesCard from './InvoicesCard.jsx';
 import ScheduleMeeting from './ScheduleMeeting.jsx';
 import { primaryLead } from '../../lib/leadStages';
 
@@ -147,6 +148,8 @@ export default function ContactDetail({ contactId, profile, onClose, onNavigate,
             {/* RIGHT: Leads + Companies + Locations */}
             <div className="col-span-4 space-y-4">
               <LeadsCard leads={leads} />
+
+              <InvoicesCard contactId={contactId} profile={profile} onNavigate={onNavigate} />
 
               <Card title="Companies">
                 <AssociationManager subjectType="contact" subjectId={contactId} targetType="company" profile={profile} onNavigate={onNavigate} />

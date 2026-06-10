@@ -5,6 +5,7 @@ import Auth from './components/Auth.jsx';
 import Shell from './components/Shell.jsx';
 import PublicForm from './components/PublicForm.jsx';
 import PublicQuote from './components/PublicQuote.jsx';
+import PublicInvoice from './components/PublicInvoice.jsx';
 
 export default function App() {
   const [session, setSession] = useState(null);
@@ -14,6 +15,8 @@ export default function App() {
   const formMatch = window.location.pathname.match(/^\/f\/([^/?#]+)/);
   // Public quote route: /q/<token>
   const quoteMatch = window.location.pathname.match(/^\/q\/([^/?#]+)/);
+  // Public invoice route: /i/<token>
+  const invoiceMatch = window.location.pathname.match(/^\/i\/([^/?#]+)/);
 
   useEffect(() => {
     loadBranding(); // apply this instance's app name + brand colours
@@ -30,6 +33,9 @@ export default function App() {
   }
   if (quoteMatch) {
     return <PublicQuote token={decodeURIComponent(quoteMatch[1])} />;
+  }
+  if (invoiceMatch) {
+    return <PublicInvoice token={decodeURIComponent(invoiceMatch[1])} />;
   }
 
   if (loading) {

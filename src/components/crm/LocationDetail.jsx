@@ -6,6 +6,7 @@ import CallButton from '../CallButton.jsx';
 import LeadBadge from './LeadBadge.jsx';
 import LeadsCard from './LeadsCard.jsx';
 import ProcessingRatesCard from './ProcessingRatesCard.jsx';
+import InvoicesCard from './InvoicesCard.jsx';
 import { primaryLead } from '../../lib/leadStages';
 
 const STATUS_OPTIONS = ['prospect', 'onboarding', 'live', 'churned'];
@@ -219,6 +220,8 @@ export default function LocationDetail({ locationId, profile, onClose, onNavigat
               </Card>
 
               <ProcessingRatesCard locationId={locationId} companyId={location.company_id} onNavigate={onNavigate} />
+
+              <InvoicesCard locationId={locationId} profile={profile} onNavigate={onNavigate} />
             </div>
 
             {/* MIDDLE: Activity + Contacts */}

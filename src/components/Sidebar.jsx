@@ -4,7 +4,7 @@ import { LogoLockup } from './ServOSLogo.jsx';
 import {
   Home, Building2, MapPin, User, Target, Banknote, Box, Rocket, Folder, CheckSquare,
   Ticket, ClipboardList, FileText, LayoutGrid, Sparkles, Flag, BarChart3,
-  Bug, Star, List, Layout, Layers, Package, ChevronRight, Plus, Mail, Calendar, MessageSquare, Clock, Plane, CreditCard,
+  Bug, Star, List, Layout, Layers, Package, ChevronRight, Plus, Mail, Calendar, MessageSquare, Clock, Plane, CreditCard, Receipt,
   Settings as SettingsIcon, Users as UsersIcon,
 } from 'lucide-react';
 
@@ -15,7 +15,7 @@ const COLLAPSIBLE = [
     ['leads', 'Leads', Target], ['deals', 'Deals', Banknote], ['products', 'Products', Box],
   ] },
   { id: 'payments', label: 'Payments', items: [
-    ['processing', 'Card Processing', CreditCard],
+    ['processing', 'Card Processing', CreditCard], ['invoices', 'Invoices', Receipt],
   ] },
   { id: 'delivery', label: 'Delivery', items: [
     ['onboarding', 'Onboarding', Rocket], ['projects', 'Projects', Folder], ['tasks', 'Tasks', CheckSquare],
@@ -43,7 +43,7 @@ const ACTIVE_MAP = {
   lead_detail: 'leads', deal_detail: 'deals', quote_detail: 'deals',
   onboarding_detail: 'onboarding', project_detail: 'projects', task_detail: 'tasks',
   ticket_detail: 'tickets', form_detail: 'forms', feature_request_detail: 'feature_requests',
-  release_detail: 'releases',
+  release_detail: 'releases', invoice_detail: 'invoices',
 };
 
 const DEFAULT_GROUPS = { appbuild: false, sales: true, payments: false, delivery: false, support: false, product: false, workforce: false, insights: false };

@@ -22,11 +22,11 @@ echo "==> Applying migrations"
 npx supabase db push
 
 # App functions: gateway-verified JWT (default). Safe to deploy normally.
-JWT_FUNCS=(gmail-personal gmail-send google-calendar google-chat ai-draft stripe-connect twilio-voice-token twilio-send-sms)
+JWT_FUNCS=(gmail-personal gmail-send google-calendar google-chat ai-draft stripe-connect twilio-voice-token twilio-send-sms roster-sms invoice-send)
 
 # Public / webhook functions: called by browsers or external services with NO
 # Supabase JWT — must be deployed with --no-verify-jwt or they reject callers.
-NOJWT_FUNCS=(forms-public quote-public quote-checkout gmail-oauth-callback gmail-check stripe-webhook twilio-inbound-sms twilio-recording twilio-voice-incoming twilio-voice-status twilio-voicemail)
+NOJWT_FUNCS=(forms-public quote-public quote-checkout gmail-oauth-callback gmail-check stripe-webhook twilio-inbound-sms twilio-recording twilio-voice-incoming twilio-voice-status twilio-voicemail invoice-public invoice-checkout invoice-recurring)
 
 for fn in "${JWT_FUNCS[@]}"; do
   echo "==> deploy $fn (verify_jwt on)"

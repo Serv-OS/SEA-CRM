@@ -71,6 +71,7 @@ export default function SettingsPanel({ profile }) {
       auto_reply_sms_enabled: next.auto_reply_sms_enabled ?? false,
       auto_reply_sms_message: next.auto_reply_sms_message ?? null,
       quote_terms: next.quote_terms ?? null,
+      invoice_terms: next.invoice_terms ?? null,
       business_name: next.business_name ?? null,
       business_address: next.business_address ?? null,
       business_email: next.business_email ?? null,
@@ -462,6 +463,28 @@ export default function SettingsPanel({ profile }) {
                   onChange={e => setSettings(s => ({ ...s, quote_terms: e.target.value }))}
                   onBlur={e => saveSettings({ quote_terms: e.target.value })}
                   placeholder="e.g. Prices exclude VAT unless stated. Hardware remains the property of ServOS until paid in full. 30-day payment terms…" />
+                {!isOwner && <div className="text-[11px] text-dim mt-1">Only owners can edit these.</div>}
+              </div>
+            </div>
+          )}
+
+          {/* Invoice terms */}
+          {settings && (
+            <div className="glass-card rounded-2xl overflow-hidden">
+              <div className="px-5 py-4 border-b border-bdr flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-ember/15 border border-ember/25 flex items-center justify-center text-lg">{'\u{1F9FE}'}</div>
+                <div className="flex-1">
+                  <div className="text-base font-bold text-paper">Invoice terms</div>
+                  <div className="text-xs text-muted">Default terms shown on every invoice (an invoice can override its own)</div>
+                </div>
+              </div>
+              <div className="p-5">
+                <textarea disabled={!isOwner} rows={5}
+                  className="w-full px-3 py-2 bg-card border border-bdr rounded-xl text-sm text-paper placeholder-dim focus:outline-none focus:border-ember resize-none disabled:opacity-60"
+                  value={settings.invoice_terms || ''}
+                  onChange={e => setSettings(s => ({ ...s, invoice_terms: e.target.value }))}
+                  onBlur={e => saveSettings({ invoice_terms: e.target.value })}
+                  placeholder="e.g. Payment due within 14 days. Late payments may incur interest at 8% above the Bank of England base rate…" />
                 {!isOwner && <div className="text-[11px] text-dim mt-1">Only owners can edit these.</div>}
               </div>
             </div>

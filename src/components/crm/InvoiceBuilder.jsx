@@ -1,0 +1,207 @@
+import { useEffect, useState, useCallback } from 'react';
+import { supabase } from '../../lib/supabase';
+import { ArrowLeft, Send, Link2, Trash2, Plus, Check, Ban, Repeat } from 'lucide-react';
+import { money, invStatus, INV_BADGE } from './InvoicesPanel.jsx';
+
+const FN = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
+
+export default function InvoiceBuilder({ invoiceId, profile, onClose, onNavigate }) {
+  const [inv, setInv] = useState(null);
+  const [lines, setLines] = useState([]);
+  const [companies, setCompanies] = useState([]);
+  const [locations, setLocations] = useState([]);
+  const [contacts, setContacts] = useState([]);
+  const [globalTerms, setGlobalTerms] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [flash, setFlash] = useState('');
+  const canWrite = profile.role === 'owner' || profile.role === 'editor';
+
+  const load = useCallback(async () => {
+    const [i, li, c, l, ct, st] = await Promise.all([
+      supabase.from('invoices').select('*').eq('id', invoiceId).single(),
+      supabase.from('invoice_line_items').select('*').eq('invoice_id', invoiceId).order('sort'),
+      supabase.from('companies').select('id, name').order('name'),
+      supabase.from('locations').select('id, name, company_id').order('name'),
+      supabase.from('contacts').select('id, first_name, last_name, email').order('last_name'),
+      supabase.from('support_settings').select('invoice_terms').eq('id', 1).maybeSingle(),
+    ]);
+    setInv(i.data);
+    setLines((li.data || []).length ? li.data : [{ _new: true, name: '', description: '', qty: 1, unit_price: 0 }]);
+    setCompanies(c.data || []); setLocations(l.data || []); setContacts(ct.data || []);
+    setGlobalTerms(st.data?.invoice_terms || '');
+  }, [invoiceId]);
+  useEffect(() => { load(); }, [load]);
+
+  if (!inv) return <div className="h-full flex items-center justify-center text-dim text-sm">Loading invoice…</div>;
+
+  const st = invStatus(inv);
+  const locked = ['paid', 'void'].includes(inv.status);
+  const set = (k, v) => setInv(p => ({ ...p, [k]: v }));
+  const setLine = (i, k, v) => setLines(p => p.map((l, j) => j === i ? { ...l, [k]: v } : l));
+  const locs = locations.filter(l => !inv.company_id || l.company_id === inv.company_id);
+
+  const subtotal = lines.reduce((s, l) => s + (Number(l.qty) || 0) * (Number(l.unit_price) || 0), 0);
+  const taxAmount = subtotal * Number(inv.tax_rate || 0) / 100;
+  const total = subtotal + taxAmount;
+
+  const notify = (msg) => { setFlash(msg); setTimeout(() => setFlash(''), 2500); };
+
+  const save = async (extra = {}) => {
+    setSaving(true);
+    const patch = {
+      company_id: inv.company_id || null, location_id: inv.location_id || null, contact_id: inv.contact_id || null,
+      email_to: (inv.email_to || '').trim() || null, issue_date: inv.issue_date, due_date: inv.due_date || null,
+      tax_rate: Number(inv.tax_rate) || 0, subtotal, tax_amount: taxAmount, total,
+      terms: (inv.terms || '').trim() || null, notes: (inv.notes || '').trim() || null, ...extra,
+    };
+    const { error } = await supabase.from('invoices').update(patch).eq('id', invoiceId);
+    if (!error) {
+      await supabase.from('invoice_line_items').delete().eq('invoice_id', invoiceId);
+      const clean = lines.filter(l => (l.name || '').trim());
+      if (clean.length) {
+        await supabase.from('invoice_line_items').insert(clean.map((l, i) => ({
+          invoice_id: invoiceId, name: l.name.trim(), description: (l.description || '').trim() || null,
+          qty: Number(l.qty) || 1, unit_price: Number(l.unit_price) || 0, sort: i,
+        })));
+      }
+    }
+    setSaving(false);
+    if (error) { alert(error.message); return false; }
+    load();
+    return true;
+  };
+
+  const sendInvoice = async () => {
+    let to = inv.email_to || contacts.find(c => c.id === inv.contact_id)?.email || '';
+    to = prompt('Send invoice to:', to);
+    if (!to) return;
+    if (!(await save())) return;
+    setSending(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${FN}/invoice-send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+        body: JSON.stringify({ invoice_id: invoiceId, to: to.trim() }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || 'Send failed');
+      notify(`Sent to ${d.to}`);
+      load();
+    } catch (e) { alert('Send failed: ' + e.message); }
+    setSending(false);
+  };
+
+  const copyLink = async () => {
+    await save();
+    const url = `${window.location.origin}/i/${inv.public_token}`;
+    try { await navigator.clipboard.writeText(url); notify('Link copied'); } catch { prompt('Invoice link:', url); }
+  };
+
+  const markPaid = async () => {
+    if (!confirm('Mark this invoice as paid (received outside Stripe)?')) return;
+    await save({ status: 'paid', paid_at: new Date().toISOString(), amount_paid: total });
+    notify('Marked paid');
+  };
+  const voidInvoice = async () => {
+    if (!confirm('Void this invoice? The public link will stop working.')) return;
+    await save({ status: 'void' });
+  };
+  const del = async () => {
+    if (!confirm(`Delete invoice INV-${inv.invoice_number}? This cannot be undone.`)) return;
+    await supabase.from('invoices').delete().eq('id', invoiceId);
+    onClose();
+  };
+
+  const input = "w-full px-3 py-2 bg-card border border-bdr rounded-xl text-sm text-paper placeholder-dim focus:outline-none focus:border-ember disabled:opacity-60";
+  const label = "text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-dim mb-1 block";
+
+  return (
+    <div className="h-full flex flex-col">
+      {/* Header */}
+      <div className="px-6 py-4 border-b border-bdr flex items-center gap-3 flex-wrap">
+        <button onClick={onClose} className="text-muted hover:text-paper"><ArrowLeft size={18} /></button>
+        <div className="text-xl font-bold text-paper">INV-{inv.invoice_number}</div>
+        <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-lg ${INV_BADGE[st]}`}>{st}</span>
+        {inv.recurring_id && <span className="text-[10px] text-uv flex items-center gap-1"><Repeat size={11} /> from recurring schedule</span>}
+        {flash && <span className="text-xs text-emerald-600 font-semibold">✓ {flash}</span>}
+        {canWrite && (
+          <div className="flex gap-2 ml-auto flex-wrap">
+            {!locked && <button onClick={() => save().then(ok => ok && notify('Saved'))} disabled={saving} className="btn-ghost px-4 py-2 rounded-xl text-sm disabled:opacity-50">{saving ? 'Saving…' : 'Save'}</button>}
+            <button onClick={copyLink} className="btn-ghost px-3 py-2 rounded-xl text-sm flex items-center gap-1.5"><Link2 size={14} /> Copy link</button>
+            {!locked && <button onClick={sendInvoice} disabled={sending} className="btn-glass px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-1.5 disabled:opacity-50"><Send size={14} /> {sending ? 'Sending…' : inv.sent_at ? 'Resend' : 'Send'}</button>}
+            {!locked && <button onClick={markPaid} className="px-3 py-2 rounded-xl text-sm font-semibold bg-emerald-500/15 text-emerald-700 border border-emerald-500/30 flex items-center gap-1.5"><Check size={14} /> Mark paid</button>}
+            {!locked && <button onClick={voidInvoice} title="Void" className="btn-ghost px-3 py-2 rounded-xl text-sm flex items-center gap-1.5 text-muted"><Ban size={14} /></button>}
+            {profile.role === 'owner' && <button onClick={del} title="Delete" className="px-3 py-2 text-red-600 border border-red-200 rounded-xl hover:bg-red-50"><Trash2 size={14} /></button>}
+          </div>
+        )}
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-6">
+        <div className="max-w-[900px] mx-auto space-y-5">
+
+          {/* Customer + dates */}
+          <div className="glass-card rounded-2xl p-5 grid grid-cols-2 md:grid-cols-3 gap-3">
+            <div><label className={label}>Company</label>
+              <select className={input} disabled={locked} value={inv.company_id || ''} onChange={e => { set('company_id', e.target.value || null); set('location_id', null); }}>
+                <option value="">—</option>{companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
+            <div><label className={label}>Location</label>
+              <select className={input} disabled={locked} value={inv.location_id || ''} onChange={e => set('location_id', e.target.value || null)}>
+                <option value="">—</option>{locs.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}</select></div>
+            <div><label className={label}>Contact</label>
+              <select className={input} disabled={locked} value={inv.contact_id || ''} onChange={e => set('contact_id', e.target.value || null)}>
+                <option value="">—</option>{contacts.map(c => <option key={c.id} value={c.id}>{[c.first_name, c.last_name].filter(Boolean).join(' ') || c.email}</option>)}</select></div>
+            <div><label className={label}>Send to (email)</label><input className={input} disabled={locked} value={inv.email_to || ''} onChange={e => set('email_to', e.target.value)} placeholder="defaults to contact" /></div>
+            <div><label className={label}>Issue date</label><input type="date" className={input} disabled={locked} value={inv.issue_date || ''} onChange={e => set('issue_date', e.target.value)} /></div>
+            <div><label className={label}>Due date</label><input type="date" className={input} disabled={locked} value={inv.due_date || ''} onChange={e => set('due_date', e.target.value)} /></div>
+          </div>
+
+          {/* Lines */}
+          <div className="glass-card rounded-2xl p-5 space-y-2">
+            <div className="flex items-center">
+              <span className={label + ' !mb-0'}>Line items</span>
+              {!locked && <button onClick={() => setLines(p => [...p, { _new: true, name: '', description: '', qty: 1, unit_price: 0 }])}
+                className="ml-auto text-xs text-ember hover:text-ember-deep font-medium flex items-center gap-1"><Plus size={13} /> Add line</button>}
+            </div>
+            {lines.map((l, i) => (
+              <div key={l.id || `n${i}`} className="flex gap-2 items-start">
+                <div className="flex-1 space-y-1">
+                  <input className={input} disabled={locked} value={l.name} onChange={e => setLine(i, 'name', e.target.value)} placeholder="Item name" />
+                  <input className={input + ' text-xs'} disabled={locked} value={l.description || ''} onChange={e => setLine(i, 'description', e.target.value)} placeholder="Description (optional)" />
+                </div>
+                <input className={input + ' w-16 text-right'} disabled={locked} value={l.qty} onChange={e => setLine(i, 'qty', e.target.value)} />
+                <input className={input + ' w-28 text-right'} disabled={locked} value={l.unit_price} onChange={e => setLine(i, 'unit_price', e.target.value)} />
+                <div className="w-24 text-right text-sm text-paper tabular-nums pt-2.5">{money((Number(l.qty) || 0) * (Number(l.unit_price) || 0))}</div>
+                {!locked && <button onClick={() => setLines(p => p.filter((_, j) => j !== i))} className="text-dim hover:text-red-600 p-2"><Trash2 size={14} /></button>}
+              </div>
+            ))}
+            <div className="flex justify-end pt-2 border-t border-bdr">
+              <div className="w-64 space-y-1.5 text-sm">
+                <div className="flex justify-between text-muted"><span>Subtotal</span><span className="tabular-nums">{money(subtotal)}</span></div>
+                <div className="flex justify-between items-center text-muted">
+                  <span>VAT
+                    <input className={input + ' !w-14 !py-0.5 inline-block text-right mx-1'} disabled={locked} value={inv.tax_rate} onChange={e => set('tax_rate', e.target.value)} />%
+                  </span>
+                  <span className="tabular-nums">{money(taxAmount)}</span>
+                </div>
+                <div className="flex justify-between text-base font-bold text-paper pt-1.5 border-t border-bdr"><span>Total</span><span className="tabular-nums">{money(total)}</span></div>
+                {inv.status === 'paid' && <div className="flex justify-between text-emerald-600 font-semibold"><span>Paid</span><span className="tabular-nums">{money(inv.amount_paid ?? total)}</span></div>}
+              </div>
+            </div>
+          </div>
+
+          {/* Notes + terms */}
+          <div className="glass-card rounded-2xl p-5 space-y-3">
+            <div><label className={label}>Notes (shown on the invoice)</label>
+              <textarea className={input + ' resize-none'} rows={2} disabled={locked} value={inv.notes || ''} onChange={e => set('notes', e.target.value)} /></div>
+            <div><label className={label}>Terms</label>
+              <textarea className={input + ' resize-none'} rows={3} disabled={locked} value={inv.terms || ''} onChange={e => set('terms', e.target.value)}
+                placeholder={globalTerms ? `Default: ${globalTerms.slice(0, 120)}…` : 'Falls back to the global invoice terms in Settings'} /></div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  );
+}

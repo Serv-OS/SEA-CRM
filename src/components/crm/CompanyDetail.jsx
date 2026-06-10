@@ -6,6 +6,7 @@ import CallButton from '../CallButton.jsx';
 import LeadBadge from './LeadBadge.jsx';
 import LeadsCard from './LeadsCard.jsx';
 import ProcessingRatesCard from './ProcessingRatesCard.jsx';
+import InvoicesCard from './InvoicesCard.jsx';
 import { primaryLead } from '../../lib/leadStages';
 
 const STATUS_COLORS = {
@@ -210,6 +211,8 @@ export default function CompanyDetail({ companyId, profile, onClose, onNavigate,
               <LeadsCard leads={leads} />
 
               <ProcessingRatesCard companyId={companyId} onNavigate={onNavigate} />
+
+              <InvoicesCard companyId={companyId} profile={profile} onNavigate={onNavigate} />
 
               <Card title="Deals" count={deals.length}>
                 {deals.length > 0 ? (
