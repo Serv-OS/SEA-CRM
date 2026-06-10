@@ -4,7 +4,7 @@ import { LogoLockup } from './ServOSLogo.jsx';
 import {
   Home, Building2, MapPin, User, Target, Banknote, Box, Rocket, Folder, CheckSquare,
   Ticket, ClipboardList, FileText, LayoutGrid, Sparkles, Flag, BarChart3,
-  Bug, Star, List, Layout, Layers, Package, ChevronRight, Plus, Mail, Calendar, MessageSquare, Clock, Plane, CreditCard, Receipt,
+  Bug, Star, List, Layout, Layers, Package, ChevronRight, Plus, Mail, Calendar, MessageSquare, Clock, Plane, CreditCard, Receipt, TrendingUp,
   Settings as SettingsIcon, Users as UsersIcon,
 } from 'lucide-react';
 
@@ -29,7 +29,7 @@ const COLLAPSIBLE = [
     ['staff', 'Staff', User], ['departments', 'Departments & Areas', Building2],
   ] },
   { id: 'insights', label: 'Insights', items: [
-    ['reporting', 'Reporting', BarChart3],
+    ['reporting', 'Reporting', BarChart3], ['sales_performance', 'Sales Performance', TrendingUp],
   ] },
 ];
 

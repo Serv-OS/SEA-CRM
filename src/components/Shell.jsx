@@ -7,6 +7,7 @@ import TimerWidget from './TimerWidget.jsx';
 import TimePanel from './crm/TimePanel.jsx';
 import PaymentsPanel from './crm/PaymentsPanel.jsx';
 import InvoicesPanel from './crm/InvoicesPanel.jsx';
+import SalesPerformance from './crm/SalesPerformance.jsx';
 import InvoiceBuilder from './crm/InvoiceBuilder.jsx';
 import ScheduleView from './staffing/ScheduleView.jsx';
 import TimeOffView from './staffing/TimeOffView.jsx';
@@ -189,6 +190,8 @@ export default function Shell({ session }) {
         return <ReleaseDetail releaseId={detailId} profile={profile} onClose={() => setView('releases')} />;
       case 'reporting':
         return <ReportingDashboard profile={profile} />;
+      case 'sales_performance':
+        return <SalesPerformance profile={profile} onNavigate={navigateTo} />;
       case 'data':
         return <DataPanel profile={profile} />;
       case 'products':
