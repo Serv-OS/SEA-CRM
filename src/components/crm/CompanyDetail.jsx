@@ -6,6 +6,7 @@ import CallButton from '../CallButton.jsx';
 import LeadBadge from './LeadBadge.jsx';
 import LeadsCard from './LeadsCard.jsx';
 import ProcessingRatesCard from './ProcessingRatesCard.jsx';
+import HardwareCard from './HardwareCard.jsx';
 import InvoicesCard from './InvoicesCard.jsx';
 import { primaryLead } from '../../lib/leadStages';
 
@@ -211,6 +212,8 @@ export default function CompanyDetail({ companyId, profile, onClose, onNavigate,
               <LeadsCard leads={leads} />
 
               <ProcessingRatesCard companyId={companyId} onNavigate={onNavigate} />
+
+              <HardwareCard companyId={companyId} />
 
               <InvoicesCard companyId={companyId} profile={profile} onNavigate={onNavigate} />
 

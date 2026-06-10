@@ -13,6 +13,8 @@ import StockView from './inventory/StockView.jsx';
 import StockInView from './inventory/StockInView.jsx';
 import StockOutView from './inventory/StockOutView.jsx';
 import PurchasingView from './inventory/PurchasingView.jsx';
+import StocktakeView from './inventory/StocktakeView.jsx';
+import InvReportsView from './inventory/InvReportsView.jsx';
 import InvoiceBuilder from './crm/InvoiceBuilder.jsx';
 import ScheduleView from './staffing/ScheduleView.jsx';
 import TimeOffView from './staffing/TimeOffView.jsx';
@@ -207,6 +209,10 @@ export default function Shell({ session }) {
         return <StockOutView profile={profile} onNavigate={navigateTo} />;
       case 'inv_purchasing':
         return <PurchasingView profile={profile} />;
+      case 'inv_stocktake':
+        return <StocktakeView profile={profile} />;
+      case 'inv_reports':
+        return <InvReportsView />;
       case 'data':
         return <DataPanel profile={profile} />;
       case 'products':

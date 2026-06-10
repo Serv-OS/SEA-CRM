@@ -5,7 +5,7 @@ import {
   Home, Building2, MapPin, User, Target, Banknote, Box, Rocket, Folder, CheckSquare,
   Ticket, ClipboardList, FileText, LayoutGrid, Sparkles, Flag, BarChart3,
   Bug, Star, List, Layout, Layers, Package, ChevronRight, Plus, Mail, Calendar, MessageSquare, Clock, Plane, CreditCard, Receipt, TrendingUp,
-  Warehouse, Boxes, PackagePlus, PackageMinus, ShoppingCart,
+  Warehouse, Boxes, PackagePlus, PackageMinus, ShoppingCart, ClipboardCheck,
   Settings as SettingsIcon, Users as UsersIcon,
 } from 'lucide-react';
 
@@ -19,7 +19,8 @@ const COLLAPSIBLE = [
   { id: 'inventory', label: 'Inventory', items: [
     ['inv_dashboard', 'Dashboard', Warehouse], ['inv_stock', 'Stock', Boxes],
     ['inv_in', 'Stock In', PackagePlus], ['inv_out', 'Stock Out', PackageMinus],
-    ['inv_purchasing', 'Purchasing', ShoppingCart],
+    ['inv_purchasing', 'Purchasing', ShoppingCart], ['inv_stocktake', 'Stocktake', ClipboardCheck],
+    ['inv_reports', 'Reports', BarChart3],
   ] },
   { id: 'delivery', label: 'Delivery', items: [
     ['onboarding', 'Onboarding', Rocket], ['projects', 'Projects', Folder], ['tasks', 'Tasks', CheckSquare],
