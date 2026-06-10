@@ -12,7 +12,7 @@ const STATUS_BADGE = {
 
 // Hardware booked out to a customer (company or specific location), fed live
 // from the inventory module. Shows full per-unit detail; hidden when no kit.
-export default function HardwareCard({ companyId, locationId, profile }) {
+export default function HardwareCard({ companyId, locationId, profile, alwaysShow = false }) {
   const [rows, setRows] = useState(null);
   const canWrite = profile && (profile.role === 'owner' || profile.role === 'editor');
 
@@ -28,7 +28,8 @@ export default function HardwareCard({ companyId, locationId, profile }) {
   };
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [companyId, locationId]);
 
-  if (!rows || rows.length === 0) return null;
+  if (!rows) return null;
+  if (rows.length === 0 && !alwaysShow) return null;
 
   const value = rows.reduce((s, r) => s + (Number(r.cost) || 0), 0);
   const groups = {};
@@ -51,6 +52,11 @@ export default function HardwareCard({ companyId, locationId, profile }) {
         <span className="text-xs text-dim font-mono">({rows.length})</span>
         {value > 0 && <span className="ml-auto text-xs text-muted">{fmtGBP(value)} value</span>}
       </div>
+      {rows.length === 0 && (
+        <div className="p-4 text-xs text-dim italic">
+          No hardware on site yet. Book kit out to this location from <b>Inventory → Stock Out</b> and it will appear here with serials, install dates and value.
+        </div>
+      )}
       <div className="divide-y divide-bdr">
         {Object.entries(groups).map(([product, units]) => (
           <div key={product} className="px-4 py-3">
