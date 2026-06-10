@@ -52,7 +52,7 @@ export default function SalesPerformance({ profile, onNavigate }) {
     setLoading(true);
     const [p, a, l, d, q, h, st] = await Promise.all([
       supabase.from('profiles').select('id, display_name, email, teams, role'),
-      supabase.from('crm_activities').select('id, type, actor_id, occurred_at, subject_type, subject_id, direction').gte('occurred_at', fromIso).lte('occurred_at', toIso),
+      supabase.from('crm_activities').select('id, type, actor_id, occurred_at, subject_type, subject_id, direction, channel_metadata').gte('occurred_at', fromIso).lte('occurred_at', toIso),
       supabase.from('leads').select('id, owner_id, stage, created_at, name'),
       supabase.from('deals').select('id, owner_id, stage, created_at, closed_at, name, value, saas_arr, payments_arr'),
       supabase.from('quotes').select('id, created_by, created_at, status'),
@@ -73,6 +73,8 @@ export default function SalesPerformance({ profile, onNavigate }) {
   const stats = useMemo(() => reps.map(r => {
     const acts = activities.filter(a => a.actor_id === r.id);
     const byType = {}; ACT_TYPES.forEach(([t]) => { byType[t] = acts.filter(a => a.type === t).length; });
+    const noShows = acts.filter(a => a.type === 'meeting' && a.channel_metadata?.outcome === 'no_show').length;
+    const meetingsHeld = acts.filter(a => a.type === 'meeting' && a.channel_metadata?.outcome === 'completed').length;
     const myMoves = history.filter(h => h.changed_by === r.id);
     const leadsWorked = new Set([
       ...acts.filter(a => a.subject_type === 'lead').map(a => a.subject_id),
@@ -88,7 +90,7 @@ export default function SalesPerformance({ profile, onNavigate }) {
     const meetingGoal = Math.round(targets.meetings_per_week * weeks);
     const quotaScaled = targets.quota_arr_month * (rangeDays / 30.44);
     return {
-      rep: r, total, byType, leadsWorked, leadsCreated, dealsCreated,
+      rep: r, total, byType, noShows, meetingsHeld, leadsWorked, leadsCreated, dealsCreated,
       stageMoves: myMoves.length, dealsWon: dealsWon.length, arrWon, quotesSent,
       activityGoal, meetingGoal, quotaScaled,
       hitQuota: arrWon >= quotaScaled,
@@ -197,6 +199,7 @@ export default function SalesPerformance({ profile, onNavigate }) {
                         {ACT_TYPES.map(([k]) => (
                           <td key={k} className="px-2 py-2.5 text-right tabular-nums text-muted">
                             {s.byType[k] || 0}
+                            {k === 'meeting' && s.noShows > 0 && <span className="text-[9px] font-bold text-red-500 ml-1">({s.noShows} NS)</span>}
                             {k === 'meeting' && <Pace value={s.byType.meeting || 0} goal={s.meetingGoal} />}
                           </td>
                         ))}
@@ -304,6 +307,8 @@ function RepDetail({ s, activities, leads, deals, from, to, onNavigate, targets 
             {ACT_TYPES.map(([k, lbl]) => (
               <span key={k} className="text-[11px] px-2 py-0.5 rounded-lg bg-card text-muted">{lbl}: <b className="text-paper">{s.byType[k] || 0}</b></span>
             ))}
+            <span className="text-[11px] px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-700">Held: <b>{s.meetingsHeld}</b></span>
+            <span className={`text-[11px] px-2 py-0.5 rounded-lg ${s.noShows ? 'bg-red-50 text-red-600' : 'bg-card text-muted'}`}>No-shows: <b>{s.noShows}</b></span>
           </div>
         </div>
 

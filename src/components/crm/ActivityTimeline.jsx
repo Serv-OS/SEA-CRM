@@ -4,6 +4,16 @@ import { supabase } from '../../lib/supabase';
 const TYPE_ICON = { call: '\u{1F4DE}', email: '\u{1F4E7}', sms: '\u{1F4AC}', note: '\u{1F4DD}', meeting: '\u{1F91D}', whatsapp: '\u{1F4F2}' };
 const TYPE_LABEL = { call: 'Call', email: 'Email', sms: 'SMS', note: 'Note', meeting: 'Meeting', whatsapp: 'WhatsApp' };
 
+export const MEETING_OUTCOMES = [
+  ['completed', 'Completed'], ['no_show', 'No show'], ['rescheduled', 'Rescheduled'], ['cancelled', 'Cancelled'],
+];
+const OUTCOME_STYLE = {
+  completed: 'bg-emerald-100 text-emerald-700',
+  no_show: 'bg-red-100 text-red-700',
+  rescheduled: 'bg-amber-100 text-amber-700',
+  cancelled: 'bg-slate-200 text-slate-500',
+};
+
 export default function ActivityTimeline({ subjectType, subjectId, profile }) {
   const [activities, setActivities] = useState([]);
   const [members, setMembers] = useState([]);
@@ -12,6 +22,7 @@ export default function ActivityTimeline({ subjectType, subjectId, profile }) {
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
   const [direction, setDirection] = useState('outbound');
+  const [outcome, setOutcome] = useState('completed');
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState('');
 
@@ -64,8 +75,18 @@ export default function ActivityTimeline({ subjectType, subjectId, profile }) {
       subject_id: subjectId,
       direction: type === 'note' ? null : direction,
       actor_id: profile.id,
+      channel_metadata: type === 'meeting' ? { outcome } : {},
     });
-    setType('note'); setSubject(''); setBody(''); setAdding(false);
+    setType('note'); setSubject(''); setBody(''); setOutcome('completed'); setAdding(false);
+    load();
+  };
+
+  // Record the outcome of a meeting after the fact (e.g. a scheduled calendar
+  // meeting that has now happened — or didn't).
+  const setMeetingOutcome = async (activity, value) => {
+    await supabase.from('crm_activities')
+      .update({ channel_metadata: { ...(activity.channel_metadata || {}), outcome: value } })
+      .eq('id', activity.id);
     load();
   };
 
@@ -105,7 +126,14 @@ export default function ActivityTimeline({ subjectType, subjectId, profile }) {
                 ))}
               </select>
             </div>
-            {type !== 'note' && (
+            {type === 'meeting' ? (
+              <div>
+                <label className={label}>Outcome</label>
+                <select className={input} value={outcome} onChange={e => setOutcome(e.target.value)}>
+                  {MEETING_OUTCOMES.map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                </select>
+              </div>
+            ) : type !== 'note' && (
               <div>
                 <label className={label}>Direction</label>
                 <select className={input} value={direction} onChange={e => setDirection(e.target.value)}>
@@ -140,21 +168,42 @@ export default function ActivityTimeline({ subjectType, subjectId, profile }) {
       )}
 
       <div className="space-y-2">
-        {activities.map(a => (
+        {activities.map(a => {
+          const isMeeting = a.type === 'meeting';
+          const mOutcome = a.channel_metadata?.outcome;
+          const isFuture = new Date(a.occurred_at) > new Date();
+          return (
           <div key={a.id} className="flex gap-3 py-2 border-b border-bdr last:border-b-0">
             <div className="text-base mt-0.5">{TYPE_ICON[a.type] || '\u{1F4DD}'}</div>
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 text-xs">
+              <div className="flex items-center gap-2 text-xs flex-wrap">
                 <span className="text-paper font-medium">{getName(a.actor_id)}</span>
                 <span className="text-dim">{TYPE_LABEL[a.type] || a.type}</span>
-                {a.direction && <span className="text-dim">{a.direction === 'inbound' ? '← in' : '→ out'}</span>}
+                {a.direction && !isMeeting && <span className="text-dim">{a.direction === 'inbound' ? '← in' : '→ out'}</span>}
+                {isMeeting && mOutcome && (
+                  <span className={`px-1.5 py-0.5 text-[9px] font-bold uppercase rounded ${OUTCOME_STYLE[mOutcome] || 'bg-slate-200 text-slate-600'}`}>
+                    {(MEETING_OUTCOMES.find(([k]) => k === mOutcome)?.[1]) || mOutcome}
+                  </span>
+                )}
+                {isMeeting && !mOutcome && (
+                  isFuture
+                    ? <span className="px-1.5 py-0.5 text-[9px] font-bold uppercase rounded bg-blue-100 text-blue-700">Scheduled</span>
+                    : canWrite && (
+                      <select defaultValue="" onChange={e => e.target.value && setMeetingOutcome(a, e.target.value)}
+                        className="px-1.5 py-0.5 text-[10px] bg-amber-50 border border-amber-300 text-amber-800 rounded-lg focus:outline-none">
+                        <option value="">Log outcome…</option>
+                        {MEETING_OUTCOMES.map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                      </select>
+                    )
+                )}
                 <span className="text-dim ml-auto">{timeAgo(a.occurred_at)}</span>
               </div>
               {a.subject && <div className="text-sm text-paper mt-0.5">{a.subject}</div>}
               {a.body && <div className="text-xs text-muted mt-1 whitespace-pre-wrap">{a.body}</div>}
             </div>
           </div>
-        ))}
+          );
+        })}
         {activities.length === 0 && (
           <div className="text-xs text-dim italic py-4 text-center">No activity yet.</div>
         )}
