@@ -197,20 +197,29 @@ export default function InvoiceBuilder({ invoiceId, profile, onClose, onNavigate
                 </div>
               )}
             </div>
+            {/* Column headers */}
+            <div className="flex gap-2 items-center pt-1">
+              <div className="flex-1 text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-dim">Item</div>
+              <div className="w-16 text-right text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-dim">Qty</div>
+              <div className="w-28 text-right text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-dim">Unit £</div>
+              <div className="w-16 text-right text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-dim">VAT</div>
+              <div className="w-24 text-right text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-dim">Net</div>
+              {!locked && <div className="w-[30px]" />}
+            </div>
             {lines.map((l, i) => (
-              <div key={l.id || `n${i}`} className="flex gap-2 items-start">
+              <div key={l.id || `n${i}`} className="flex gap-2 items-start bg-card/40 border border-bdr/60 rounded-xl p-2">
                 <div className="flex-1 space-y-1">
-                  <input className={input} disabled={locked} value={l.name} onChange={e => setLine(i, 'name', e.target.value)} placeholder="Item name" />
-                  <input className={input + ' text-xs'} disabled={locked} value={l.description || ''} onChange={e => setLine(i, 'description', e.target.value)} placeholder="Description (optional)" />
+                  <input className={input} disabled={locked} value={l.name} onChange={e => setLine(i, 'name', e.target.value)} placeholder="Item name — e.g. Card terminal" />
+                  <input className={input + ' text-xs'} disabled={locked} value={l.description || ''} onChange={e => setLine(i, 'description', e.target.value)} placeholder="Description shown under the item (optional)" />
                 </div>
-                <input className={input + ' w-16 text-right'} disabled={locked} value={l.qty} onChange={e => setLine(i, 'qty', e.target.value)} title="Qty" />
-                <input className={input + ' w-28 text-right'} disabled={locked} value={l.unit_price} onChange={e => setLine(i, 'unit_price', e.target.value)} title="Unit price" />
+                <input className={input + ' w-16 text-right'} disabled={locked} value={l.qty} onChange={e => setLine(i, 'qty', e.target.value)} placeholder="1" title="Quantity" />
+                <input className={input + ' w-28 text-right'} disabled={locked} value={l.unit_price} onChange={e => setLine(i, 'unit_price', e.target.value)} placeholder="0.00" title="Unit price (£, ex VAT)" />
                 <div className="w-16 relative">
-                  <input className={input + ' text-right !pr-5'} disabled={locked} value={l.tax_rate ?? 20} onChange={e => setLine(i, 'tax_rate', e.target.value)} title="VAT %" />
+                  <input className={input + ' text-right !pr-5'} disabled={locked} value={l.tax_rate ?? 20} onChange={e => setLine(i, 'tax_rate', e.target.value)} placeholder="20" title="VAT %" />
                   <span className="absolute right-2 top-2.5 text-xs text-dim pointer-events-none">%</span>
                 </div>
-                <div className="w-24 text-right text-sm text-paper tabular-nums pt-2.5">{money((Number(l.qty) || 0) * (Number(l.unit_price) || 0))}</div>
-                {!locked && <button onClick={() => setLines(p => p.filter((_, j) => j !== i))} className="text-dim hover:text-red-600 p-2"><Trash2 size={14} /></button>}
+                <div className="w-24 text-right text-sm text-paper tabular-nums pt-2.5" title="Line net (ex VAT)">{money((Number(l.qty) || 0) * (Number(l.unit_price) || 0))}</div>
+                {!locked && <button onClick={() => setLines(p => p.filter((_, j) => j !== i))} title="Remove line" className="text-dim hover:text-red-600 p-2"><Trash2 size={14} /></button>}
               </div>
             ))}
             <div className="flex justify-end pt-2 border-t border-bdr">

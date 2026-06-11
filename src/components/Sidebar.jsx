@@ -6,7 +6,7 @@ import {
   Ticket, ClipboardList, FileText, LayoutGrid, Sparkles, Flag, BarChart3,
   Bug, Star, List, Layout, Layers, Package, ChevronRight, Plus, Mail, Calendar, MessageSquare, Clock, Plane, CreditCard, Receipt, TrendingUp,
   Warehouse, Boxes, PackagePlus, PackageMinus, ShoppingCart, ClipboardCheck, Truck, Factory,
-  Settings as SettingsIcon, Users as UsersIcon,
+  Settings as SettingsIcon, Users as UsersIcon, FileSignature
 } from 'lucide-react';
 
 // Collapsible groups (App Build is dynamic; My Work + My Account are pinned)
@@ -14,7 +14,8 @@ const COLLAPSIBLE = [
   { id: 'sales', label: 'Sales', items: [
     ['companies', 'Companies', Building2], ['locations', 'Locations', MapPin], ['contacts', 'Contacts', User],
     ['leads', 'Leads', Target], ['deals', 'Deals', Banknote],
-    ['processing', 'Card Processing', CreditCard], ['invoices', 'Invoices', Receipt],
+    ['processing', 'Card Processing', CreditCard], ['quotes', 'Quotes', FileSignature],
+    ['invoices', 'Invoices', Receipt],
   ] },
   { id: 'inventory', label: 'Inventory', items: [
     ['inv_dashboard', 'Dashboard', Warehouse], ['products', 'Products', Box], ['inv_stock', 'Stock', Boxes],
@@ -49,7 +50,7 @@ const ACTIVE_MAP = {
   lead_detail: 'leads', deal_detail: 'deals', quote_detail: 'deals',
   onboarding_detail: 'onboarding', project_detail: 'projects', task_detail: 'tasks',
   ticket_detail: 'tickets', form_detail: 'forms', feature_request_detail: 'feature_requests',
-  release_detail: 'releases', invoice_detail: 'invoices',
+  release_detail: 'releases', invoice_detail: 'invoices', quote_detail: 'quotes',
 };
 
 const DEFAULT_GROUPS = { appbuild: false, sales: true, inventory: true, delivery: false, support: false, product: false, workforce: false, insights: false };

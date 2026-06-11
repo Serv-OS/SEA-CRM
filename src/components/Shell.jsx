@@ -7,6 +7,7 @@ import TimerWidget from './TimerWidget.jsx';
 import TimePanel from './crm/TimePanel.jsx';
 import PaymentsPanel from './crm/PaymentsPanel.jsx';
 import InvoicesPanel from './crm/InvoicesPanel.jsx';
+import QuotesPanel from './crm/QuotesPanel.jsx';
 import SalesPerformance from './crm/SalesPerformance.jsx';
 import InvDashboard from './inventory/InvDashboard.jsx';
 import StockView from './inventory/StockView.jsx';
@@ -223,7 +224,7 @@ export default function Shell({ session }) {
       case 'products':
         return <ProductsPanel profile={profile} />;
       case 'quote_detail':
-        return <QuoteBuilder quoteId={detailId} profile={profile} onClose={() => setView('deals')} onNavigate={navigateTo} />;
+        return <QuoteBuilder quoteId={detailId} profile={profile} onClose={() => setView('quotes')} onNavigate={navigateTo} />;
       case 'settings':
         return <SettingsPanel profile={profile} />;
       case 'account':
@@ -232,6 +233,8 @@ export default function Shell({ session }) {
         return <TimePanel profile={profile} onNavigate={navigateTo} />;
       case 'processing':
         return <PaymentsPanel profile={profile} onNavigate={navigateTo} />;
+      case 'quotes':
+        return <QuotesPanel profile={profile} onNavigate={navigateTo} />;
       case 'invoices':
         return <InvoicesPanel profile={profile} onNavigate={navigateTo} />;
       case 'invoice_detail':
