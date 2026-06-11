@@ -9,6 +9,25 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
+    <script>
+      // Per-instance branding: the POSUP production instance gets its own
+      // home-screen icons + manifest. Runs at parse time, before the icons
+      // are fetched, so saved-to-phone apps pick up the right artwork.
+      (function () {
+        if (!/^posupcrm\./.test(location.hostname)) return;
+        var set = function (sel, href) {
+          var el = document.querySelector(sel);
+          if (el) el.href = href;
+        };
+        set('link[rel="manifest"]', '/posup/manifest.webmanifest');
+        set('link[rel="apple-touch-icon"]', '/posup/apple-touch-icon.png');
+        set('link[rel="icon"][type="image/png"]', '/posup/favicon-32.png');
+        var svg = document.querySelector('link[rel="icon"][type="image/svg+xml"]');
+        if (svg) { svg.type = 'image/png'; svg.href = '/posup/icon-192.png'; }
+        var t = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+        if (t) t.content = 'POSUP';
+      })();
+    </script>
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="ServOS" />

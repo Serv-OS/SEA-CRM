@@ -1,0 +1,15 @@
+{
+  "name": "POSUP CRM",
+  "short_name": "POSUP",
+  "description": "POSUP CRM",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#4BBC8F",
+  "theme_color": "#4BBC8F",
+  "icons": [
+    { "src": "/posup/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/posup/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/posup/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
