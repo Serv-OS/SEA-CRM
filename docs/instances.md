@@ -8,8 +8,8 @@
 ## POSUP CRM — remaining setup checklist
 - [x] Vercel project from Serv-OS/posupcrm (env vars set; VITE_GOOGLE_CLIENT_ID still pending Google project)
 - [x] Supabase Auth: Email OTP length = 6; Site URL = https://posupcrm.vercel.app
-- [ ] Google Cloud project (consent Internal, scopes gmail.modify/send + calendar.events + chat.*, Chat app config, OAuth client w/ redirect to xvtzxlyjasdmwxqchwmm gmail-oauth-callback)
-- [ ] Edge function secrets: GMAIL_CLIENT_ID/SECRET (APP_URL done)
+- [x] Google Cloud project "POSUP CRM" (pacific-destiny-499115-e7, org posup.co.uk, consent Internal): Gmail/Calendar/Chat/People APIs enabled; OAuth client "POSUP CRM Web" 459170215815-p9of5hivo0kc4oa7f42map4ocnuemmkr w/ redirect to xvtzxlyjasdmwxqchwmm gmail-oauth-callback. Client ID stored in support_settings.google_client_id (per-instance since v0.9.103; no Vercel env needed). Chat APP config (bot) not set up — do when Chat features needed.
+- [x] Edge function secrets: GMAIL_CLIENT_ID/SECRET set (APP_URL done)
 - [x] Twilio: number +44 7428 700815 bought 11 Jun 2026 (same account as dev, own number); webhooks → posupcrm functions; TwiML app "POSUP CRM" AP7f89a86033f1efbcca75791e262e79b2; all 6 TWILIO_* secrets set; SMS verified end-to-end both directions (posupcrm ticket #1)
 - [x] First owner login peter@posup.co.uk → profiles.role = 'owner'
 - [ ] In-app: Branding, AI key, Stripe key, quote/invoice terms (Twilio number saved in Settings)
