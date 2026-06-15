@@ -13,7 +13,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-async function getAccessToken(supabase: any): Promise<string | null> {
+async function getActiveConnection(supabase: any): Promise<{ accessToken: string; conn: any } | null> {
   const clientId = Deno.env.get("GMAIL_CLIENT_ID")!;
   const clientSecret = Deno.env.get("GMAIL_CLIENT_SECRET")!;
 
@@ -23,7 +23,7 @@ async function getAccessToken(supabase: any): Promise<string | null> {
   // inbox (peter@serv-os.app) and polled it as if it were the support box.
   const { data: conn } = await supabase
     .from("gmail_connections")
-    .select("refresh_token, access_token, token_expires_at")
+    .select("id, email, refresh_token, access_token, token_expires_at, last_polled_at")
     .eq("is_active", true)
     .order("updated_at", { ascending: false })
     .limit(1)
@@ -46,23 +46,21 @@ async function getAccessToken(supabase: any): Promise<string | null> {
   const data = await res.json();
   if (!data.access_token) throw new Error("Failed to get Gmail access token: " + JSON.stringify(data));
 
-  // Update stored access token
-  if (conn) {
-    await supabase.from("gmail_connections")
-      .update({ access_token: data.access_token, token_expires_at: new Date(Date.now() + data.expires_in * 1000).toISOString() })
-      .eq("refresh_token", refreshToken);
-  }
+  await supabase.from("gmail_connections")
+    .update({ access_token: data.access_token, token_expires_at: new Date(Date.now() + data.expires_in * 1000).toISOString() })
+    .eq("id", conn.id);
 
-  return data.access_token;
+  return { accessToken: data.access_token, conn };
 }
 
-async function getGmailMessages(accessToken: string, after?: string) {
-  // Fetch messages from inbox after a certain date
-  let query = "in:inbox is:unread";
-  if (after) query += ` after:${after}`;
-
+async function getGmailMessages(accessToken: string, afterEpochSeconds: number) {
+  // Mail that arrived since we last polled. Gmail's after: accepts a unix
+  // timestamp (seconds). We do NOT filter on is:unread: this is a shared
+  // mailbox humans also read, so unread state is unreliable. Dedup by
+  // message-id (below) prevents any message becoming a ticket twice.
+  const query = `in:inbox after:${afterEpochSeconds}`;
   const res = await fetch(
-    `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(query)}&maxResults=20`,
+    `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(query)}&maxResults=30`,
     { headers: { Authorization: `Bearer ${accessToken}` } }
   );
   const data = await res.json();
@@ -165,16 +163,18 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const accessToken = await getAccessToken(supabase);
+    const active = await getActiveConnection(supabase);
 
     // No Gmail account connected via the in-app flow -> do nothing.
     // (Email support resumes automatically once support@ is connected.)
-    if (!accessToken) {
+    if (!active) {
       return new Response(
         JSON.stringify({ success: true, processed: 0, total: 0, connected_mailbox: null, note: "No Gmail account connected" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+    const accessToken = active.accessToken;
+    const conn = active.conn;
 
     // Which mailbox is actually being polled? (diagnostic)
     let connectedMailbox = "unknown";
@@ -198,7 +198,12 @@ serve(async (req) => {
     (conns || []).forEach((c: any) => c.email && internalEmails.add(c.email.toLowerCase()));
     (profs || []).forEach((p: any) => p.email && internalEmails.add(p.email.toLowerCase()));
 
+    // Own domain is derived from the connected support mailbox (e.g.
+    // support@posup.co.uk -> posup.co.uk), so staff emailing in from their own
+    // company domain never create tickets — no per-instance hardcoding needed.
     const OWN_DOMAINS = ["serv-os.app", "servos.app"];
+    const mailboxDomain = (conn.email || "").toLowerCase().split("@")[1];
+    if (mailboxDomain && !OWN_DOMAINS.includes(mailboxDomain)) OWN_DOMAINS.push(mailboxDomain);
     const isInternalSender = (email: string) => {
       const e = (email || "").toLowerCase().trim();
       if (!e) return true; // no sender -> skip
@@ -207,8 +212,13 @@ serve(async (req) => {
       return OWN_DOMAINS.includes(domain);
     };
 
-    // Get unread messages
-    const messages = await getGmailMessages(accessToken);
+    // Mail since the last poll (watermark). Re-poll with a 5-min overlap so a
+    // message arriving mid-run is never skipped; message-id dedup handles the
+    // overlap. Advance the watermark only after a clean pass.
+    const sinceMs = conn.last_polled_at ? new Date(conn.last_polled_at).getTime() : Date.now();
+    const afterEpoch = Math.floor((sinceMs - 5 * 60 * 1000) / 1000);
+    const runStarted = new Date().toISOString();
+    const messages = await getGmailMessages(accessToken, afterEpoch);
     let processed = 0;
 
     for (const msg of messages) {
@@ -230,11 +240,10 @@ serve(async (req) => {
       // system user (e.g. peter@serv-os.app), or anything on our own domain.
       // These are staff, not customers, so they must not create tickets.
       if (isInternalSender(senderEmail)) {
-        await markAsRead(accessToken, msg.id);
         continue;
       }
 
-      // Check if we already processed this message
+      // Check if we already processed this message (dedup across overlapping polls)
       const { data: existing } = await supabase
         .from("crm_activities")
         .select("id")
@@ -242,7 +251,6 @@ serve(async (req) => {
         .limit(1);
 
       if (existing && existing.length > 0) {
-        await markAsRead(accessToken, msg.id);
         continue;
       }
 
@@ -411,9 +419,14 @@ serve(async (req) => {
         processed++;
       }
 
-      // Mark as read in Gmail
-      await markAsRead(accessToken, msg.id);
+      // NB: we no longer mark the message read in Gmail — this is a shared
+      // mailbox that staff also triage, so we leave their read/unread state
+      // alone. The watermark + message-id dedup prevent re-processing.
     }
+
+    // Advance the watermark to when this run started, so the next poll only
+    // looks at newer mail. (Only on success; an early throw keeps the old mark.)
+    await supabase.from("gmail_connections").update({ last_polled_at: runStarted }).eq("id", conn.id);
 
     return new Response(
       JSON.stringify({ success: true, processed, total: messages.length, connected_mailbox: connectedMailbox }),
