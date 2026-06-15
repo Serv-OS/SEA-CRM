@@ -14,6 +14,7 @@ export default function AccountPanel({ profile, onSaved }) {
   const [prefs, setPrefs] = useState({
     email_enabled: true,
     sms_enabled: false,
+    chat_dm_enabled: false,
     notify_on_mention: true,
     notify_on_assignment: true,
     notify_on_reply: true,
@@ -25,6 +26,20 @@ export default function AccountPanel({ profile, onSaved }) {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
   const [google, setGoogle] = useState(null);
+  const [dmTest, setDmTest] = useState(null);
+  const sendDmTest = async () => {
+    setDmTest('sending');
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/notify-dispatch`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session?.access_token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ test_dm: profile.email }),
+      });
+      const d = await res.json().catch(() => ({}));
+      setDmTest(res.ok ? 'sent' : ('error: ' + (d.error || res.status)));
+    } catch (e) { setDmTest('error: ' + e.message); }
+  };
   const [signature, setSignature] = useState('');
   const [signatureLogo, setSignatureLogo] = useState(false);
   const [brandingLogo, setBrandingLogo] = useState(null);
@@ -87,6 +102,7 @@ export default function AccountPanel({ profile, onSaved }) {
       setPrefs({
         email_enabled: np.data.email_enabled,
         sms_enabled: np.data.sms_enabled,
+        chat_dm_enabled: np.data.chat_dm_enabled ?? false,
         notify_on_mention: np.data.notify_on_mention,
         notify_on_assignment: np.data.notify_on_assignment,
         notify_on_reply: np.data.notify_on_reply,
@@ -131,6 +147,7 @@ export default function AccountPanel({ profile, onSaved }) {
       profile_id: profile.id,
       email_enabled: prefs.email_enabled,
       sms_enabled: prefs.sms_enabled,
+      chat_dm_enabled: prefs.chat_dm_enabled,
       notify_on_mention: prefs.notify_on_mention,
       notify_on_assignment: prefs.notify_on_assignment,
       notify_on_reply: prefs.notify_on_reply,
@@ -285,6 +302,18 @@ export default function AccountPanel({ profile, onSaved }) {
                     checked={prefs.email_enabled} onChange={v => setPrefs({ ...prefs, email_enabled: v })} />
                   <Toggle label="SMS notifications" sub={form.mobile || 'No mobile number set'}
                     checked={prefs.sms_enabled} onChange={v => setPrefs({ ...prefs, sms_enabled: v })} />
+                  <Toggle label="Google Chat (private DM)" sub="A direct message from the CRM app, just to you"
+                    checked={prefs.chat_dm_enabled} onChange={v => setPrefs({ ...prefs, chat_dm_enabled: v })} />
+                  {prefs.chat_dm_enabled && (
+                    <div className="flex items-center gap-2 pl-1">
+                      <button type="button" onClick={sendDmTest} disabled={dmTest === 'sending'}
+                        className="text-xs text-ember hover:underline disabled:opacity-50">
+                        {dmTest === 'sending' ? 'Sending…' : 'Send test DM'}
+                      </button>
+                      {dmTest === 'sent' && <span className="text-xs text-emerald-600">Sent — check Google Chat ✓</span>}
+                      {typeof dmTest === 'string' && dmTest.startsWith('error') && <span className="text-xs text-red-600">{dmTest.replace('error: ', '')}</span>}
+                    </div>
+                  )}
                 </div>
               </div>
 

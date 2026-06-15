@@ -46,6 +46,63 @@ async function postToChat(webhookUrl: string, title: string, body: string, appUr
   if (!res.ok) throw new Error(`Chat webhook HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`);
 }
 
+// ---- Google Chat app (service account) for private 1:1 DMs ------------------
+const b64url = (buf: ArrayBuffer | Uint8Array) => {
+  const bytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+  let s = ""; for (const b of bytes) s += String.fromCharCode(b);
+  return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+};
+
+function pemToPkcs8(pem: string): ArrayBuffer {
+  const b64 = pem.replace(/-----[^-]+-----/g, "").replace(/\s+/g, "");
+  const raw = atob(b64);
+  const out = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+  return out.buffer;
+}
+
+// Mint an access token for the Chat app from its service-account key (RS256).
+async function getChatAppToken(saKey: any): Promise<string> {
+  const now = Math.floor(Date.now() / 1000);
+  const header = b64url(new TextEncoder().encode(JSON.stringify({ alg: "RS256", typ: "JWT" })));
+  const claim = b64url(new TextEncoder().encode(JSON.stringify({
+    iss: saKey.client_email,
+    scope: "https://www.googleapis.com/auth/chat.bot",
+    aud: "https://oauth2.googleapis.com/token",
+    iat: now, exp: now + 3600,
+  })));
+  const signingInput = `${header}.${claim}`;
+  const key = await crypto.subtle.importKey(
+    "pkcs8", pemToPkcs8(saKey.private_key),
+    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["sign"]);
+  const sig = await crypto.subtle.sign("RSASSA-PKCS1-v1_5", key, new TextEncoder().encode(signingInput));
+  const jwt = `${signingInput}.${b64url(sig)}`;
+  const res = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer", assertion: jwt }),
+  });
+  const d = await res.json();
+  if (!d.access_token) throw new Error("Chat app token: " + JSON.stringify(d));
+  return d.access_token;
+}
+
+// Send a private DM from the Chat app to a user (by email). Returns a status string.
+async function dmChatUser(token: string, userEmail: string, title: string, body: string, appUrl: string): Promise<string> {
+  const find = await fetch(
+    `https://chat.googleapis.com/v1/spaces:findDirectMessage?name=${encodeURIComponent("users/" + userEmail)}`,
+    { headers: { Authorization: `Bearer ${token}` } });
+  if (find.status === 404) return "no DM space (user must message the app once)";
+  if (!find.ok) return `findDirectMessage HTTP ${find.status}: ${(await find.text()).slice(0, 150)}`;
+  const space = (await find.json()).name;
+  const text = `*${title || "CRM notification"}*${body ? `\n${body}` : ""}\n<${appUrl}|Open CRM>`;
+  const post = await fetch(`https://chat.googleapis.com/v1/${space}/messages`, {
+    method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
+  });
+  if (!post.ok) return `send HTTP ${post.status}: ${(await post.text()).slice(0, 150)}`;
+  return "sent";
+}
+
 serve(async (req) => {
   try {
     const payload = await req.json().catch(() => ({}));
@@ -64,12 +121,24 @@ serve(async (req) => {
       } catch (e) { return json({ error: (e as Error).message }, 502); }
     }
 
+    // Test path: "Send test DM" -> private DM to the given email via the Chat app.
+    if (payload.test_dm) {
+      const saRaw = Deno.env.get("GOOGLE_CHAT_SA_KEY");
+      if (!saRaw) return json({ error: "Google Chat app not configured (no service-account key)" }, 400);
+      try {
+        const token = await getChatAppToken(JSON.parse(saRaw));
+        const r = await dmChatUser(token, payload.test_dm, "Test DM",
+          "If you can see this, private Google Chat alerts are working. \u{1F389}", appUrl);
+        return r === "sent" ? json({ ok: true, dm: r }) : json({ error: r }, 502);
+      } catch (e) { return json({ error: (e as Error).message }, 502); }
+    }
+
     const notification_id = payload.notification_id;
     if (!notification_id) return json({ error: "notification_id required" }, 400);
 
     const { data: n } = await supabase.from("notifications").select("*").eq("id", notification_id).maybeSingle();
     if (!n) return json({ error: "not found" }, 404);
-    if (n.emailed_at || n.smsed_at || n.chatted_at) return json({ skipped: "already delivered" });
+    if (n.emailed_at || n.smsed_at || n.chatted_at || n.chat_dm_at) return json({ skipped: "already delivered" });
 
     const { data: p } = await supabase.from("profiles")
       .select("email, phone, mobile, display_name").eq("id", n.recipient_id).maybeSingle();
@@ -127,6 +196,24 @@ serve(async (req) => {
       }
     } else if (smsOn && quiet) {
       results.sms = "skipped: quiet hours";
+    }
+
+    // Private Google Chat DM (per-user, sent by the Chat app's service account).
+    const chatDmOn = prefs ? !!prefs.chat_dm_enabled : false;
+    if (chatDmOn && !quiet && p.email) {
+      const saRaw = Deno.env.get("GOOGLE_CHAT_SA_KEY");
+      if (saRaw) {
+        try {
+          const token = await getChatAppToken(JSON.parse(saRaw));
+          const r = await dmChatUser(token, p.email, n.title, n.body, appUrl);
+          results.chat_dm = r;
+          if (r === "sent") updates.chat_dm_at = new Date().toISOString();
+        } catch (e) { results.chat_dm = "failed: " + (e as Error).message; }
+      } else {
+        results.chat_dm = "chat app not configured";
+      }
+    } else if (chatDmOn && quiet) {
+      results.chat_dm = "skipped: quiet hours";
     }
 
     // Google Chat (team space). Instance-level, not per-user: one shared feed.
