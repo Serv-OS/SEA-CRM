@@ -176,19 +176,12 @@ export default function LeadBoard({ profile, onNavigate, prefill, onPrefillConsu
     e.preventDefault();
     if (!newName.trim()) return;
 
-    let companyId = selectedCompany?.id || null;
     let locationId = selectedLocation?.id || null;
     let contactId = selectedContact?.id || null;
 
-    // Create new company if typed but not selected
-    if (!companyId && companySearch.trim()) {
-      const { data } = await supabase.from('companies').insert({ name: companySearch.trim(), owner_id: profile.id }).select().single();
-      if (data) companyId = data.id;
-    }
-
-    // Create new location if typed but not selected
-    if (!locationId && locationSearch.trim() && companyId) {
-      const { data } = await supabase.from('locations').insert({ name: locationSearch.trim(), company_id: companyId, venue_type: newVenueType || null, owner_id: profile.id }).select().single();
+    // Create new location (property/site) if typed but not selected
+    if (!locationId && locationSearch.trim()) {
+      const { data } = await supabase.from('locations').insert({ name: locationSearch.trim(), owner_id: profile.id }).select().single();
       if (data) locationId = data.id;
     }
 
@@ -198,45 +191,29 @@ export default function LeadBoard({ profile, onNavigate, prefill, onPrefillConsu
         first_name: newContactFirst.trim() || null, last_name: newContactLast.trim() || null,
         email: newContactEmail.trim() || null, phone: newContactPhone.trim() || null, owner_id: profile.id,
       }).select().single();
-      if (data) {
-        contactId = data.id;
-        // Link to company
-        if (companyId) {
-          await supabase.from('associations').insert({ from_type: 'contact', from_id: contactId, to_type: 'company', to_id: companyId, label: 'primary_contact' });
-        }
-      }
+      if (data) contactId = data.id;
     }
 
-    // Auto-derive company from location if not set
-    if (!companyId && locationId) {
-      const loc = locations.find(l => l.id === locationId);
-      if (loc?.company_id) companyId = loc.company_id;
-    }
-
-    // A lead needs a company, a location AND a contact
-    const missing = [!companyId && 'a company', !locationId && 'a location', !contactId && 'a contact'].filter(Boolean);
+    // A lead needs a location AND a contact
+    const missing = [!locationId && 'a location', !contactId && 'a contact'].filter(Boolean);
     if (missing.length) {
-      alert(`A lead needs ${missing.join(', ')}. Please add ${missing.length > 1 ? 'them' : 'it'} before creating the lead.`);
+      alert(`A lead needs ${missing.join(' and ')}. Please add ${missing.length > 1 ? 'them' : 'it'} before creating the lead.`);
       return;
     }
 
-    // Link contact to company/location if not already
-    if (contactId && companyId) {
+    // Link the contact to the location (property) if not already
+    if (contactId && locationId) {
       const { data: ex } = await supabase.from('associations').select('id')
-        .eq('from_type', 'contact').eq('from_id', contactId).eq('to_type', 'company').eq('to_id', companyId).limit(1);
-      if (!ex?.length) await supabase.from('associations').insert({ from_type: 'contact', from_id: contactId, to_type: 'company', to_id: companyId, label: 'primary_contact' });
+        .or(`and(from_type.eq.contact,from_id.eq.${contactId},to_type.eq.location,to_id.eq.${locationId}),and(from_type.eq.location,from_id.eq.${locationId},to_type.eq.contact,to_id.eq.${contactId})`).limit(1);
+      if (!ex?.length) await supabase.from('associations').insert({ from_type: 'contact', from_id: contactId, to_type: 'location', to_id: locationId, label: 'primary_contact' });
     }
 
     const { data: newLead } = await supabase.from('leads').insert({
       name: newName.trim(),
       source: newSource,
       priority: newPriority,
-      company_id: companyId,
       location_id: locationId,
       contact_id: contactId,
-      venue_type: newVenueType || null,
-      covers: newCovers ? parseInt(newCovers) : null,
-      current_pos: newCurrentPos.trim() || null,
       notes: newNotes.trim() || null,
       owner_id: profile.id,
     }).select('id').single();
@@ -292,28 +269,8 @@ export default function LeadBoard({ profile, onNavigate, prefill, onPrefillConsu
                 <option value="hot">Hot</option><option value="warm">Warm</option><option value="medium">Medium</option><option value="cold">Cold</option></select></div>
             </div>
 
-            {/* Search-and-link: Company */}
-            <div className="grid grid-cols-3 gap-3">
-              <div className="relative">
-                <label className={label}>Company (search or create)</label>
-                <input className={input} value={selectedCompany ? selectedCompany.name : companySearch}
-                  onChange={e => { setCompanySearch(e.target.value); setSelectedCompany(null); }}
-                  placeholder="Type to search..." />
-                {companyResults.length > 0 && !selectedCompany && (
-                  <div className="absolute z-10 top-full left-0 right-0 mt-1 bg-white border border-bdr rounded-xl shadow-lg max-h-32 overflow-y-auto">
-                    {companyResults.map(c => (
-                      <button key={c.id} type="button" onClick={() => { setSelectedCompany(c); setCompanySearch(c.name); }}
-                        className="w-full px-3 py-2 text-left text-sm hover:bg-slate-50 flex items-center gap-2">
-                        <span className="text-paper">{c.name}</span>
-                        {c.domain && <span className="text-dim text-xs">{c.domain}</span>}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                {selectedCompany && <div className="text-[10px] text-emerald-600 mt-0.5">Linked to existing company</div>}
-                {companySearch && !selectedCompany && companyResults.length === 0 && companySearch.length >= 2 && <div className="text-[10px] text-ember mt-0.5">Will create new company</div>}
-              </div>
-
+            {/* Search-and-link: Location + Contact */}
+            <div className="grid grid-cols-2 gap-3">
               {/* Search-and-link: Location */}
               <div className="relative">
                 <label className={label}>Location (search or create)</label>
@@ -322,19 +279,17 @@ export default function LeadBoard({ profile, onNavigate, prefill, onPrefillConsu
                   placeholder="Type to search..." />
                 {locationResults.length > 0 && !selectedLocation && (
                   <div className="absolute z-10 top-full left-0 right-0 mt-1 bg-white border border-bdr rounded-xl shadow-lg max-h-32 overflow-y-auto">
-                    {locationResults.map(l => {
-                      const co = companies.find(c => c.id === l.company_id);
-                      return (
-                        <button key={l.id} type="button" onClick={() => { setSelectedLocation(l); setLocationSearch(l.name); if (co && !selectedCompany) { setSelectedCompany(co); setCompanySearch(co.name); } }}
-                          className="w-full px-3 py-2 text-left text-sm hover:bg-slate-50">
-                          <span className="text-paper">{l.name}</span>
-                          {co && <span className="text-dim text-xs ml-2">({co.name})</span>}
-                        </button>
-                      );
-                    })}
+                    {locationResults.map(l => (
+                      <button key={l.id} type="button" onClick={() => { setSelectedLocation(l); setLocationSearch(l.name); }}
+                        className="w-full px-3 py-2 text-left text-sm hover:bg-slate-50">
+                        <span className="text-paper">{l.name}</span>
+                        {l.city && <span className="text-dim text-xs ml-2">({l.city})</span>}
+                      </button>
+                    ))}
                   </div>
                 )}
                 {selectedLocation && <div className="text-[10px] text-emerald-600 mt-0.5">Linked to existing location</div>}
+                {locationSearch && !selectedLocation && locationResults.length === 0 && locationSearch.length >= 2 && <div className="text-[10px] text-ember mt-0.5">Will create new location</div>}
               </div>
 
               {/* Search-and-link: Contact */}
@@ -368,13 +323,6 @@ export default function LeadBoard({ profile, onNavigate, prefill, onPrefillConsu
               </div>
             )}
 
-            {/* Hospitality qualification */}
-            <div className="grid grid-cols-3 gap-3">
-              <div><label className={label}>Venue type</label><select className={input} value={newVenueType} onChange={e => setNewVenueType(e.target.value)}>
-                <option value="">Select...</option>{VENUE_TYPES.map(v => <option key={v} value={v}>{v.replace(/_/g, ' ')}</option>)}</select></div>
-              <div><label className={label}>Covers / day</label><input className={input} type="number" value={newCovers} onChange={e => setNewCovers(e.target.value)} placeholder="Daily covers" /></div>
-              <div><label className={label}>Current POS</label><input className={input} value={newCurrentPos} onChange={e => setNewCurrentPos(e.target.value)} placeholder="e.g. Square, Lightspeed" /></div>
-            </div>
             <div><label className={label}>Notes</label><textarea className={input + ' resize-none'} rows={2} value={newNotes} onChange={e => setNewNotes(e.target.value)} placeholder="Pain points, context..." /></div>
 
             <div className="flex gap-2">
