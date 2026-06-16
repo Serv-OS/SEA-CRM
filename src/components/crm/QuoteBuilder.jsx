@@ -249,6 +249,17 @@ export default function QuoteBuilder({ quoteId, profile, onClose, onNavigate }) 
     load();
   };
 
+  // Delete the quote. Cascades remove its line items, estimate and payment
+  // schedule; any invoices already raised are kept (their quote link is cleared).
+  const deleteQuote = async () => {
+    const { count } = await supabase.from('invoices').select('id', { count: 'exact', head: true }).eq('quote_id', quoteId);
+    const warn = count ? `\n\n${count} invoice(s) were raised from this quote — they will be kept but unlinked.` : '';
+    if (!confirm(`Delete Quote #${quote.quote_number}? This removes the estimate, line items and payment schedule.${warn}\n\nThis cannot be undone.`)) return;
+    const { error } = await supabase.from('quotes').delete().eq('id', quoteId);
+    if (error) { alert('Could not delete: ' + error.message); return; }
+    onClose();
+  };
+
   const publicUrl = quote ? `${window.location.origin}/q/${quote.public_token}` : '';
   const copyLink = () => { navigator.clipboard.writeText(publicUrl); alert('Quote link copied'); };
 
@@ -278,6 +289,7 @@ export default function QuoteBuilder({ quoteId, profile, onClose, onNavigate }) 
             {saved && <span className="text-sm text-emerald-600 font-medium">✓ Saved</span>}
             <button onClick={save} disabled={saving} className="btn-glass px-5 py-2 rounded-xl text-sm font-semibold disabled:opacity-50">{saving ? 'Saving…' : 'Save'}</button>
             {quote.status !== 'won' && <button onClick={markWon} className="px-4 py-2 text-sm font-semibold rounded-xl bg-emerald-100 text-emerald-700 border border-emerald-200 hover:bg-emerald-200">Mark Won</button>}
+            {profile.role === 'owner' && <button onClick={deleteQuote} title="Delete quote" className="px-3 py-2 text-sm font-semibold rounded-xl text-red-600 border border-red-200 hover:bg-red-50">Delete</button>}
           </div>
         )}
       </div>

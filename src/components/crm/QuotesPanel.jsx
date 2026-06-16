@@ -44,6 +44,14 @@ export default function QuotesPanel({ profile, onNavigate }) {
   }, []);
   useEffect(() => { load(); }, [load]);
 
+  const deleteQuote = async (e, q) => {
+    e.stopPropagation();
+    if (!confirm(`Delete Quote #${q.quote_number}? This removes its estimate, line items and payment schedule. Any invoices raised from it are kept (unlinked). This cannot be undone.`)) return;
+    const { error } = await supabase.from('quotes').delete().eq('id', q.id);
+    if (error) { alert('Could not delete: ' + error.message); return; }
+    load();
+  };
+
   const createQuote = async () => {
     const { data, error } = await supabase.from('quotes').insert({
       status: 'draft', created_by: profile.id,
@@ -166,7 +174,10 @@ export default function QuotesPanel({ profile, onNavigate }) {
                       <td className="px-4 py-3 text-right tabular-nums text-paper">{money(q.one_off_total)}</td>
                       <td className="px-4 py-3 text-right tabular-nums text-muted hidden lg:table-cell">{Number(q.recurring_arr) ? money(q.recurring_arr) : '—'}</td>
                       <td className="px-4 py-3">
-                        <span className={`px-2 py-0.5 text-[10px] font-bold uppercase rounded ${QUOTE_BADGE[st] || 'bg-slate-100 text-slate-500'}`}>{st}</span>
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2 py-0.5 text-[10px] font-bold uppercase rounded ${QUOTE_BADGE[st] || 'bg-slate-100 text-slate-500'}`}>{st}</span>
+                          {profile.role === 'owner' && <button onClick={e => deleteQuote(e, q)} title="Delete quote" className="ml-auto text-dim hover:text-red-600 text-sm leading-none px-1">×</button>}
+                        </div>
                       </td>
                     </tr>
                   );
