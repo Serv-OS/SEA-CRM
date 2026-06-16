@@ -126,7 +126,7 @@ export default function DealDetail({ dealId, profile, onClose, onNavigate }) {
   if (!deal) return <div className="h-full flex items-center justify-center text-dim text-sm">Loading...</div>;
 
   const ownerName = (id) => { const m = members.find(u => u.id === id); return m ? (m.display_name || m.email.split('@')[0]) : 'Unassigned'; };
-  const fmt = (v) => v ? `\u{00A3}${Number(v).toLocaleString('en-US', { minimumFractionDigits: 2 })}` : '';
+  const fmt = (v) => v ? `$${Number(v).toLocaleString('en-US', { minimumFractionDigits: 2 })}` : '';
   const companyLocations = deal.company_id ? locations.filter(l => l.company_id === deal.company_id) : [];
 
   const input = "w-full px-3 py-2 bg-card border border-bdr rounded-xl text-sm text-paper placeholder-dim focus:outline-none focus:border-ember";

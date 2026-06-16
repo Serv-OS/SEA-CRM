@@ -75,7 +75,7 @@ export default function DealBoard({ profile, onSelectDeal, onNavigate }) {
     }
     return null;
   };
-  const fmt = (v) => v ? `\u{00A3}${Number(v).toLocaleString('en-US', { minimumFractionDigits: 0 })}` : '';
+  const fmt = (v) => v ? `$${Number(v).toLocaleString('en-US', { minimumFractionDigits: 0 })}` : '';
 
   const moveDeal = async (dealId, fromStage, toStage) => {
     if (fromStage === toStage) return;
