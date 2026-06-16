@@ -22,7 +22,7 @@ echo "==> Applying migrations"
 npx supabase db push
 
 # App functions: gateway-verified JWT (default). Safe to deploy normally.
-JWT_FUNCS=(gmail-personal gmail-send google-calendar google-chat ai-draft stripe-connect twilio-voice-token twilio-send-sms roster-sms invoice-send)
+JWT_FUNCS=(gmail-personal gmail-send google-calendar google-chat ai-draft stripe-connect charge-stage twilio-voice-token twilio-send-sms roster-sms invoice-send)
 
 # Public / webhook functions: called by browsers or external services with NO
 # Supabase JWT — must be deployed with --no-verify-jwt or they reject callers.

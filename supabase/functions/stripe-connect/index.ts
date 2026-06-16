@@ -62,10 +62,18 @@ serve(async (req) => {
     }
 
     const webhookUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/stripe-webhook`;
+    // checkout.session.completed = deposits/online payments; payment_intent.*
+    // = staff-triggered off-session stage charges. All three are required.
+    const whBody = new URLSearchParams();
+    whBody.set("url", webhookUrl);
+    whBody.append("enabled_events[]", "checkout.session.completed");
+    whBody.append("enabled_events[]", "payment_intent.succeeded");
+    whBody.append("enabled_events[]", "payment_intent.payment_failed");
+    whBody.set("description", "ServOS CRM quotes & staged charges");
     const whRes = await fetch("https://api.stripe.com/v1/webhook_endpoints", {
       method: "POST",
       headers: { Authorization: `Bearer ${secret_key}`, "Content-Type": "application/x-www-form-urlencoded" },
-      body: form({ url: webhookUrl, "enabled_events[]": "checkout.session.completed", description: "ServOS CRM quotes" }),
+      body: whBody.toString(),
     });
     const wh = await whRes.json();
     if (!whRes.ok) return json({ error: wh.error?.message || "Could not register the Stripe webhook." }, 400);

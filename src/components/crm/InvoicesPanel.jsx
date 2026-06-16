@@ -32,7 +32,7 @@ export default function InvoicesPanel({ profile, onNavigate }) {
   const load = useCallback(async () => {
     setLoading(true);
     const [i, r, c, l, ct, pr] = await Promise.all([
-      supabase.from('invoices').select('*, company:companies(name), location:locations(name)').order('created_at', { ascending: false }),
+      supabase.from('invoices').select('*, company:companies(name), location:locations(name), stage:payment_stages(name, is_deposit)').order('created_at', { ascending: false }),
       supabase.from('recurring_invoices').select('*, company:companies(name), location:locations(name)').order('created_at', { ascending: false }),
       supabase.from('companies').select('id, name').order('name'),
       supabase.from('locations').select('id, name, company_id').order('name'),
@@ -119,7 +119,7 @@ export default function InvoicesPanel({ profile, onNavigate }) {
                         className="px-5 py-3 flex items-center gap-4 hover:bg-card/50 cursor-pointer">
                         <div className="font-mono text-xs text-dim w-20 shrink-0">INV-{inv.invoice_number}</div>
                         <div className="flex-1 min-w-0">
-                          <div className="text-sm text-paper font-medium truncate">{custName(inv)}</div>
+                          <div className="text-sm text-paper font-medium truncate">{custName(inv)}{inv.stage && <span className="ml-2 text-[10px] font-semibold text-blue-700">· {inv.stage.is_deposit ? 'Deposit' : inv.stage.name}</span>}</div>
                           {inv.recurring_id && <div className="text-[10px] text-uv flex items-center gap-1"><Repeat size={10} /> recurring</div>}
                         </div>
                         <div className="text-xs text-muted shrink-0 w-24 text-right">Due {fmtD(inv.due_date)}</div>

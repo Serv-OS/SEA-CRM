@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
-import { ArrowLeft, Send, Link2, Trash2, Plus, Check, Ban, Repeat } from 'lucide-react';
+import { ArrowLeft, Send, Link2, Trash2, Plus, Check, Ban, Repeat, CreditCard } from 'lucide-react';
 import { money, invStatus, INV_BADGE } from './InvoicesPanel.jsx';
 
 const FN = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
@@ -16,6 +16,9 @@ export default function InvoiceBuilder({ invoiceId, profile, onClose, onNavigate
   const [globalTerms, setGlobalTerms] = useState('');
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
+  const [charging, setCharging] = useState(false);
+  const [stage, setStage] = useState(null);
+  const [cardOnFile, setCardOnFile] = useState(false);
   const [flash, setFlash] = useState('');
   const canWrite = profile.role === 'owner' || profile.role === 'editor';
 
@@ -38,6 +41,11 @@ export default function InvoiceBuilder({ invoiceId, profile, onClose, onNavigate
     (sk.data || []).forEach(r => { counts[r.product_id] = (counts[r.product_id] || 0) + 1; });
     setStockCounts(counts);
     setGlobalTerms(st.data?.invoice_terms || '');
+    // Staged billing: this invoice's stage + whether a card is on file for the job
+    if (i.data?.stage_id) supabase.from('payment_stages').select('name, status, is_deposit').eq('id', i.data.stage_id).maybeSingle().then(r => setStage(r.data));
+    else setStage(null);
+    if (i.data?.quote_id) supabase.from('quotes').select('stripe_payment_method_id').eq('id', i.data.quote_id).maybeSingle().then(r => setCardOnFile(!!r.data?.stripe_payment_method_id));
+    else setCardOnFile(false);
   }, [invoiceId]);
   useEffect(() => { load(); }, [load]);
 
@@ -114,6 +122,34 @@ export default function InvoiceBuilder({ invoiceId, profile, onClose, onNavigate
     await save({ status: 'paid', paid_at: new Date().toISOString(), amount_paid: total });
     notify('Marked paid');
   };
+  // Charge the card captured at contract signing (off-session). The webhook
+  // finalises the invoice → paid, so we only kick it off here.
+  const chargeCard = async () => {
+    // Stage invoices are charged at their FROZEN schedule amount server-side, so we
+    // don't save (and can't change) their lines here. Other invoices save first.
+    const chargeAmount = stage ? Number(inv.total) : total;
+    if (!confirm(`Charge ${money(chargeAmount)} to the card on file for INV-${inv.invoice_number}?`)) return;
+    if (!stage && !(await save())) return;
+    setCharging(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${FN}/charge-stage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+        body: JSON.stringify({ invoice_id: invoiceId }),
+      });
+      const d = await res.json();
+      if (!res.ok) {
+        if (d.code === 'no_card' || d.code === 'authentication_required') {
+          if (confirm(`${d.error}\n\nCopy the customer payment link to send instead?`)) copyLink();
+        } else alert('Charge failed: ' + (d.error || 'Unknown error'));
+        setCharging(false); return;
+      }
+      notify(d.status === 'succeeded' ? 'Card charged ✓' : `Charge ${d.status}…`);
+      load();
+    } catch (e) { alert('Charge failed: ' + e.message); }
+    setCharging(false);
+  };
   const voidInvoice = async () => {
     if (!confirm('Void this invoice? The public link will stop working.')) return;
     await save({ status: 'void' });
@@ -135,6 +171,7 @@ export default function InvoiceBuilder({ invoiceId, profile, onClose, onNavigate
         <button onClick={onClose} className="text-muted hover:text-paper"><ArrowLeft size={18} /></button>
         <div className="text-xl font-bold text-paper">INV-{inv.invoice_number}</div>
         <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-lg ${INV_BADGE[st]}`}>{st}</span>
+        {stage && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-lg bg-blue-500/10 text-blue-700 border border-blue-500/20">{stage.is_deposit ? 'Deposit' : 'Stage'}: {stage.name}</span>}
         {inv.recurring_id && <span className="text-[10px] text-uv flex items-center gap-1"><Repeat size={11} /> from recurring schedule</span>}
         {flash && <span className="text-xs text-emerald-600 font-semibold">✓ {flash}</span>}
         {canWrite && (
@@ -142,6 +179,7 @@ export default function InvoiceBuilder({ invoiceId, profile, onClose, onNavigate
             {!locked && <button onClick={() => save().then(ok => ok && notify('Saved'))} disabled={saving} className="btn-ghost px-4 py-2 rounded-xl text-sm disabled:opacity-50">{saving ? 'Saving…' : 'Save'}</button>}
             <button onClick={copyLink} className="btn-ghost px-3 py-2 rounded-xl text-sm flex items-center gap-1.5"><Link2 size={14} /> Copy link</button>
             {!locked && <button onClick={sendInvoice} disabled={sending} className="btn-glass px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-1.5 disabled:opacity-50"><Send size={14} /> {sending ? 'Sending…' : inv.sent_at ? 'Resend' : 'Send'}</button>}
+            {!locked && <button onClick={chargeCard} disabled={charging} title={cardOnFile ? 'Charge the card captured at signing' : 'No card on file — falls back to a payment link'} className="px-3 py-2 rounded-xl text-sm font-semibold bg-blue-500/15 text-blue-700 border border-blue-500/30 flex items-center gap-1.5 disabled:opacity-50"><CreditCard size={14} /> {charging ? 'Charging…' : 'Charge card'}</button>}
             {!locked && <button onClick={markPaid} className="px-3 py-2 rounded-xl text-sm font-semibold bg-emerald-500/15 text-emerald-700 border border-emerald-500/30 flex items-center gap-1.5"><Check size={14} /> Mark paid</button>}
             {!locked && <button onClick={voidInvoice} title="Void" className="btn-ghost px-3 py-2 rounded-xl text-sm flex items-center gap-1.5 text-muted"><Ban size={14} /></button>}
             {profile.role === 'owner' && <button onClick={del} title="Delete" className="px-3 py-2 text-red-600 border border-red-200 rounded-xl hover:bg-red-50"><Trash2 size={14} /></button>}

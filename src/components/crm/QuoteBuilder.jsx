@@ -34,6 +34,7 @@ export default function QuoteBuilder({ quoteId, profile, onClose, onNavigate }) 
   const [markup, setMarkup] = useState('');
   const [qty, setQty] = useState({}); // { [productId]: value }
   const [customItems, setCustomItems] = useState([]); // [{ key, name, unit, cost, installRate, qty }]
+  const [stages, setStages] = useState([]); // payment schedule: [{ key, id?, name, basis, value, is_deposit, status?, invoice? }]
 
   const canWrite = profile.role === 'owner' || profile.role === 'editor';
 
@@ -68,6 +69,16 @@ export default function QuoteBuilder({ quoteId, profile, onClose, onNavigate }) 
     setMarkup(inp.markup != null ? String(inp.markup) : (est?.markup ? String(est.markup) : String(engineCfg.markupDefault)));
     setQty(inp.qty || {});
     setCustomItems((inp.customItems || []).map((c, i) => ({ key: `c${i}`, name: c.name || '', unit: c.unit || '', cost: c.cost ?? '', installRate: c.installRate ?? '', qty: c.qty ?? '' })));
+
+    // Payment schedule (staged billing) + each stage's invoice/charge status
+    const { data: st } = await supabase.from('payment_stages').select('*').eq('quote_id', quoteId).order('sort');
+    const { data: invs } = await supabase.from('invoices').select('id, invoice_number, status, total, public_token, stage_id').eq('quote_id', quoteId);
+    setStages((st || []).map((s, i) => ({
+      key: s.id, id: s.id, name: s.name, basis: s.basis,
+      value: s.basis === 'percent' ? String(s.percent ?? '') : String(s.amount ?? ''),
+      is_deposit: s.is_deposit, status: s.status,
+      invoice: (invs || []).find(iv => iv.stage_id === s.id) || null,
+    })));
   };
 
   const setQ = (k, v) => setQuote(prev => ({ ...prev, [k]: v }));
@@ -85,6 +96,24 @@ export default function QuoteBuilder({ quoteId, profile, onClose, onNavigate }) 
   const addCustom = () => setCustomItems([...customItems, { key: `c${Date.now()}`, name: '', unit: '', cost: '', installRate: '', qty: '' }]);
   const updateCustom = (key, patch) => setCustomItems(customItems.map(c => c.key === key ? { ...c, ...patch } : c));
   const removeCustom = (key) => setCustomItems(customItems.filter(c => c.key !== key));
+
+  // ── Payment schedule (staged billing) ──
+  const stageAmount = (s) => s.basis === 'percent' ? customerTotal * (Number(s.value) || 0) / 100 : (Number(s.value) || 0);
+  const stagesTotal = stages.reduce((a, s) => a + stageAmount(s), 0);
+  const stagesRemainder = customerTotal - stagesTotal;
+  const stagesReconciled = stages.length > 0 && Math.abs(stagesRemainder) < 0.01;
+  const stagesLocked = stages.some(s => s.status && s.status !== 'pending'); // a stage already invoiced/charged → don't let edits desync money
+  const addStage = (preset) => setStages([...stages, {
+    key: `s${Date.now()}`, name: preset?.name || (stages.length === 0 ? 'Deposit' : `Stage ${stages.length + 1}`),
+    basis: preset?.basis || 'percent', value: preset?.value ?? '', is_deposit: stages.length === 0, status: 'pending', invoice: null,
+  }]);
+  const seedSchedule = () => setStages([
+    { key: `s${Date.now()}`, name: 'Deposit', basis: 'percent', value: '40', is_deposit: true, status: 'pending', invoice: null },
+    { key: `s${Date.now() + 1}`, name: 'Mid-project', basis: 'percent', value: '30', is_deposit: false, status: 'pending', invoice: null },
+    { key: `s${Date.now() + 2}`, name: 'On completion', basis: 'percent', value: '30', is_deposit: false, status: 'pending', invoice: null },
+  ]);
+  const updateStage = (key, patch) => setStages(stages.map(s => s.key === key ? { ...s, ...patch } : s));
+  const removeStage = (key) => setStages(stages.filter(s => s.key !== key).map((s, i) => ({ ...s, is_deposit: i === 0 })));
 
   // Build the customer-facing line items (no costs — price = cost × markup, sums exactly to sale price)
   const buildCustomerLines = (res) => {
@@ -128,6 +157,12 @@ export default function QuoteBuilder({ quoteId, profile, onClose, onNavigate }) 
 
   const save = async () => {
     if (!result) return;
+    // Staged quotes must be fully configured before they can be saved (and thus
+    // sent/signed) — no under/over-collection, and never an empty schedule.
+    if (quote.payment_terms === 'staged' && !stagesLocked) {
+      if (!stages.length) { alert('Add a payment schedule (a deposit + milestones), or change the payment terms.'); return; }
+      if (!stagesReconciled) { alert(`The payment stages must total the customer price of ${money(customerTotal)} before saving.`); return; }
+    }
     setSaving(true); setSaved(false);
     const now = new Date().toISOString();
 
@@ -160,6 +195,37 @@ export default function QuoteBuilder({ quoteId, profile, onClose, onNavigate }) 
       total_cost: result.totalCost, sale_price: result.salePrice, profit: result.profit, margin: result.margin,
       breakdown: buildEstimateRecord(result, cfg), updated_at: now,
     });
+
+    // 4) Payment schedule (staged billing). Locked once any stage is invoiced/charged
+    // so edits can never desync money already in flight. Re-check the lock against
+    // FRESH DB state to avoid wiping a schedule signed in another tab/session.
+    if (!stagesLocked) {
+      const { data: freshStages } = await supabase.from('payment_stages').select('status').eq('quote_id', quoteId);
+      const freshLocked = (freshStages || []).some(s => s.status && s.status !== 'pending');
+      if (!freshLocked) {
+        await supabase.from('payment_stages').delete().eq('quote_id', quoteId);
+        if (quote.payment_terms === 'staged' && stages.length) {
+          // Integer-cent allocation: percent stages round to cents, the LAST stage
+          // absorbs the remainder so the stages always sum to the customer total exactly.
+          const totalCents = Math.round(customerTotal * 100);
+          let allocated = 0;
+          const rows = stages.map((s, i) => {
+            let cents;
+            if (i === stages.length - 1) cents = totalCents - allocated;
+            else {
+              cents = s.basis === 'percent' ? Math.round(totalCents * (Number(s.value) || 0) / 100) : Math.round((Number(s.value) || 0) * 100);
+              allocated += cents;
+            }
+            return {
+              quote_id: quoteId, name: s.name || `Stage ${i + 1}`, sort: i, basis: s.basis,
+              percent: s.basis === 'percent' ? (Number(s.value) || 0) : 0,
+              amount: cents / 100, is_deposit: i === 0, status: 'pending',
+            };
+          });
+          await supabase.from('payment_stages').insert(rows);
+        }
+      }
+    }
 
     setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 2500);
     load();
@@ -307,6 +373,60 @@ export default function QuoteBuilder({ quoteId, profile, onClose, onNavigate }) 
               <textarea className={input + ' resize-none'} rows={2} value={quote.terms || ''} onChange={e => setQ('terms', e.target.value)} placeholder="Terms & conditions shown on the quote" disabled={!canWrite} />
               <textarea className={input + ' resize-none'} rows={2} value={quote.notes || ''} onChange={e => setQ('notes', e.target.value)} placeholder="Internal notes (not shown to customer)" disabled={!canWrite} />
             </div>
+
+            {/* Payment schedule (staged billing) */}
+            {quote.payment_terms === 'staged' && (
+              <div className="glass-card rounded-2xl overflow-hidden">
+                <div className="px-4 py-3 border-b border-bdr flex items-center gap-2">
+                  <h3 className="text-sm font-bold text-paper">Payment schedule</h3>
+                  <span className="text-[10px] text-dim">Deposit + milestones — charged manually as the build progresses</span>
+                  {canWrite && !stagesLocked && stages.length > 0 && <button onClick={() => addStage()} className="ml-auto text-xs text-ember hover:text-ember-deep font-medium">+ Add stage</button>}
+                </div>
+                {stages.length === 0 ? (
+                  <div className="p-5 text-center">
+                    <div className="text-xs text-dim mb-2">No stages yet — split the {money(customerTotal)} into a deposit + milestones.</div>
+                    {canWrite && <div className="flex gap-2 justify-center"><button onClick={seedSchedule} className="text-xs btn-glass px-3 py-1.5 rounded-lg font-medium">Deposit + 2 stages (40 / 30 / 30)</button><button onClick={() => addStage()} className="text-xs btn-ghost px-3 py-1.5 rounded-lg">+ Add one stage</button></div>}
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead><tr className="text-[10px] uppercase tracking-wider text-dim border-b border-bdr">
+                        <th className="text-left px-3 py-2">Stage</th><th className="px-2 py-2 w-16">Basis</th>
+                        <th className="text-right px-2 py-2 w-20">Value</th><th className="text-right px-3 py-2">Amount</th>
+                        <th className="px-2 py-2 w-24">Status</th><th className="w-8"></th>
+                      </tr></thead>
+                      <tbody>
+                        {stages.map((s, i) => (
+                          <tr key={s.key} className="border-b border-bdr/50 align-top">
+                            <td className="px-3 py-2">
+                              <input className={cell + ' w-full'} value={s.name} onChange={e => updateStage(s.key, { name: e.target.value })} disabled={!canWrite || stagesLocked} placeholder="Stage name" />
+                              {i === 0 && <span className="block text-[9px] text-ember font-bold uppercase mt-0.5">Deposit · charged at signing</span>}
+                            </td>
+                            <td className="px-2 py-2"><select className={cell + ' w-14'} value={s.basis} onChange={e => updateStage(s.key, { basis: e.target.value })} disabled={!canWrite || stagesLocked}><option value="percent">%</option><option value="fixed">$</option></select></td>
+                            <td className="px-2 py-2 text-right"><input type="number" className={cell + ' w-16 text-right'} value={s.value} onChange={e => updateStage(s.key, { value: e.target.value })} disabled={!canWrite || stagesLocked} placeholder="0" /></td>
+                            <td className="px-3 py-2 text-right font-mono text-paper">{money(stageAmount(s))}</td>
+                            <td className="px-2 py-2">
+                              {s.status && s.status !== 'pending'
+                                ? <span className={`text-[10px] font-bold uppercase ${s.status === 'paid' ? 'text-emerald-600' : s.status === 'failed' ? 'text-red-600' : 'text-blue-600'}`}>{s.status}</span>
+                                : <span className="text-[10px] text-dim">pending</span>}
+                              {s.invoice && <span className="block text-[9px] text-dim">INV-{s.invoice.invoice_number}</span>}
+                            </td>
+                            <td className="px-2 py-2 text-center">{canWrite && !stagesLocked && <button onClick={() => removeStage(s.key)} className="text-red-500 hover:text-red-600">×</button>}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                {stages.length > 0 && (
+                  <div className={`px-4 py-3 border-t border-bdr flex items-center justify-between text-xs ${stagesReconciled ? 'text-emerald-600' : 'text-amber-600'}`}>
+                    <span>{stagesReconciled ? '✓ Stages total the customer price' : (stagesRemainder >= 0 ? `${money(stagesRemainder)} still unallocated` : `${money(-stagesRemainder)} over the total`)}</span>
+                    <span className="font-mono">{money(stagesTotal)} / {money(customerTotal)}</span>
+                  </div>
+                )}
+                {stagesLocked && <div className="px-4 py-2 text-[10px] text-dim border-t border-bdr">Schedule locked — a stage has been invoiced or charged, so amounts can't change.</div>}
+              </div>
+            )}
           </div>
 
           {/* Right: internal breakdown + customer total + settings */}
@@ -355,9 +475,10 @@ export default function QuoteBuilder({ quoteId, profile, onClose, onNavigate }) 
                   </select></div>
                 <div><label className={label}>Valid until</label><input type="date" className={input} value={quote.valid_until || ''} onChange={e => setQ('valid_until', e.target.value)} disabled={!canWrite} /></div>
                 <div><label className={label}>Install date</label><input type="date" className={input} value={quote.go_live_date || ''} onChange={e => setQ('go_live_date', e.target.value)} disabled={!canWrite} /></div>
-                <div><label className={label}>Payment terms</label><select className={input} value={quote.payment_terms} onChange={e => setQ('payment_terms', e.target.value)} disabled={!canWrite}>
-                  <option value="pay_now">Charge full now</option><option value="deposit">Deposit</option><option value="invoice_later">Invoice later</option></select></div>
-                {quote.payment_terms === 'deposit' && <div><label className={label}>Deposit %</label><input type="number" className={input} value={quote.deposit_percent || 0} onChange={e => setQ('deposit_percent', e.target.value)} disabled={!canWrite} /></div>}
+                <div className="col-span-2"><label className={label}>Payment terms</label><select className={input} value={quote.payment_terms} onChange={e => setQ('payment_terms', e.target.value)} disabled={!canWrite}>
+                  <option value="pay_now">Charge full now</option><option value="deposit">Deposit</option><option value="staged">Staged (deposit + milestones)</option><option value="invoice_later">Invoice later</option></select>
+                  {quote.payment_terms === 'staged' && <div className="text-[10px] text-dim mt-1">Define the stages in the Payment schedule panel on the left.</div>}</div>
+                {quote.payment_terms === 'deposit' && <div className="col-span-2"><label className={label}>Deposit %</label><input type="number" className={input} value={quote.deposit_percent || 0} onChange={e => setQ('deposit_percent', e.target.value)} disabled={!canWrite} /></div>}
               </div>
             </div>
 
