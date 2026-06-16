@@ -8,7 +8,7 @@ import ScheduleMeeting from './ScheduleMeeting.jsx';
 import LeadBadge from './LeadBadge.jsx';
 import { LEAD_STAGES, LEAD_STAGE_MAP } from '../../lib/leadStages';
 
-const STAGE_FLOW = ['new_lead', 'attempting', 'mql', 'sql'];
+const STAGE_FLOW = ['new_lead', 'attempting', 'contacted', 'qualified'];
 const SOURCE_OPTIONS = ['website', 'referral', 'cold_outreach', 'event', 'trade_show', 'social', 'inbound_call', 'inbound_email', 'pos_review_site', 'partner', 'other'];
 const VENUE_TYPES = ['restaurant', 'bar', 'cafe', 'fast_casual', 'qsr', 'hotel_fb', 'nightclub', 'food_hall', 'catering', 'other'];
 
@@ -64,6 +64,8 @@ export default function LeadDetail({ leadId, profile, onClose, onNavigate }) {
 
   const changeStage = async (s) => {
     if (s === lead.stage) return;
+    // Reaching "Qualified" creates the deal for this lead.
+    if (s === 'qualified') { await qualifyLead(); return; }
     await supabase.from('leads').update({ stage: s }).eq('id', leadId);
     await supabase.from('stage_history').insert({ object_type: 'lead', object_id: leadId, from_stage: lead.stage, to_stage: s, changed_by: profile.id });
     load();
@@ -84,8 +86,14 @@ export default function LeadDetail({ leadId, profile, onClose, onNavigate }) {
   };
   const set = (k, v) => setDraft({ ...draft, [k]: v });
 
-  const convertToDeal = async () => {
-    if (!confirm('Convert this lead into a deal?')) return;
+  // Qualifying a lead creates its deal (once) and moves the lead to Qualified.
+  const qualifyLead = async () => {
+    if (lead.deal_id) {
+      await supabase.from('leads').update({ stage: 'qualified' }).eq('id', leadId);
+      await supabase.from('stage_history').insert({ object_type: 'lead', object_id: leadId, from_stage: lead.stage, to_stage: 'qualified', changed_by: profile.id });
+      onNavigate?.('deal', lead.deal_id);
+      return;
+    }
     const { data: deal } = await supabase.from('deals').insert({
       name: `Deal: ${lead.name}`, company_id: lead.company_id, owner_id: lead.owner_id || profile.id, source: lead.source,
     }).select().single();
@@ -93,7 +101,8 @@ export default function LeadDetail({ leadId, profile, onClose, onNavigate }) {
       await supabase.from('stage_history').insert({ object_type: 'deal', object_id: deal.id, from_stage: null, to_stage: 'new_lead', changed_by: profile.id });
       if (lead.contact_id) await supabase.from('associations').insert({ from_type: 'deal', from_id: deal.id, to_type: 'contact', to_id: lead.contact_id, label: 'primary_contact' });
       if (lead.location_id) await supabase.from('associations').insert({ from_type: 'deal', from_id: deal.id, to_type: 'location', to_id: lead.location_id, label: 'affected_location' });
-      await supabase.from('leads').update({ stage: 'deal', deal_id: deal.id }).eq('id', leadId);
+      await supabase.from('leads').update({ stage: 'qualified', deal_id: deal.id }).eq('id', leadId);
+      await supabase.from('stage_history').insert({ object_type: 'lead', object_id: leadId, from_stage: lead.stage, to_stage: 'qualified', changed_by: profile.id });
       onNavigate?.('deal', deal.id);
     }
   };
@@ -146,7 +155,7 @@ export default function LeadDetail({ leadId, profile, onClose, onNavigate }) {
       </div>
 
       {/* Stage bar */}
-      {canWrite && lead.stage !== 'deal' && lead.stage !== 'disqualified' && (
+      {canWrite && lead.stage !== 'disqualified' && (
         <div className="px-6 py-2 border-b border-bdr flex gap-0.5 overflow-x-auto items-center">
           {STAGE_FLOW.map((s, i) => {
             const active = lead.stage === s;
@@ -159,7 +168,6 @@ export default function LeadDetail({ leadId, profile, onClose, onNavigate }) {
             );
           })}
           <div className="ml-auto flex gap-2">
-            <button onClick={convertToDeal} className="px-3 py-1.5 text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg hover:bg-emerald-200">Convert to Deal</button>
             <button onClick={disqualify} className="px-3 py-1.5 text-[10px] font-bold text-red-600 border border-red-200 rounded-lg hover:bg-red-50">Disqualify</button>
           </div>
         </div>

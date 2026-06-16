@@ -33,7 +33,7 @@ export default function MyWork({ profile, onNavigate }) {
     setTickets((t.data || []).filter(x => TICKET_OPEN(x.stage)));
     setTasks((tk.data || []).filter(x => x.status !== 'done'));
     setDeals((d.data || []).filter(x => DEAL_OPEN(x.stage)));
-    setLeads((l.data || []).filter(x => !['deal', 'disqualified'].includes(x.stage)));
+    setLeads((l.data || []).filter(x => !['qualified', 'disqualified'].includes(x.stage)));
     setLoading(false);
   };
 

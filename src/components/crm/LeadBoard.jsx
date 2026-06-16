@@ -2,15 +2,14 @@ import { useEffect, useState, useMemo, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 
 const STAGES = [
-  { key: 'new_lead',      label: 'New Lead',          color: '#3b82f6' },
-  { key: 'attempting',     label: 'Attempting',         color: '#6366f1' },
-  { key: 'mql',           label: 'Marketing Qualified', color: '#8b5cf6' },
-  { key: 'sql',           label: 'Sales Qualified',    color: '#E8743C' },
-  { key: 'deal',          label: 'Deal',               color: '#10b981' },
+  { key: 'new_lead',      label: 'New',                color: '#3b82f6' },
+  { key: 'attempting',    label: 'Attempting',         color: '#6366f1' },
+  { key: 'contacted',     label: 'Contacted/Engaged',  color: '#8b5cf6' },
+  { key: 'qualified',     label: 'Qualified',          color: '#10b981' },
   { key: 'disqualified',  label: 'Disqualified',       color: '#ef4444' },
 ];
 
-const STAGE_LABELS = { new_lead: 'New Lead', attempting: 'Attempting', mql: 'MQL', sql: 'SQL', deal: 'Deal', disqualified: 'Disqualified' };
+const STAGE_LABELS = { new_lead: 'New', attempting: 'Attempting', contacted: 'Contacted/Engaged', qualified: 'Qualified', disqualified: 'Disqualified' };
 
 const PRIORITY_STYLES = {
   hot: 'bg-red-100 text-red-700 border border-red-200',
@@ -130,12 +129,21 @@ export default function LeadBoard({ profile, onNavigate, prefill, onPrefillConsu
   }, [contactSearch, contacts]);
 
   const moveStage = async (leadId, toStage) => {
+    // Moving a lead to "Qualified" creates its deal.
+    if (toStage === 'qualified') { const lead = leads.find(l => l.id === leadId); if (lead) await qualifyLead(lead); return; }
     await supabase.from('leads').update({ stage: toStage }).eq('id', leadId);
     await supabase.from('stage_history').insert({ object_type: 'lead', object_id: leadId, from_stage: leads.find(l => l.id === leadId)?.stage, to_stage: toStage, changed_by: profile.id });
     load();
   };
 
-  const convertToDeal = async (lead) => {
+  // Qualifying a lead creates its deal (once) and moves the lead to Qualified.
+  const qualifyLead = async (lead) => {
+    if (lead.deal_id) {
+      await supabase.from('leads').update({ stage: 'qualified' }).eq('id', lead.id);
+      await supabase.from('stage_history').insert({ object_type: 'lead', object_id: lead.id, from_stage: lead.stage, to_stage: 'qualified', changed_by: profile.id });
+      onNavigate?.('deal', lead.deal_id);
+      return;
+    }
     const { data: deal } = await supabase.from('deals').insert({
       name: `Deal: ${lead.name}`,
       company_id: lead.company_id,
@@ -151,7 +159,8 @@ export default function LeadBoard({ profile, onNavigate, prefill, onPrefillConsu
       if (lead.location_id) {
         await supabase.from('associations').insert({ from_type: 'deal', from_id: deal.id, to_type: 'location', to_id: lead.location_id, label: 'affected_location' });
       }
-      await supabase.from('leads').update({ stage: 'deal', deal_id: deal.id }).eq('id', lead.id);
+      await supabase.from('leads').update({ stage: 'qualified', deal_id: deal.id }).eq('id', lead.id);
+      await supabase.from('stage_history').insert({ object_type: 'lead', object_id: lead.id, from_stage: lead.stage, to_stage: 'qualified', changed_by: profile.id });
       onNavigate?.('deal', deal.id);
     }
   };
@@ -257,7 +266,7 @@ export default function LeadBoard({ profile, onNavigate, prefill, onPrefillConsu
         <div>
           <div className="text-lg font-bold text-paper">Leads</div>
           <div className="text-[10px] text-dim font-mono uppercase tracking-[0.18em]">
-            {leads.length} active / {byStage.new_lead?.length || 0} new / {byStage.sql?.length || 0} qualified
+            {leads.length} active / {byStage.new_lead?.length || 0} new / {byStage.qualified?.length || 0} qualified
           </div>
         </div>
         <div className="flex gap-2">
@@ -406,9 +415,9 @@ export default function LeadBoard({ profile, onNavigate, prefill, onPrefillConsu
 
                       <div className="flex items-center gap-1 mt-2">
                         {lead.source && <span className="px-1 py-0.5 text-[8px] bg-slate-100 text-slate-600 rounded">{lead.source.replace(/_/g, ' ')}</span>}
-                        {stage.key === 'sql' && canWrite && (
-                          <button onClick={(e) => { e.stopPropagation(); convertToDeal(lead); }}
-                            className="ml-auto px-2 py-0.5 text-[9px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg hover:bg-emerald-200">Deal</button>
+                        {stage.key === 'contacted' && canWrite && (
+                          <button onClick={(e) => { e.stopPropagation(); qualifyLead(lead); }}
+                            className="ml-auto px-2 py-0.5 text-[9px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg hover:bg-emerald-200">Qualify</button>
                         )}
                         {canWrite && (
                           <button onClick={(e) => { e.stopPropagation(); disqualify(lead); }}
@@ -456,8 +465,8 @@ export default function LeadBoard({ profile, onNavigate, prefill, onPrefillConsu
                   <td className="px-3 py-3 text-xs text-muted">{lead.venue_type?.replace(/_/g, ' ')}</td>
                   <td className="px-3 py-3 text-xs text-muted">{ownerName(lead.owner_id)}</td>
                   <td className="px-3 py-3 text-right">
-                    {lead.stage === 'sql' && canWrite && (
-                      <button onClick={(e) => { e.stopPropagation(); convertToDeal(lead); }} className="px-2 py-1 text-[10px] font-bold bg-emerald-100 text-emerald-700 rounded-lg">Convert</button>
+                    {!['qualified', 'disqualified'].includes(lead.stage) && canWrite && (
+                      <button onClick={(e) => { e.stopPropagation(); qualifyLead(lead); }} className="px-2 py-1 text-[10px] font-bold bg-emerald-100 text-emerald-700 rounded-lg">Qualify</button>
                     )}
                   </td>
                 </tr>
