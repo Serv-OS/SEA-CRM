@@ -2,6 +2,11 @@
 -- card-on-file (Stripe Customer + saved payment method), off-session charging,
 -- webhook idempotency, and a charge audit log.
 
+-- Allow the new 'staged' payment term (deposit + milestones).
+ALTER TABLE public.quotes DROP CONSTRAINT IF EXISTS quotes_payment_terms_check;
+ALTER TABLE public.quotes ADD CONSTRAINT quotes_payment_terms_check
+  CHECK (payment_terms = ANY (ARRAY['pay_now','deposit','staged','invoice_later']));
+
 -- Payment schedule: a deposit + N named milestone stages on a quote.
 CREATE TABLE IF NOT EXISTS public.payment_stages (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

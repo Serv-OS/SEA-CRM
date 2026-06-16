@@ -16,11 +16,16 @@ async function ensureInvoiceForStage(supabase: any, q: any, stage: any, idx: num
 
   const today = new Date().toISOString().slice(0, 10);
   const due = new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10);
+  // The stage amount is the GROSS the customer pays; split out tax at the quote rate
+  // so each stage invoice itemises net + tax correctly (tax is 0 for psc-crm today).
   const amount = Number(stage.amount) || 0;
+  const rate = Number(q.tax_rate) || 0;
+  const taxAmount = rate > 0 ? amount - amount / (1 + rate / 100) : 0;
+  const subtotal = amount - taxAmount;
   const { data: inv, error } = await supabase.from("invoices").insert({
     quote_id: q.id, company_id: q.company_id, location_id: q.location_id, contact_id: q.contact_id,
     stage_id: stage.id, status: "sent", issue_date: today, due_date: due,
-    subtotal: amount, tax_amount: 0, total: amount,
+    subtotal, tax_amount: taxAmount, total: amount, tax_rate: rate,
     notes: `Stage ${idx + 1} of ${count} — ${stage.name} (from signed quote Q-${q.quote_number}).`,
     created_by: q.created_by,
   }).select().single();
@@ -28,7 +33,7 @@ async function ensureInvoiceForStage(supabase: any, q: any, stage: any, idx: num
 
   await supabase.from("invoice_line_items").insert({
     invoice_id: inv.id, name: `${stage.name} — stage ${idx + 1} of ${count}`,
-    description: `Quote Q-${q.quote_number}`, qty: 1, unit_price: amount, tax_rate: 0, sort: 0,
+    description: `Quote Q-${q.quote_number}`, qty: 1, unit_price: subtotal, tax_rate: rate, sort: 0,
   });
   await supabase.from("payment_stages").update({ status: "invoiced" }).eq("id", stage.id).eq("status", "pending");
   return inv;

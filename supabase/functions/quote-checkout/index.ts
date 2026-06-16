@@ -27,6 +27,17 @@ async function resolveCustomer(stripe: any, supabase: any, quote: any): Promise<
     await supabase.from("quotes").update({ stripe_customer_id: contact.stripe_customer_id }).eq("id", quote.id);
     return contact.stripe_customer_id;
   }
+  // Reuse an existing Stripe Customer with this email before creating a new one
+  // (avoids duplicate Customers for repeat clients / contacts created elsewhere).
+  if (contact?.email) {
+    const existing = await stripe.customers.list({ email: contact.email, limit: 1 });
+    if (existing.data[0]) {
+      const id = existing.data[0].id;
+      if (contact.id) await supabase.from("contacts").update({ stripe_customer_id: id }).eq("id", contact.id);
+      await supabase.from("quotes").update({ stripe_customer_id: id }).eq("id", quote.id);
+      return id;
+    }
+  }
   const cust = await stripe.customers.create({
     email: contact?.email || undefined,
     name: [contact?.first_name, contact?.last_name].filter(Boolean).join(" ") || undefined,

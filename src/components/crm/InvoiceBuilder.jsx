@@ -53,6 +53,9 @@ export default function InvoiceBuilder({ invoiceId, profile, onClose, onNavigate
 
   const st = invStatus(inv);
   const locked = ['paid', 'void'].includes(inv.status);
+  // Stage invoices are generated from the quote's payment schedule — their line
+  // items (and thus the amount charged) are fixed; only the rest stays editable.
+  const lineLocked = locked || !!inv.stage_id;
   const set = (k, v) => setInv(p => ({ ...p, [k]: v }));
   const setLine = (i, k, v) => setLines(p => p.map((l, j) => j === i ? { ...l, [k]: v } : l));
   const locs = locations.filter(l => !inv.company_id || l.company_id === inv.company_id);
@@ -208,7 +211,8 @@ export default function InvoiceBuilder({ invoiceId, profile, onClose, onNavigate
           <div className="glass-card rounded-2xl p-5 space-y-2">
             <div className="flex items-center gap-3">
               <span className={label + ' !mb-0'}>Line items</span>
-              {!locked && (
+              {inv.stage_id && <span className="text-[10px] text-blue-700">Set by the payment schedule — not editable here</span>}
+              {!lineLocked && (
                 <div className="ml-auto flex items-center gap-3">
                   {products.length > 0 ? (
                     <select className={input + ' !w-60 !py-1.5 text-xs'} value=""
@@ -226,7 +230,7 @@ export default function InvoiceBuilder({ invoiceId, profile, onClose, onNavigate
                       </option>)}
                     </select>
                   ) : (
-                    <span className="text-[11px] text-dim italic">No products in the catalogue yet — add them under Inventory → Products</span>
+                    <span className="text-[11px] text-dim italic">Add line items with “Blank line”.</span>
                   )}
                   <button onClick={() => setLines(p => [...p, { _new: true, name: '', description: '', qty: 1, unit_price: 0, tax_rate: 0 }])}
                     className="text-xs text-ember hover:text-ember-deep font-medium flex items-center gap-1"><Plus size={13} /> Blank line</button>
@@ -237,17 +241,17 @@ export default function InvoiceBuilder({ invoiceId, profile, onClose, onNavigate
             {lines.map((l, i) => (
               <div key={l.id || `n${i}`} className="glass-inner rounded-xl p-3 space-y-2">
                 <div className="flex items-center gap-2">
-                  <input className={cell + ' flex-1'} disabled={locked} value={l.name} onChange={e => setLine(i, 'name', e.target.value)} placeholder="Item name — e.g. Card terminal" />
-                  {!locked && <button onClick={() => setLines(p => p.filter((_, j) => j !== i))} title="Remove line" className="text-red-500 hover:text-red-600 text-sm shrink-0">&times;</button>}
+                  <input className={cell + ' flex-1'} disabled={lineLocked} value={l.name} onChange={e => setLine(i, 'name', e.target.value)} placeholder="Item name — e.g. Card terminal" />
+                  {!lineLocked && <button onClick={() => setLines(p => p.filter((_, j) => j !== i))} title="Remove line" className="text-red-500 hover:text-red-600 text-sm shrink-0">&times;</button>}
                 </div>
-                <input className={cell + ' w-full text-xs'} disabled={locked} value={l.description || ''} onChange={e => setLine(i, 'description', e.target.value)} placeholder="Description (shown on the invoice)" />
+                <input className={cell + ' w-full text-xs'} disabled={lineLocked} value={l.description || ''} onChange={e => setLine(i, 'description', e.target.value)} placeholder="Description (shown on the invoice)" />
                 <div className="grid grid-cols-3 gap-2">
                   <div><span className="text-[9px] text-dim block">Qty</span>
-                    <input type="number" className={cell + ' w-full'} disabled={locked} value={l.qty} onChange={e => setLine(i, 'qty', e.target.value)} placeholder="1" /></div>
+                    <input type="number" className={cell + ' w-full'} disabled={lineLocked} value={l.qty} onChange={e => setLine(i, 'qty', e.target.value)} placeholder="1" /></div>
                   <div><span className="text-[9px] text-dim block">Unit $ (ex tax)</span>
-                    <input type="number" className={cell + ' w-full'} disabled={locked} value={l.unit_price} onChange={e => setLine(i, 'unit_price', e.target.value)} placeholder="0.00" /></div>
+                    <input type="number" className={cell + ' w-full'} disabled={lineLocked} value={l.unit_price} onChange={e => setLine(i, 'unit_price', e.target.value)} placeholder="0.00" /></div>
                   <div><span className="text-[9px] text-dim block">Sales Tax %</span>
-                    <input type="number" className={cell + ' w-full'} disabled={locked} value={l.tax_rate ?? 0} onChange={e => setLine(i, 'tax_rate', e.target.value)} placeholder="0" /></div>
+                    <input type="number" className={cell + ' w-full'} disabled={lineLocked} value={l.tax_rate ?? 0} onChange={e => setLine(i, 'tax_rate', e.target.value)} placeholder="0" /></div>
                 </div>
                 <div className="text-right text-xs text-muted">
                   Net: <span className="text-paper font-mono font-semibold">{money((Number(l.qty) || 0) * (Number(l.unit_price) || 0))}</span>
