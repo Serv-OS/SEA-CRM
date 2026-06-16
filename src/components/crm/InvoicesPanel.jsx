@@ -286,7 +286,7 @@ function ScheduleModal({ schedule, companies, locations, contacts, products = []
               </div>
             ))}
             <div className="flex justify-end gap-4 text-sm pt-1">
-              <span className="text-muted">VAT <input className={input + ' !w-16 !py-1 inline-block text-right ml-1'} value={f.tax_rate} onChange={e => set('tax_rate', e.target.value)} />%</span>
+              <span className="text-muted">Sales Tax <input className={input + ' !w-16 !py-1 inline-block text-right ml-1'} value={f.tax_rate} onChange={e => set('tax_rate', e.target.value)} />%</span>
               <span className="font-bold text-paper tabular-nums">Total {money(total)}</span>
             </div>
           </div>

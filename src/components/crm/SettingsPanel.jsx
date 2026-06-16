@@ -399,7 +399,7 @@ export default function SettingsPanel({ profile }) {
                   value={settings.quote_terms || ''}
                   onChange={e => setSettings(s => ({ ...s, quote_terms: e.target.value }))}
                   onBlur={e => saveSettings({ quote_terms: e.target.value })}
-                  placeholder="e.g. Prices exclude VAT unless stated. Hardware remains the property of ServOS until paid in full. 30-day payment terms…" />
+                  placeholder="e.g. Prices exclude sales tax where applicable. Payment terms as per contract…" />
                 {!isOwner && <div className="text-[11px] text-dim mt-1">Only owners can edit these.</div>}
               </div>
             </div>

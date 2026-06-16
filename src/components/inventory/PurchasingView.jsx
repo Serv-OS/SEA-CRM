@@ -219,7 +219,7 @@ function POModal({ products, suppliers, profile, onClose, onSaved }) {
             <input className={input} list="po-suppliers" value={supplierName} onChange={e => setSupplierName(e.target.value)} />
             <datalist id="po-suppliers">{suppliers.map(s => <option key={s.id} value={s.name} />)}</datalist></div>
           <div><label className={label}>Expected by</label><input type="date" className={input} value={expectedBy} onChange={e => setExpectedBy(e.target.value)} /></div>
-          <div><label className={label}>Tax ref</label><input className={input} value={taxRef} onChange={e => setTaxRef(e.target.value)} placeholder="VAT invoice #" /></div>
+          <div><label className={label}>Tax ref</label><input className={input} value={taxRef} onChange={e => setTaxRef(e.target.value)} placeholder="Tax invoice #" /></div>
         </div>
         {rows.map((r, i) => (
           <div key={i} className="grid grid-cols-[1fr_90px_110px_32px] gap-2 items-end">
