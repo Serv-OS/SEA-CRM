@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import AssociationManager from './AssociationManager.jsx';
+import { PROPERTY_TYPES, propertyTypeLabel } from '../../lib/propertyTypes';
 import ActivityTimeline from './ActivityTimeline.jsx';
 import CallButton from '../CallButton.jsx';
 import LeadBadge from './LeadBadge.jsx';
@@ -112,10 +113,12 @@ export default function LocationDetail({ locationId, profile, onClose, onNavigat
             {primaryLead(leads) && <LeadBadge stage={primaryLead(leads).stage} full />}
           </div>
           <div className="flex items-center gap-3 flex-wrap">
-            <span className="badge-company" onClick={() => onNavigate?.('company', location.company_id)}>
-              {'\u{1F3E2}'} {company?.name || 'Unknown company'}
-            </span>
-            {location.venue_type && <span className="text-xs text-muted">{location.venue_type}</span>}
+            {location.company_id && (
+              <span className="badge-company" onClick={() => onNavigate?.('company', location.company_id)}>
+                {'\u{1F3E2}'} {company?.name || 'Unknown company'}
+              </span>
+            )}
+            {location.venue_type && <span className="text-xs text-muted">{propertyTypeLabel(location.venue_type)}</span>}
             {location.covers && <span className="text-xs text-muted">{location.covers} covers</span>}
           </div>
         </div>
@@ -142,7 +145,11 @@ export default function LocationDetail({ locationId, profile, onClose, onNavigat
                 <div><label className={label}>Name</label><input className={input} value={draft.name || ''} onChange={e => set('name', e.target.value)} /></div>
                 <div><label className={label}>Status</label><select className={input} value={draft.status} onChange={e => set('status', e.target.value)}>
                   {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}</select></div>
-                <div><label className={label}>Venue type</label><input className={input} value={draft.venue_type || ''} onChange={e => set('venue_type', e.target.value)} placeholder="restaurant, bar, cafe..." /></div>
+                <div><label className={label}>Property type</label>
+                  <select className={input} value={draft.venue_type || ''} onChange={e => set('venue_type', e.target.value)}>
+                    <option value="">Select…</option>
+                    {PROPERTY_TYPES.map(([v, lbl]) => <option key={v} value={v}>{lbl}</option>)}
+                  </select></div>
                 <div><label className={label}>Covers</label><input className={input} type="number" value={draft.covers || ''} onChange={e => set('covers', e.target.value ? parseInt(e.target.value) : null)} /></div>
                 <div><label className={label}>Address</label><input className={input} value={draft.address || ''} onChange={e => set('address', e.target.value)} /></div>
                 <div><label className={label}>City</label><input className={input} value={draft.city || ''} onChange={e => set('city', e.target.value)} /></div>
@@ -174,7 +181,7 @@ export default function LocationDetail({ locationId, profile, onClose, onNavigat
                   <Field label="Address" value={[location.address, location.city, location.postcode].filter(Boolean).join(', ')} />
                   <Field label="Phone" value={location.phone} />
                   <Field label="Email" value={location.email} />
-                  <Field label="Venue Type" value={location.venue_type} />
+                  <Field label="Property Type" value={propertyTypeLabel(location.venue_type)} />
                   <Field label="Covers" value={location.covers} />
                   <Field label="Status" value={location.status} badge={STATUS_COLORS[location.status]} />
                   <Field label="Owner" value={ownerName(location.owner_id)} />

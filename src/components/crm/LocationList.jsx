@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
 import LeadBadge from './LeadBadge.jsx';
 import { primaryLead, LEAD_STAGES } from '../../lib/leadStages';
+import { PROPERTY_TYPES, propertyTypeLabel } from '../../lib/propertyTypes';
 import { ListContainer, RecordCard, CardHead, Chip, ChipRow } from './cardKit.jsx';
 
 const STATUS_COLORS = {
@@ -133,10 +134,10 @@ export default function LocationList({ profile, onSelect, onNavigate }) {
                     <div><label className={label}>City</label><input className={input} value={nl.city} onChange={e => setL('city', e.target.value)} /></div>
                     <div><label className={label}>Postcode</label><input className={input} value={nl.postcode} onChange={e => setL('postcode', e.target.value)} /></div>
                   </div>
-                  <div><label className={label}>Venue type</label>
+                  <div><label className={label}>Property type</label>
                     <select className={input} value={nl.venue_type} onChange={e => setL('venue_type', e.target.value)}>
                       <option value="">Select…</option>
-                      {['restaurant','bar','cafe','fast_casual','qsr','hotel_fb','nightclub','food_hall','catering','other'].map(v => <option key={v} value={v}>{v.replace(/_/g,' ')}</option>)}
+                      {PROPERTY_TYPES.map(([v, lbl]) => <option key={v} value={v}>{lbl}</option>)}
                     </select></div>
                   <div><label className={label}>Status</label>
                     <select className={input} value={nl.status} onChange={e => setL('status', e.target.value)}>
@@ -193,7 +194,7 @@ export default function LocationList({ profile, onSelect, onNavigate }) {
               <ChipRow>
                 <Chip tone="slate" icon={'\u{1F464}'}>{contactNames(l.id)}</Chip>
                 <Chip icon={'\u{1F4CD}'}>{l.city}</Chip>
-                <Chip>{l.venue_type}</Chip>
+                <Chip>{propertyTypeLabel(l.venue_type)}</Chip>
               </ChipRow>
             </RecordCard>
           );
