@@ -31,7 +31,7 @@ export default function AssociationManager({ subjectType, subjectId, targetType,
 
     // Load available targets and roles
     const [t, r] = await Promise.all([
-      supabase.from(targetType === 'contact' ? 'contacts' : targetType === 'company' ? 'companies' : 'locations')
+      supabase.from(targetType === 'contact' ? 'contacts' : targetType === 'company' ? 'companies' : targetType === 'deal' ? 'deals' : 'locations')
         .select('*').order(targetType === 'contact' ? 'last_name' : 'name').limit(200),
       supabase.from('association_roles').select('*').order('sort'),
     ]);
@@ -70,6 +70,7 @@ export default function AssociationManager({ subjectType, subjectId, targetType,
     if (!t) return '';
     if (targetType === 'contact') return t.email || t.phone || '';
     if (targetType === 'location') return t.city || '';
+    if (targetType === 'deal') return t.stage ? t.stage.replace(/_/g, ' ') : '';
     return t.domain || '';
   };
 
@@ -88,7 +89,7 @@ export default function AssociationManager({ subjectType, subjectId, targetType,
   const label = "text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-dim";
   const input = "w-full px-3 py-2 bg-card border border-bdr rounded text-sm text-paper focus:outline-none focus:border-ember";
 
-  const typeLabel = targetType === 'contact' ? 'Contacts' : targetType === 'company' ? 'Companies' : 'Locations';
+  const typeLabel = targetType === 'contact' ? 'Contacts' : targetType === 'company' ? 'Companies' : targetType === 'deal' ? 'Deals' : 'Locations';
 
   return (
     <div>

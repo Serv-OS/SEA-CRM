@@ -145,9 +145,13 @@ export default function ContactDetail({ contactId, profile, onClose, onNavigate,
               </Card>
             </div>
 
-            {/* RIGHT: Leads + Locations */}
+            {/* RIGHT: Leads + Deals + Locations */}
             <div className="col-span-4 space-y-4">
               <LeadsCard leads={leads} />
+
+              <Card title="Deals">
+                <AssociationManager subjectType="contact" subjectId={contactId} targetType="deal" profile={profile} onNavigate={onNavigate} />
+              </Card>
 
               <InvoicesCard contactId={contactId} profile={profile} onNavigate={onNavigate} />
 
