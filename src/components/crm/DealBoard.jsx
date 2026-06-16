@@ -249,7 +249,7 @@ export default function DealBoard({ profile, onSelectDeal, onNavigate }) {
                           <div className="text-base font-bold text-paper leading-tight">{d.name}</div>
                           {d.expected_close_date && (
                             <div className="text-right shrink-0">
-                              <div className="text-[9px] font-mono font-bold uppercase tracking-wider text-dim">Expected Close Date</div>
+                              <div className="text-[9px] font-mono font-bold uppercase tracking-wider text-dim">Install Date</div>
                               <div className="text-sm text-paper font-mono">{new Date(d.expected_close_date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}</div>
                             </div>
                           )}

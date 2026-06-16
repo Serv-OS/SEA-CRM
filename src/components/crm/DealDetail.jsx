@@ -182,7 +182,7 @@ export default function DealDetail({ dealId, profile, onClose, onNavigate }) {
                 <div><label className={label}>Stage</label><select className={input} value={draft.stage} onChange={e => set('stage', e.target.value)}>
                   {STAGES.map(s => <option key={s} value={s}>{STAGE_LABELS[s]}</option>)}</select></div>
                 <div><label className={label}>Source</label><input className={input} value={draft.source || ''} onChange={e => set('source', e.target.value)} /></div>
-                <div><label className={label}>Expected close</label><input className={input} type="date" value={draft.expected_close_date || ''} onChange={e => set('expected_close_date', e.target.value || null)} /></div>
+                <div><label className={label}>Install date</label><input className={input} type="date" value={draft.expected_close_date || ''} onChange={e => set('expected_close_date', e.target.value || null)} /></div>
                 <div><label className={label}>Owner</label><select className={input} value={draft.owner_id || ''} onChange={e => set('owner_id', e.target.value || null)}>
                   <option value="">Unassigned</option>{members.map(m => <option key={m.id} value={m.id}>{m.display_name || m.email}</option>)}</select></div>
               </div>
@@ -214,7 +214,7 @@ export default function DealDetail({ dealId, profile, onClose, onNavigate }) {
                 <div className="space-y-3">
                   <Field label="Stage" value={STAGE_LABELS[deal.stage]} />
                   <Field label="Source" value={deal.source} />
-                  <Field label="Expected close" value={deal.expected_close_date ? new Date(deal.expected_close_date).toLocaleDateString('en-GB') : null} />
+                  <Field label="Install date" value={deal.expected_close_date ? new Date(deal.expected_close_date).toLocaleDateString('en-GB') : null} />
                   <Field label="Owner" value={ownerName(deal.owner_id)} />
                   <Field label="Created" value={new Date(deal.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' })} />
                   {deal.lost_reason && <Field label="Lost reason" value={deal.lost_reason} />}
