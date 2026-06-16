@@ -6,7 +6,7 @@ import {
   Ticket, ClipboardList, FileText, LayoutGrid, Sparkles, Flag, BarChart3,
   Bug, Star, List, Layout, Layers, Package, ChevronRight, Plus, Mail, Calendar, MessageSquare, Clock, Plane, CreditCard, Receipt, TrendingUp,
   Warehouse, Boxes, PackagePlus, PackageMinus, ShoppingCart, ClipboardCheck, Truck, Factory,
-  Settings as SettingsIcon, Users as UsersIcon, FileSignature, PhoneCall
+  Settings as SettingsIcon, Users as UsersIcon, FileSignature, PhoneCall, Globe
 } from 'lucide-react';
 
 // Collapsible groups (App Build is dynamic; My Work + My Account are pinned)
@@ -18,6 +18,9 @@ const COLLAPSIBLE = [
   ] },
   { id: 'pricing', label: 'Pricing', items: [
     ['pricing', 'Line-item prices', Box],
+  ] },
+  { id: 'website', label: 'Website', items: [
+    ['website', 'Website', Globe],
   ] },
   { id: 'delivery', label: 'Delivery', items: [
     ['onboarding', 'Onboarding', Rocket], ['projects', 'Projects', Folder], ['tasks', 'Tasks', CheckSquare],
@@ -45,7 +48,7 @@ const ACTIVE_MAP = {
   release_detail: 'releases', invoice_detail: 'invoices', quote_detail: 'quotes',
 };
 
-const DEFAULT_GROUPS = { appbuild: false, sales: true, pricing: true, delivery: false, support: false, product: false, workforce: false, insights: false };
+const DEFAULT_GROUPS = { appbuild: false, sales: true, pricing: true, website: true, delivery: false, support: false, product: false, workforce: false, insights: false };
 
 export default function Sidebar({ profile, projects, activeProject, setActiveProject, view, setView, onSignOut, onRefresh, theme }) {
   const [logos, setLogos] = useState({ light: null, dark: null });

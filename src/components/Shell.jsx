@@ -11,6 +11,7 @@ import QuotesPanel from './crm/QuotesPanel.jsx';
 import CallLogPanel from './crm/CallLogPanel.jsx';
 import SalesPerformance from './crm/SalesPerformance.jsx';
 import PricingCatalogue from './crm/PricingCatalogue.jsx';
+import WebsitePanel from './crm/WebsitePanel.jsx';
 import InvoiceBuilder from './crm/InvoiceBuilder.jsx';
 import ScheduleView from './staffing/ScheduleView.jsx';
 import TimeOffView from './staffing/TimeOffView.jsx';
@@ -196,6 +197,8 @@ export default function Shell({ session }) {
         return <SalesPerformance profile={profile} onNavigate={navigateTo} />;
       case 'pricing':
         return <PricingCatalogue profile={profile} />;
+      case 'website':
+        return <WebsitePanel />;
       case 'data':
         return <DataPanel profile={profile} />;
       case 'quote_detail':
