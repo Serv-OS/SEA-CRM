@@ -174,64 +174,17 @@ export default function LocationDetail({ locationId, profile, onClose, onNavigat
         ) : (
           <div className="grid grid-cols-12 gap-4 max-w-[1400px]">
 
-            {/* LEFT: Key Info + Modules */}
+            {/* LEFT: Key Info */}
             <div className="col-span-4 space-y-4">
               <Card title="Key Info">
                 <div className="space-y-3">
                   <Field label="Address" value={[location.address, location.city, location.postcode].filter(Boolean).join(', ')} />
-                  <Field label="Phone" value={location.phone} />
-                  <Field label="Email" value={location.email} />
                   <Field label="Property Type" value={propertyTypeLabel(location.venue_type)} />
-                  <Field label="Covers" value={location.covers} />
                   <Field label="Status" value={location.status} badge={STATUS_COLORS[location.status]} />
                   <Field label="Owner" value={ownerName(location.owner_id)} />
                   {location.notes && <Field label="Notes" value={location.notes} />}
                 </div>
               </Card>
-
-              <Card title="Key Dates">
-                <div className="space-y-3">
-                  <Field label="Onboarding call" value={location.kickoff_at ? new Date(location.kickoff_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : null} />
-                  <Field label="Expected install" value={location.expected_install_date ? new Date(location.expected_install_date).toLocaleDateString('en-GB') : null} />
-                  <Field label="Actual install" value={location.actual_install_date ? new Date(location.actual_install_date).toLocaleDateString('en-GB') : null} />
-                  <Field label="Go-live" value={location.go_live_date ? new Date(location.go_live_date).toLocaleDateString('en-GB') : null} />
-                  <Field label="Activation" value={location.activation_date ? new Date(location.activation_date).toLocaleDateString('en-GB') : null} />
-                </div>
-              </Card>
-
-              <Card title="Company">
-                <div onClick={() => onNavigate?.('company', location.company_id)}
-                  className="p-3 glass-inner rounded-xl cursor-pointer flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-ember/20 border border-ember/30 flex items-center justify-center text-lg shrink-0">{'\u{1F3E2}'}</div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-base font-semibold text-paper">{company?.name || 'Unknown'}</div>
-                    <div className="text-xs text-muted">Parent company</div>
-                  </div>
-                  <span className="text-xs text-ember">&rarr;</span>
-                </div>
-              </Card>
-
-              <Card title="Modules" count={locationModules.length}>
-                {locationModules.length > 0 ? (
-                  <div className="space-y-1.5">
-                    {locationModules.map(lm => {
-                      const mod = modules.find(m => m.id === lm.module_id);
-                      return (
-                        <div key={lm.id} className="flex items-center justify-between py-1.5 px-3 bg-ink-soft border border-bdr rounded-lg">
-                          <span className="text-sm text-paper">{mod?.name || 'Unknown'}</span>
-                          <span className={`px-2 py-0.5 text-[10px] font-bold uppercase rounded ${MODULE_STATUS[lm.status] || ''}`}>{lm.status}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : <Empty>No modules enabled</Empty>}
-              </Card>
-
-              <ProcessingRatesCard locationId={locationId} companyId={location.company_id} onNavigate={onNavigate} />
-
-              <HardwareCard locationId={locationId} profile={profile} alwaysShow />
-
-              <InvoicesCard locationId={locationId} profile={profile} onNavigate={onNavigate} />
             </div>
 
             {/* MIDDLE: Activity + Contacts */}
@@ -264,6 +217,8 @@ export default function LocationDetail({ locationId, profile, onClose, onNavigat
                   </div>
                 ) : <Empty>No deals</Empty>}
               </Card>
+
+              <InvoicesCard locationId={locationId} profile={profile} onNavigate={onNavigate} />
 
               <Card title="Onboardings" count={onboardings.length}>
                 {onboardings.length > 0 ? (
