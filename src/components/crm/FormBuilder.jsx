@@ -266,7 +266,7 @@ export default function FormBuilder({ formId, profile, onClose, onNavigate }) {
                   {subs.map(s => (
                     <div key={s.id} className="glass-inner rounded-xl p-3">
                       <div className="flex items-center justify-between mb-1">
-                        <div className="text-[10px] text-dim font-mono">{new Date(s.created_at).toLocaleString('en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}</div>
+                        <div className="text-[10px] text-dim font-mono">{new Date(s.created_at).toLocaleString('en-US', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}</div>
                         {s.source_tag && <span className="text-[9px] px-1.5 py-0.5 bg-slate-100 text-slate-600 rounded">{s.source_tag}</span>}
                       </div>
                       <div className="text-xs text-paper space-y-0.5">

@@ -94,8 +94,8 @@ export default function TimeOffView({ profile }) {
                       </div>
                     </div>
                     <div className="text-xs text-muted mb-2">
-                      {new Date(r.start_date + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
-                      {r.end_date !== r.start_date && ` – ${new Date(r.end_date + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`}
+                      {new Date(r.start_date + 'T00:00:00').toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}
+                      {r.end_date !== r.start_date && ` – ${new Date(r.end_date + 'T00:00:00').toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}`}
                       {r.note && <span className="block text-dim mt-0.5">"{r.note}"</span>}
                     </div>
                     {canWrite && (

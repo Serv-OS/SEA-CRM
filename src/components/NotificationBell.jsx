@@ -17,7 +17,7 @@ function timeAgo(ts) {
   if (h < 24) return `${h}h ago`;
   const d = Math.floor(h / 24);
   if (d < 7) return `${d}d ago`;
-  return new Date(ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  return new Date(ts).toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
 }
 
 export default function NotificationBell({ profile, onNavigate }) {

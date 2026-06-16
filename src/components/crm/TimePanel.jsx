@@ -194,7 +194,7 @@ export default function TimePanel({ profile, onNavigate }) {
                           {sName}{e.company?.name ? ` · ${e.company.name}` : ''}{e.subject_type ? ` · ${SUBJECT_LABEL[e.subject_type] || e.subject_type}` : ''}
                         </div>
                       </div>
-                      <div className="text-xs text-dim shrink-0">{new Date(e.started_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</div>
+                      <div className="text-xs text-dim shrink-0">{new Date(e.started_at).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}</div>
                       <div className="text-sm font-mono font-semibold text-paper tabular-nums shrink-0 w-20 text-right">{fmtDuration(e.duration_seconds)}</div>
                       {canDelete && <button onClick={() => del(e.id)} className="text-dim hover:text-red-600 shrink-0"><Trash2 size={14} /></button>}
                     </div>

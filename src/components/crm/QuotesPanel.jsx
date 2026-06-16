@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { FileSignature, Plus, X } from 'lucide-react';
 import { money } from './InvoicesPanel.jsx';
 
-const fmtD = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' }) : '—';
+const fmtD = (d) => d ? new Date(d).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: '2-digit' }) : '—';
 
 // Effective display status: stale sent/viewed quotes past their validity = expired
 export const quoteStatus = (q) => {

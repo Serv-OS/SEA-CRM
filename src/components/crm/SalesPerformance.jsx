@@ -8,7 +8,7 @@ import { LEAD_STAGES } from '../../lib/leadStages';
 // against the configurable activity goals and ARR quota.
 
 const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-const gbp0 = (n) => '£' + (Number(n) || 0).toLocaleString('en-GB', { maximumFractionDigits: 0 });
+const gbp0 = (n) => '$' + (Number(n) || 0).toLocaleString('en-US', { maximumFractionDigits: 0 });
 
 function rangeFor(preset) {
   const now = new Date(); const start = new Date(now); start.setHours(0, 0, 0, 0);
@@ -83,7 +83,7 @@ export default function SalesPerformance({ profile, onNavigate }) {
     const leadsCreated = leads.filter(l => l.owner_id === r.id && inRange(l.created_at)).length;
     const dealsCreated = deals.filter(d => d.owner_id === r.id && inRange(d.created_at)).length;
     const dealsWon = deals.filter(d => d.owner_id === r.id && d.stage === 'closed_won' && inRange(d.closed_at));
-    const arrWon = dealsWon.reduce((s, d) => s + Number(d.saas_arr || 0) + Number(d.payments_arr || 0), 0);
+    const arrWon = dealsWon.reduce((s, d) => s + Number(d.value || 0), 0); // contract value
     const quotesSent = quotes.filter(qt => qt.created_by === r.id && inRange(qt.created_at)).length;
     const total = acts.length;
     const activityGoal = Math.round(targets.activities_per_week * weeks);
@@ -142,7 +142,7 @@ export default function SalesPerformance({ profile, onNavigate }) {
             <Stat label="Calls" value={teamTotals.calls} />
             <Stat label="Meetings" value={teamTotals.meetings} />
             <Stat label="Deals won" value={teamTotals.won} tone="emerald" />
-            <Stat label="ARR won" value={gbp0(teamTotals.arr)} tone="emerald" />
+            <Stat label="Revenue won" value={gbp0(teamTotals.arr)} tone="emerald" />
           </div>
 
           {/* Targets */}
@@ -152,7 +152,7 @@ export default function SalesPerformance({ profile, onNavigate }) {
               onSave={v => saveTargets({ ...targets, activities_per_week: v })} />
             <TargetField label="Meetings / week" value={targets.meetings_per_week} disabled={!isOwner}
               onSave={v => saveTargets({ ...targets, meetings_per_week: v })} />
-            <TargetField label="Quota ARR / month" value={targets.quota_arr_month} disabled={!isOwner} money
+            <TargetField label="Revenue quota / month" value={targets.quota_arr_month} disabled={!isOwner} money
               onSave={v => saveTargets({ ...targets, quota_arr_month: v })} />
             <TargetField label="Commission %" value={targets.commission_pct} disabled={!isOwner}
               onSave={v => saveTargets({ ...targets, commission_pct: v })} />
@@ -175,7 +175,7 @@ export default function SalesPerformance({ profile, onNavigate }) {
                     <th className="text-right px-2 py-2.5 font-bold">Stage moves</th>
                     <th className="text-right px-2 py-2.5 font-bold">Quotes</th>
                     <th className="text-right px-2 py-2.5 font-bold">Won</th>
-                    <th className="text-right px-5 py-2.5 font-bold">ARR won</th>
+                    <th className="text-right px-5 py-2.5 font-bold">Revenue won</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -258,7 +258,7 @@ function TargetField({ label, value, onSave, disabled, money }) {
         value={v} disabled={disabled}
         onChange={e => setV(e.target.value)}
         onBlur={() => { const n = Number(v); if (!Number.isNaN(n) && n !== value) onSave(n); }} />
-      {money && <span className="text-dim">£</span>}
+      {money && <span className="text-dim">$</span>}
     </label>
   );
 }
@@ -276,7 +276,7 @@ function RepDetail({ s, activities, leads, deals, from, to, onNavigate, targets 
   const myLeads = leads.filter(l => l.owner_id === s.rep.id && !['disqualified'].includes(l.stage));
   const funnel = LEAD_STAGES.filter(st => st.key !== 'disqualified').map(st => ({ ...st, n: myLeads.filter(l => l.stage === st.key).length }));
   const openDeals = deals.filter(d => d.owner_id === s.rep.id && !['closed_won', 'closed_lost'].includes(d.stage));
-  const pipeline = openDeals.reduce((sum, d) => sum + Number(d.saas_arr || 0) + Number(d.payments_arr || 0), 0);
+  const pipeline = openDeals.reduce((sum, d) => sum + Number(d.value || 0), 0); // contract value
   const commission = s.hitQuota ? s.arrWon * Number(targets.commission_pct || 0) / 100 : 0;
   const TYPE_ICON = { call: '📞', email: '📧', sms: '💬', note: '📝', meeting: '🤝', whatsapp: '📲' };
 
@@ -284,7 +284,7 @@ function RepDetail({ s, activities, leads, deals, from, to, onNavigate, targets 
     <div className="glass-card rounded-2xl overflow-hidden">
       <div className="px-5 py-3.5 border-b border-bdr flex items-center gap-3 flex-wrap">
         <h3 className="text-[13px] font-bold text-paper">{name} — detail</h3>
-        <span className="text-xs text-muted">{s.total} activities · {s.dealsWon} won · {gbp0(s.arrWon)} ARR</span>
+        <span className="text-xs text-muted">{s.total} activities · {s.dealsWon} won · {gbp0(s.arrWon)} revenue</span>
         {s.hitQuota
           ? <span className="text-xs font-semibold text-emerald-600 ml-auto">Quota hit — est. commission {gbp0(commission)}</span>
           : <span className="text-xs text-dim ml-auto">{gbp0(s.arrWon)} / {gbp0(s.quotaScaled)} quota ({Math.round((s.arrWon / Math.max(1, s.quotaScaled)) * 100)}%)</span>}
@@ -329,7 +329,7 @@ function RepDetail({ s, activities, leads, deals, from, to, onNavigate, targets 
               );
             })}
           </div>
-          <div className="mt-3 text-xs text-muted">Open deals: <b className="text-paper">{openDeals.length}</b> · Pipeline ARR: <b className="text-paper">{gbp0(pipeline)}</b></div>
+          <div className="mt-3 text-xs text-muted">Open deals: <b className="text-paper">{openDeals.length}</b> · Pipeline value: <b className="text-paper">{gbp0(pipeline)}</b></div>
         </div>
 
         {/* Recent activity */}
@@ -344,7 +344,7 @@ function RepDetail({ s, activities, leads, deals, from, to, onNavigate, targets 
                 {a.subject_type && (
                   <button onClick={() => onNavigate?.(a.subject_type, a.subject_id)} className="text-dim hover:text-ember capitalize">on {a.subject_type}</button>
                 )}
-                <span className="text-dim ml-auto shrink-0">{new Date(a.occurred_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                <span className="text-dim ml-auto shrink-0">{new Date(a.occurred_at).toLocaleDateString('en-US', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
               </div>
             ))}
             {mine.length === 0 && <div className="text-xs text-dim italic">No activity in this period.</div>}

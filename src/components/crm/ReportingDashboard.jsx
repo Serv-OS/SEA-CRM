@@ -102,7 +102,7 @@ export default function ReportingDashboard({ profile }) {
     const monthStart = startOfMonth().getTime();
     const weekStart = startOfWeek().getTime();
     const todayStart = startOfToday().getTime();
-    const dealArr = (d) => (d.saas_arr || 0) + (d.payments_arr || 0);
+    const dealArr = (d) => (d.value || 0); // contract value (no recurring/ARR for a contractor)
 
     // AEs = members who own at least one deal
     const aeIds = [...new Set(deals.map(d => d.owner_id).filter(Boolean))];
@@ -166,7 +166,7 @@ export default function ReportingDashboard({ profile }) {
     }));
   }, [modules, locationModules]);
 
-  const formatCurrency = (v) => `£${v.toLocaleString('en-GB', { minimumFractionDigits: 0 })}`;
+  const formatCurrency = (v) => `$${v.toLocaleString('en-US', { minimumFractionDigits: 0 })}`;
 
   const label = "text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-dim";
   const tabBtn = (t, lbl) => (
@@ -229,7 +229,7 @@ export default function ReportingDashboard({ profile }) {
           {tab === 'quota' && (
             <>
               <div className="grid grid-cols-4 gap-3">
-                <MetricCard label="Team ARR (this month)" value={formatCurrency(quotaMetrics.teamArr)} color="text-emerald-600" />
+                <MetricCard label="Revenue won (this month)" value={formatCurrency(quotaMetrics.teamArr)} color="text-emerald-600" />
                 <MetricCard label="Team Quota" value={formatCurrency(quotaMetrics.teamQuota)} />
                 <MetricCard label="Attainment" value={`${quotaMetrics.teamQuota ? Math.round((quotaMetrics.teamArr / quotaMetrics.teamQuota) * 100) : 0}%`} />
                 <MetricCard label="Commission (10%)" value={formatCurrency(quotaMetrics.teamCommission)} color="text-ember" />
@@ -238,7 +238,7 @@ export default function ReportingDashboard({ profile }) {
               <div className="glass-card rounded-2xl overflow-hidden">
                 <div className="px-4 py-3 border-b border-bdr flex items-center gap-2">
                   <div className={label}>Per rep — Quota &amp; Commission (this month)</div>
-                  <div className="ml-auto text-[10px] text-dim">Target {formatCurrency(MONTHLY_ARR_QUOTA)} ARR / mo · 10% commission</div>
+                  <div className="ml-auto text-[10px] text-dim">Target {formatCurrency(MONTHLY_ARR_QUOTA)} revenue / mo · 10% commission</div>
                 </div>
                 <div className="p-2">
                   <table className="w-full">
@@ -246,7 +246,7 @@ export default function ReportingDashboard({ profile }) {
                       <tr className="text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-dim">
                         <th className="px-3 py-2 text-left">Rep</th>
                         <th className="px-3 py-2 text-right">Won</th>
-                        <th className="px-3 py-2 text-right">ARR closed</th>
+                        <th className="px-3 py-2 text-right">Revenue closed</th>
                         <th className="px-3 py-2 text-left">Attainment</th>
                         <th className="px-3 py-2 text-right">Commission</th>
                       </tr>
@@ -309,7 +309,7 @@ export default function ReportingDashboard({ profile }) {
               </div>
 
               <button onClick={() => exportCSV(
-                ['Rep','Won','ARR closed','Quota','Attainment %','Commission','Activities (wk)','Demos booked (wk)','Demos run (wk)','Onsite (wk)'],
+                ['Rep','Won','Revenue closed','Quota','Attainment %','Commission','Activities (wk)','Demos booked (wk)','Demos run (wk)','Onsite (wk)'],
                 quotaMetrics.rows.map(r => [r.name, r.wonCount, r.arrClosed, MONTHLY_ARR_QUOTA, Math.round(r.attainment*100), Math.round(r.commission), r.actsWeek, r.demosScheduled, r.demosRun, r.onsiteWeek]),
                 'quota-commission.csv'
               )} className="px-3 py-1.5 text-xs text-muted border border-bdr rounded hover:text-paper">Export quota CSV</button>

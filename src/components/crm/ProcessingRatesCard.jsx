@@ -77,11 +77,11 @@ export default function ProcessingRatesCard({ companyId, locationId, onNavigate 
             </div>
 
             <div className="text-[11px] text-dim mt-2">
-              Per-txn: their £{Number(a.current_txn_fee || 0).toFixed(2)} · our £{Number(a.our_txn_fee || 0).toFixed(2)}
+              Per-txn: their ${Number(a.current_txn_fee || 0).toFixed(2)} · our ${Number(a.our_txn_fee || 0).toFixed(2)}
             </div>
             {a.latestVol && (
               <div className="text-[11px] text-muted mt-1">
-                {new Date(a.latestVol.period).toLocaleDateString('en-GB', { month: 'short', year: '2-digit' })}: {gbp0(a.latestVol.amount_processed)} processed
+                {new Date(a.latestVol.period).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })}: {gbp0(a.latestVol.amount_processed)} processed
               </div>
             )}
           </div>

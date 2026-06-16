@@ -204,7 +204,7 @@ export function thresholdFor(thresholds, products, productName, warehouseId) {
   return p?.default_threshold ?? 3;
 }
 
-export const fmtGBP = (n) => n == null ? '—' : '£' + Number(n).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+export const fmtGBP = (n) => n == null ? '—' : '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 export const csvExport = (rows, filename) => {
   if (!rows.length) return;
   const keys = Object.keys(rows[0]);

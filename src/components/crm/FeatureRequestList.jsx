@@ -156,7 +156,7 @@ export default function FeatureRequestList({ profile, onSelect }) {
               </ChipRow>
               <MetaRow>
                 {contactName(r.requested_by) && <span>Requested by {contactName(r.requested_by)}</span>}
-                <span>Created {new Date(r.created_at).toLocaleDateString('en-GB', { day:'numeric', month:'short' })}</span>
+                <span>Created {new Date(r.created_at).toLocaleDateString('en-US', { day:'numeric', month:'short' })}</span>
               </MetaRow>
             </RecordCard>
           );

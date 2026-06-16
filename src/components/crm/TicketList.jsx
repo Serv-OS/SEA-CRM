@@ -206,7 +206,7 @@ export default function TicketList({ profile, onSelect, onNavigate }) {
             </ChipRow>
             <MetaRow>
               <OwnerTag name={ownerName(t.owner_id)} />
-              <span>Created {new Date(t.created_at).toLocaleDateString('en-GB', { day:'numeric', month:'short' })}</span>
+              <span>Created {new Date(t.created_at).toLocaleDateString('en-US', { day:'numeric', month:'short' })}</span>
             </MetaRow>
           </RecordCard>
         ))}

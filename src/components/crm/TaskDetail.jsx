@@ -153,7 +153,7 @@ export default function TaskDetail({ taskId, profile, onClose, onNavigate }) {
             <span className="text-xs text-dim font-mono">{task.priority}</span>
             {task.due_date && (
               <span className={`text-xs ${new Date(task.due_date) < new Date() && task.status !== 'done' ? 'text-red-600 font-bold' : 'text-dim'}`}>
-                Due {new Date(task.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                Due {new Date(task.due_date).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}
               </span>
             )}
           </div>
@@ -219,9 +219,9 @@ export default function TaskDetail({ taskId, profile, onClose, onNavigate }) {
                     ) : null
                   } />
                   <Field label="Priority" value={task.priority} />
-                  <Field label="Due date" value={task.due_date ? new Date(task.due_date).toLocaleDateString('en-GB') : null} />
-                  {task.completed_at && <Field label="Completed" value={new Date(task.completed_at).toLocaleDateString('en-GB')} />}
-                  <Field label="Created" value={new Date(task.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' })} />
+                  <Field label="Due date" value={task.due_date ? new Date(task.due_date).toLocaleDateString('en-US') : null} />
+                  {task.completed_at && <Field label="Completed" value={new Date(task.completed_at).toLocaleDateString('en-US')} />}
+                  <Field label="Created" value={new Date(task.created_at).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: '2-digit' })} />
                 </div>
               </Card>
 

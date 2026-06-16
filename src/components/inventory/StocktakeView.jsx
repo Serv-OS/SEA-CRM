@@ -138,7 +138,7 @@ export default function StocktakeView({ profile }) {
                 const variance = (r.missing || []).length;
                 return (
                   <button key={t.id} onClick={() => setReviewing(t)} className="w-full px-5 py-3 flex items-center gap-3 text-sm text-left hover:bg-card/40">
-                    <span className="text-paper">{new Date(t.started_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                    <span className="text-paper">{new Date(t.started_at).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
                     <span className="text-muted">{r.found ?? 0}/{r.expected ?? 0} found</span>
                     {variance > 0
                       ? <span className="text-red-600 font-semibold">{variance} missing{(r.writtenOff || []).length ? ` · ${(r.writtenOff || []).length} written off` : ''}</span>
@@ -158,7 +158,7 @@ export default function StocktakeView({ profile }) {
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setReviewing(null)}>
           <div className="glass-card rounded-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="px-5 py-4 border-b border-bdr flex items-center justify-between">
-              <div className="text-base font-bold text-paper">Stocktake — {new Date(reviewing.started_at).toLocaleDateString('en-GB')}</div>
+              <div className="text-base font-bold text-paper">Stocktake — {new Date(reviewing.started_at).toLocaleDateString('en-US')}</div>
               <button onClick={() => setReviewing(null)} className="text-muted hover:text-paper">✕</button>
             </div>
             <div className="p-5 space-y-4 text-sm">

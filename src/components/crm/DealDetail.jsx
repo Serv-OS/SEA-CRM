@@ -77,16 +77,15 @@ export default function DealDetail({ dealId, profile, onClose, onNavigate }) {
       company_id: draft.company_id,
       stage: draft.stage,
       value: draft.value || null,
-      currency: draft.currency || 'GBP',
+      currency: draft.currency || 'USD',
       expected_close_date: draft.expected_close_date || null,
       source: draft.source || null,
       notes: draft.notes || null,
       lost_reason: draft.lost_reason || null,
       owner_id: draft.owner_id || null,
-      hardware_value: draft.hardware_value || null,
-      services_value: draft.services_value || null,
-      saas_arr: draft.saas_arr || null,
-      payments_arr: draft.payments_arr || null,
+      // Construction deals are a single contract value — clear the legacy
+      // POS/SaaS revenue breakdown.
+      hardware_value: null, services_value: null, saas_arr: null, payments_arr: null,
     };
     if (patch.stage === 'closed_won' || patch.stage === 'closed_lost') patch.closed_at = deal.closed_at || new Date().toISOString();
     else patch.closed_at = null;
@@ -127,7 +126,7 @@ export default function DealDetail({ dealId, profile, onClose, onNavigate }) {
   if (!deal) return <div className="h-full flex items-center justify-center text-dim text-sm">Loading...</div>;
 
   const ownerName = (id) => { const m = members.find(u => u.id === id); return m ? (m.display_name || m.email.split('@')[0]) : 'Unassigned'; };
-  const fmt = (v) => v ? `\u{00A3}${Number(v).toLocaleString('en-GB', { minimumFractionDigits: 2 })}` : '';
+  const fmt = (v) => v ? `\u{00A3}${Number(v).toLocaleString('en-US', { minimumFractionDigits: 2 })}` : '';
   const companyLocations = deal.company_id ? locations.filter(l => l.company_id === deal.company_id) : [];
 
   const input = "w-full px-3 py-2 bg-card border border-bdr rounded-xl text-sm text-paper placeholder-dim focus:outline-none focus:border-ember";
@@ -185,14 +184,9 @@ export default function DealDetail({ dealId, profile, onClose, onNavigate }) {
                 <div><label className={label}>Owner</label><select className={input} value={draft.owner_id || ''} onChange={e => set('owner_id', e.target.value || null)}>
                   <option value="">Unassigned</option>{members.map(m => <option key={m.id} value={m.id}>{m.display_name || m.email}</option>)}</select></div>
               </div>
-              <div className="mt-3"><label className={label + ' mb-2'}>Revenue Breakdown</label>
-                <div className="grid grid-cols-2 gap-3">
-                  <div><label className={label}>Hardware (one-time)</label><input className={input} type="number" step="0.01" value={draft.hardware_value || ''} onChange={e => set('hardware_value', e.target.value ? parseFloat(e.target.value) : null)} placeholder="0.00" /></div>
-                  <div><label className={label}>Services (one-time)</label><input className={input} type="number" step="0.01" value={draft.services_value || ''} onChange={e => set('services_value', e.target.value ? parseFloat(e.target.value) : null)} placeholder="0.00" /></div>
-                  <div><label className={label}>SaaS ARR</label><input className={input} type="number" step="0.01" value={draft.saas_arr || ''} onChange={e => set('saas_arr', e.target.value ? parseFloat(e.target.value) : null)} placeholder="0.00" /></div>
-                  <div><label className={label}>Payments ARR</label><input className={input} type="number" step="0.01" value={draft.payments_arr || ''} onChange={e => set('payments_arr', e.target.value ? parseFloat(e.target.value) : null)} placeholder="0.00" /></div>
-                  <div><label className={label}>Total deal value</label><input className={input} type="number" step="0.01" value={draft.value || ''} onChange={e => set('value', e.target.value ? parseFloat(e.target.value) : null)} placeholder="Or enter a flat total" /></div>
-                </div>
+              <div className="grid grid-cols-2 gap-3 mt-3">
+                <div><label className={label}>Contract value</label><input className={input} type="number" step="0.01" value={draft.value || ''} onChange={e => set('value', e.target.value ? parseFloat(e.target.value) : null)} placeholder="0.00" />
+                  <div className="text-[10px] text-dim mt-1">Set automatically from the linked quote when one exists.</div></div>
               </div>
               <div className="grid grid-cols-2 gap-3 mt-3">
                 {draft.stage === 'closed_lost' && <div><label className={label}>Lost reason</label><input className={input} value={draft.lost_reason || ''} onChange={e => set('lost_reason', e.target.value)} /></div>}
@@ -213,26 +207,18 @@ export default function DealDetail({ dealId, profile, onClose, onNavigate }) {
                 <div className="space-y-3">
                   <Field label="Stage" value={STAGE_LABELS[deal.stage]} />
                   <Field label="Source" value={deal.source} />
-                  <Field label="Install date" value={deal.expected_close_date ? new Date(deal.expected_close_date).toLocaleDateString('en-GB') : null} />
+                  <Field label="Install date" value={deal.expected_close_date ? new Date(deal.expected_close_date).toLocaleDateString('en-US') : null} />
                   <Field label="Owner" value={ownerName(deal.owner_id)} />
-                  <Field label="Created" value={new Date(deal.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' })} />
+                  <Field label="Created" value={new Date(deal.created_at).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: '2-digit' })} />
                   {deal.lost_reason && <Field label="Lost reason" value={deal.lost_reason} />}
                   {deal.notes && <Field label="Notes" value={deal.notes} />}
                 </div>
               </Card>
 
-              <Card title="Revenue">
-                <div className="space-y-2">
-                  {deal.hardware_value > 0 && <div className="flex justify-between"><span className="text-xs text-muted">Hardware</span><span className="text-sm text-paper font-mono">{fmt(deal.hardware_value)}</span></div>}
-                  {deal.services_value > 0 && <div className="flex justify-between"><span className="text-xs text-muted">Services</span><span className="text-sm text-paper font-mono">{fmt(deal.services_value)}</span></div>}
-                  {deal.saas_arr > 0 && <div className="flex justify-between"><span className="text-xs text-muted">SaaS ARR</span><span className="text-sm text-paper font-mono">{fmt(deal.saas_arr)}</span></div>}
-                  {deal.payments_arr > 0 && <div className="flex justify-between"><span className="text-xs text-muted">Payments ARR</span><span className="text-sm text-paper font-mono">{fmt(deal.payments_arr)}</span></div>}
-                  <div className="flex justify-between pt-2 border-t border-bdr">
-                    <span className="text-xs text-paper font-semibold">Total</span>
-                    <span className="text-base text-ember font-mono font-bold">{fmt(
-                      (deal.hardware_value || 0) + (deal.services_value || 0) + (deal.saas_arr || 0) + (deal.payments_arr || 0) || deal.value
-                    )}</span>
-                  </div>
+              <Card title="Contract value">
+                <div className="flex justify-between items-baseline">
+                  <span className="text-xs text-muted">Total</span>
+                  <span className="text-base text-ember font-mono font-bold">{fmt(deal.value) || '$0.00'}</span>
                 </div>
               </Card>
 
@@ -263,7 +249,7 @@ export default function DealDetail({ dealId, profile, onClose, onNavigate }) {
                         className="p-3 glass-inner rounded-xl cursor-pointer flex items-center gap-2">
                         <div className="flex-1 min-w-0">
                           <div className="text-sm font-medium text-paper">Quote #{q.quote_number}</div>
-                          <div className="text-xs text-muted">£{Number(q.one_off_total || 0).toLocaleString('en-GB')} one-off{q.recurring_arr > 0 ? ` · £${Number(q.recurring_arr).toLocaleString('en-GB')} ARR` : ''}</div>
+                          <div className="text-xs text-muted">${Number(q.one_off_total || 0).toLocaleString('en-US')} one-off{q.recurring_arr > 0 ? ` · $${Number(q.recurring_arr).toLocaleString('en-US')} ARR` : ''}</div>
                         </div>
                         <span className="px-1.5 py-0.5 text-[9px] font-bold uppercase rounded bg-slate-100 text-slate-600 border border-slate-200">{q.status}</span>
                       </div>
@@ -295,7 +281,7 @@ export default function DealDetail({ dealId, profile, onClose, onNavigate }) {
                         <span className="text-paper">{ownerName(h.changed_by)}</span>
                         <span className="text-muted">{h.from_stage ? STAGE_LABELS[h.from_stage] : 'Created'} &rarr; {STAGE_LABELS[h.to_stage]}</span>
                         <span className="text-dim ml-auto text-[10px]">
-                          {new Date(h.changed_at).toLocaleDateString('en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}
+                          {new Date(h.changed_at).toLocaleDateString('en-US', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}
                         </span>
                       </div>
                     ))}

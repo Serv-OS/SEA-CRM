@@ -130,7 +130,7 @@ export default function StockInView({ profile }) {
                     <option value="">Select…</option>
                     {INV_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                   </select></div>
-                <div><label className={label}>Unit cost £ {poNumber && <span className="text-emerald-600">(PO-locked)</span>}</label>
+                <div><label className={label}>Unit cost $ {poNumber && <span className="text-emerald-600">(PO-locked)</span>}</label>
                   <input className={input} value={l.unit_cost} onChange={e => set(i, 'unit_cost', e.target.value)} placeholder="0.00" disabled={!!poNumber} /></div>
               </div>
               <div className="grid grid-cols-2 gap-3">

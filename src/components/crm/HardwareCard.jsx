@@ -75,7 +75,7 @@ export default function HardwareCard({ companyId, locationId, profile, alwaysSho
                   {u.condition && <span className="text-amber-600">{condLabel(u.condition)}</span>}
                   {u.used && <span className="text-[9px] font-bold uppercase px-1 py-0.5 rounded bg-slate-200 text-slate-600">used</span>}
                   <span className="text-dim">
-                    {u.deployed_at ? `installed ${new Date(u.deployed_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' })}` : 'staged'}
+                    {u.deployed_at ? `installed ${new Date(u.deployed_at).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: '2-digit' })}` : 'staged'}
                     {u.dispatch_ref ? ` · ref ${u.dispatch_ref}` : ''}
                     {!locationId && u.location?.name ? ` · ${u.location.name}` : ''}
                   </span>

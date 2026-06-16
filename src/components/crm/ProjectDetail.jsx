@@ -329,8 +329,8 @@ export default function ProjectDetail({ projectId, profile, onClose, onSelectTas
                   <div className="space-y-3">
                     <Field label="Status" value={project.status} />
                     <Field label="Owner" value={ownerName(project.owner_id) || null} />
-                    <Field label="Due date" value={project.due_date ? new Date(project.due_date).toLocaleDateString('en-GB') : null} />
-                    <Field label="Created" value={new Date(project.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' })} />
+                    <Field label="Due date" value={project.due_date ? new Date(project.due_date).toLocaleDateString('en-US') : null} />
+                    <Field label="Created" value={new Date(project.created_at).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: '2-digit' })} />
                   </div>
                 </Card>
 
@@ -396,7 +396,7 @@ export default function ProjectDetail({ projectId, profile, onClose, onSelectTas
                           <span className={`px-1.5 py-0.5 text-[8px] font-bold rounded ${STATUS_STYLES[t.status]}`}>{t.status.replace('_',' ')}</span>
                           {t.due_date && (
                             <span className={`text-[10px] ${new Date(t.due_date) < new Date() ? 'text-red-600 font-bold' : 'text-dim'}`}>
-                              {new Date(t.due_date).toLocaleDateString('en-GB', { day:'numeric', month:'short' })}
+                              {new Date(t.due_date).toLocaleDateString('en-US', { day:'numeric', month:'short' })}
                             </span>
                           )}
                           {t.owner_id && (

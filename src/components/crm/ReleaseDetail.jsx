@@ -69,7 +69,7 @@ export default function ReleaseDetail({ releaseId, profile, onClose }) {
             {release.name && <span className="text-lg text-muted">{release.name}</span>}
           </div>
           <div className="text-[10px] text-dim font-mono uppercase tracking-[0.18em]">
-            {release.status}{release.released_at ? ` / ${new Date(release.released_at).toLocaleDateString('en-GB')}` : ''}
+            {release.status}{release.released_at ? ` / ${new Date(release.released_at).toLocaleDateString('en-US')}` : ''}
             {' / '}{targetedItems.length} targeted / {shippedItems.length} shipped
           </div>
         </div>

@@ -76,7 +76,7 @@ export default function PurchasingView({ profile, initialTab = 'orders' }) {
                   <span className="font-mono font-bold text-paper">{o.po_number}</span>
                   <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${displayStatus === 'in transit' ? 'bg-blue-100 text-blue-700' : PO_BADGE[o.status]}`}>{displayStatus}</span>
                   <span className="text-sm text-muted">{o.supplier_name}</span>
-                  {o.expected_by && <span className="text-xs text-dim">· expected {new Date(o.expected_by).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>}
+                  {o.expected_by && <span className="text-xs text-dim">· expected {new Date(o.expected_by).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}</span>}
                   <span className="text-xs text-dim">· {shipped}/{total} shipped · {received}/{total} received</span>
                   <span className="ml-auto text-sm font-semibold text-paper tabular-nums">{fmtGBP(o.total_with_tax)}</span>
                 </div>
@@ -151,7 +151,7 @@ function ShipmentCard({ s, canWrite, onReceive }) {
         <span className="text-sm font-semibold text-paper">{s.supplier_name || 'Shipment'}</span>
         <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${s.status === 'in_transit' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>{s.status.replace('_', ' ')}</span>
         {s.po_number && <span className="text-xs text-dim">· {s.po_number}</span>}
-        {s.eta && s.status === 'in_transit' && <span className="text-xs text-dim">· ETA {new Date(s.eta).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>}
+        {s.eta && s.status === 'in_transit' && <span className="text-xs text-dim">· ETA {new Date(s.eta).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}</span>}
         <span className="text-xs text-dim">· {recd}/{units} received → {s.warehouse?.name || '—'}</span>
         {canWrite && s.status === 'in_transit' && <button onClick={onReceive} className="ml-auto px-3 py-1.5 rounded-xl bg-emerald-500/15 text-emerald-700 border border-emerald-500/30 text-xs font-semibold hover:bg-emerald-500/25">Receive</button>}
       </div>
@@ -228,7 +228,7 @@ function POModal({ products, suppliers, profile, onClose, onSaved }) {
                 <option value="">Select…</option>{products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select></div>
             <div><label className={label}>Qty</label><input type="number" min="1" className={input} value={r.qty} onChange={e => set(i, 'qty', e.target.value)} /></div>
-            <div><label className={label}>Unit £</label><input className={input} value={r.unit_cost} onChange={e => set(i, 'unit_cost', e.target.value)} /></div>
+            <div><label className={label}>Unit $</label><input className={input} value={r.unit_cost} onChange={e => set(i, 'unit_cost', e.target.value)} /></div>
             <button onClick={() => setRows(p => p.filter((_, x) => x !== i))} className="text-dim hover:text-red-600 pb-2"><Trash2 size={15} /></button>
           </div>
         ))}
@@ -236,7 +236,7 @@ function POModal({ products, suppliers, profile, onClose, onSaved }) {
           className="text-xs text-ember hover:text-ember-deep font-medium">+ Add line</button>
         <div className="grid grid-cols-2 gap-3">
           <div><label className={label}>Tax rate % (or)</label><input className={input} value={taxRate} onChange={e => { setTaxRate(e.target.value); setTaxAmount(''); }} placeholder="20" /></div>
-          <div><label className={label}>Tax amount £</label><input className={input} value={taxAmount} onChange={e => { setTaxAmount(e.target.value); setTaxRate(''); }} placeholder="overrides rate" /></div>
+          <div><label className={label}>Tax amount $</label><input className={input} value={taxAmount} onChange={e => { setTaxAmount(e.target.value); setTaxRate(''); }} placeholder="overrides rate" /></div>
         </div>
         <div className="text-sm text-muted">Subtotal <b className="text-paper">{fmtGBP(subtotal)}</b> · Tax <b className="text-paper">{fmtGBP(resolvedTax)}</b> · Total <b className="text-paper">{fmtGBP(subtotal + resolvedTax)}</b>
           <div className="text-[11px] text-dim mt-0.5">Tax is split across lines proportionally — landed unit cost locks onto received serials.</div></div>
@@ -304,7 +304,7 @@ function ShipmentModal({ order, suppliers, products, warehouses, allShipments, o
               {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
             </select></div>
           <div><label className={label}>ETA</label><input type="date" className={input} value={eta} onChange={e => setEta(e.target.value)} /></div>
-          <div><label className={label}>Freight £ (split/unit)</label><input className={input} value={freight} onChange={e => setFreight(e.target.value)} placeholder="0" /></div>
+          <div><label className={label}>Freight $ (split/unit)</label><input className={input} value={freight} onChange={e => setFreight(e.target.value)} placeholder="0" /></div>
         </div>
         {rows.map((r, i) => (
           <div key={i} className="grid grid-cols-[1fr_90px_110px_32px] gap-2 items-end">
@@ -314,7 +314,7 @@ function ShipmentModal({ order, suppliers, products, warehouses, allShipments, o
                   <option value="">Select…</option>{products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>}</div>
             <div><label className={label}>Qty{order && r.max != null ? ` (max ${r.max})` : ''}</label><input type="number" min="1" max={order ? r.max : undefined} className={input} value={r.qty} onChange={e => set(i, 'qty', e.target.value)} /></div>
-            <div><label className={label}>Unit £</label><input className={input} value={r.unit_cost} onChange={e => set(i, 'unit_cost', e.target.value)} /></div>
+            <div><label className={label}>Unit $</label><input className={input} value={r.unit_cost} onChange={e => set(i, 'unit_cost', e.target.value)} /></div>
             {!order && <button onClick={() => setRows(p => p.filter((_, x) => x !== i))} className="text-dim hover:text-red-600 pb-2"><Trash2 size={15} /></button>}
           </div>
         ))}

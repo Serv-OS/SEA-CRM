@@ -14,9 +14,9 @@ const fmtDayHeading = (iso) => {
   const tomorrow = dayKey(new Date(Date.now() + 86400000));
   if (iso === today) return 'Today';
   if (iso === tomorrow) return 'Tomorrow';
-  return d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+  return d.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' });
 };
-const fmtTime = (d) => new Date(d).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+const fmtTime = (d) => new Date(d).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 
 export default function CalendarPanel({ profile, onNavigate }) {
   const { connected, connect } = useGoogleConnection(profile.id);
@@ -74,7 +74,7 @@ export default function CalendarPanel({ profile, onNavigate }) {
   }
   const days = Object.keys(groups).sort();
 
-  const rangeLabel = `${rangeStart.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} – ${new Date(rangeEnd.getTime() - 1).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`;
+  const rangeLabel = `${rangeStart.toLocaleDateString('en-US', { day: 'numeric', month: 'short' })} – ${new Date(rangeEnd.getTime() - 1).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}`;
 
   return (
     <div className="h-full flex flex-col">

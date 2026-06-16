@@ -75,7 +75,7 @@ export default function DealBoard({ profile, onSelectDeal, onNavigate }) {
     }
     return null;
   };
-  const fmt = (v) => v ? `\u{00A3}${Number(v).toLocaleString('en-GB', { minimumFractionDigits: 0 })}` : '';
+  const fmt = (v) => v ? `\u{00A3}${Number(v).toLocaleString('en-US', { minimumFractionDigits: 0 })}` : '';
 
   const moveDeal = async (dealId, fromStage, toStage) => {
     if (fromStage === toStage) return;
@@ -151,7 +151,7 @@ export default function DealBoard({ profile, onSelectDeal, onNavigate }) {
     return dealsByStage[stageKey]?.reduce((sum, d) => sum + (d.value || 0), 0) || 0;
   };
 
-  const formatCurrency = (v) => v ? `£${v.toLocaleString('en-GB', { minimumFractionDigits: 0 })}` : '';
+  const formatCurrency = (v) => v ? `$${v.toLocaleString('en-US', { minimumFractionDigits: 0 })}` : '';
 
   const input = "w-full px-3 py-2 bg-card border border-bdr rounded text-sm text-paper placeholder-dim focus:outline-none focus:border-ember";
   const fld = "px-3 py-2 bg-card border border-bdr rounded-xl text-sm text-paper placeholder-dim focus:outline-none focus:border-ember";
@@ -188,7 +188,7 @@ export default function DealBoard({ profile, onSelectDeal, onNavigate }) {
         <div className="px-6 py-3 border-b border-bdr max-h-[70vh] overflow-y-auto">
           <form onSubmit={create} className="flex flex-wrap gap-2 items-center">
             <input className={`${fld} flex-1 min-w-[180px]`} value={newName} onChange={e => setNewName(e.target.value)} placeholder="Deal name" autoFocus />
-            <input className={`${fld} w-32`} value={newValue} onChange={e => setNewValue(e.target.value)} placeholder="Value (GBP)" type="number" step="0.01" />
+            <input className={`${fld} w-32`} value={newValue} onChange={e => setNewValue(e.target.value)} placeholder="Value ($)" type="number" step="0.01" />
             <select className={`${fld} w-60`} value={newLocation} onChange={e => handleLocationChange(e.target.value)}>
               <option value="">Select location...</option>
               {locations.map(l => {
@@ -248,7 +248,7 @@ export default function DealBoard({ profile, onSelectDeal, onNavigate }) {
                           {d.expected_close_date && (
                             <div className="text-right shrink-0">
                               <div className="text-[9px] font-mono font-bold uppercase tracking-wider text-dim">Install Date</div>
-                              <div className="text-sm text-paper font-mono">{new Date(d.expected_close_date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}</div>
+                              <div className="text-sm text-paper font-mono">{new Date(d.expected_close_date).toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric' })}</div>
                             </div>
                           )}
                         </div>
@@ -256,15 +256,8 @@ export default function DealBoard({ profile, onSelectDeal, onNavigate }) {
                         {/* Label/value rows */}
                         <table className="w-full">
                           <tbody className="text-sm">
-                            <tr><td className="py-0.5 text-muted font-medium pr-4 whitespace-nowrap">Company</td><td className="py-0.5 text-paper">{companyName(d.company_id) || '--'}</td></tr>
                             {loc && <tr><td className="py-0.5 text-muted font-medium pr-4 whitespace-nowrap">Location</td><td className="py-0.5 text-paper">{loc.name}</td></tr>}
-                            {d.hardware_value > 0 && <tr><td className="py-0.5 text-muted font-medium pr-4 whitespace-nowrap">Hardware</td><td className="py-0.5 text-paper font-mono">{fmt(d.hardware_value)}</td></tr>}
-                            {d.services_value > 0 && <tr><td className="py-0.5 text-muted font-medium pr-4 whitespace-nowrap">Services</td><td className="py-0.5 text-paper font-mono">{fmt(d.services_value)}</td></tr>}
-                            {d.saas_arr > 0 && <tr><td className="py-0.5 text-muted font-medium pr-4 whitespace-nowrap">SAAS ARR</td><td className="py-0.5 text-paper font-mono">{fmt(d.saas_arr)}</td></tr>}
-                            {d.payments_arr > 0 && <tr><td className="py-0.5 text-muted font-medium pr-4 whitespace-nowrap">Payments ARR</td><td className="py-0.5 text-paper font-mono">{fmt(d.payments_arr)}</td></tr>}
-                            {!d.hardware_value && !d.services_value && !d.saas_arr && !d.payments_arr && d.value > 0 && (
-                              <tr><td className="py-0.5 text-muted font-medium pr-4 whitespace-nowrap">Value</td><td className="py-0.5 text-paper font-mono">{fmt(d.value)}</td></tr>
-                            )}
+                            {d.value > 0 && <tr><td className="py-0.5 text-muted font-medium pr-4 whitespace-nowrap">Value</td><td className="py-0.5 text-paper font-mono">{fmt(d.value)}</td></tr>}
                           </tbody>
                         </table>
 
@@ -312,7 +305,7 @@ export default function DealBoard({ profile, onSelectDeal, onNavigate }) {
                   </td>
                   <td className="px-3 py-3 text-xs text-ember font-mono text-right">{formatCurrency(d.value)}</td>
                   <td className="px-3 py-3 text-xs text-muted">{ownerName(d.owner_id)}</td>
-                  <td className="px-3 py-3 text-xs text-dim">{new Date(d.created_at).toLocaleDateString('en-GB', { day:'numeric', month:'short' })}</td>
+                  <td className="px-3 py-3 text-xs text-dim">{new Date(d.created_at).toLocaleDateString('en-US', { day:'numeric', month:'short' })}</td>
                 </tr>
               ))}
             </tbody>

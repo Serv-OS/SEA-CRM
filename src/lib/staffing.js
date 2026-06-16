@@ -23,7 +23,7 @@ export const fmtDayNum = (d) => d.getDate();
 export const fmtRange = (m) => {
   const end = new Date(m); end.setDate(end.getDate() + 6);
   const o = { day: 'numeric', month: 'short' };
-  return `${m.toLocaleDateString('en-GB', o)} – ${end.toLocaleDateString('en-GB', o)}`;
+  return `${m.toLocaleDateString('en-US', o)} – ${end.toLocaleDateString('en-US', o)}`;
 };
 
 // hours between 'HH:MM' strings (handles same-day only)

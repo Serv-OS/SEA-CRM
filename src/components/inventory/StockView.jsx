@@ -245,7 +245,7 @@ export default function StockView({ profile, onNavigate }) {
                       <div className="text-[11px] text-dim font-mono truncate">{m.serials.slice(0, 6).join(' ')}{m.serials.length > 6 ? ` +${m.serials.length - 6}` : ''}</div>
                     </div>
                     <span className="text-xs text-dim shrink-0">{m.by_name || ''}</span>
-                    <span className="text-xs text-dim shrink-0">{new Date(m.occurred_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                    <span className="text-xs text-dim shrink-0">{new Date(m.occurred_at).toLocaleDateString('en-US', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
                   </div>
                 ))}
                 {histRows.length === 0 && <div className="px-5 py-8 text-center text-dim text-sm italic">No movements match.</div>}
@@ -284,7 +284,7 @@ export default function StockView({ profile, onNavigate }) {
                   <div key={m.id} className="text-xs flex items-center gap-2 py-1.5 border-b border-bdr/40 last:border-0">
                     <span className="font-bold uppercase text-[9px] text-muted w-14">{m.type.replace('_', ' ')}</span>
                     <span className="text-paper flex-1">{m.customer_name || m.supplier_name || m.warehouse_name || m.product_name}</span>
-                    <span className="text-dim">{new Date(m.occurred_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' })}</span>
+                    <span className="text-dim">{new Date(m.occurred_at).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: '2-digit' })}</span>
                   </div>
                 ))}
                 {lookup.history.length === 0 && <div className="text-xs text-dim italic">No recorded movements.</div>}
@@ -334,7 +334,7 @@ function SerialTable({ rows, cols, onLookup, actions = [], onNavigate }) {
                     className="text-muted hover:text-ember text-left">{r.location?.name || r.company?.name || r.customer_name || '—'}</button>
                 </td>}
                 {cols.includes('supplier') && <td className="px-3 py-2 text-muted">{r.supplier_name || '—'}</td>}
-                {cols.includes('deployed') && <td className="px-3 py-2 text-muted">{r.deployed_at ? new Date(r.deployed_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' }) : '—'}</td>}
+                {cols.includes('deployed') && <td className="px-3 py-2 text-muted">{r.deployed_at ? new Date(r.deployed_at).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: '2-digit' }) : '—'}</td>}
                 {cols.includes('ref') && <td className="px-3 py-2 text-muted">{r.dispatch_ref || '—'}</td>}
                 {cols.includes('condition') && <td className="px-3 py-2"><span className="text-xs text-muted">{condLabel(r.condition)}</span></td>}
                 {cols.includes('cost') && <td className="px-3 py-2 text-right tabular-nums text-muted">{r.cost != null ? fmtGBP(r.cost) : '—'}</td>}

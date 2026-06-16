@@ -61,7 +61,7 @@ export default function ProductsPanel({ profile }) {
   };
   const remove = async (p) => { if (!confirm(`Delete product "${p.name}"?`)) return; await supabase.from('products').delete().eq('id', p.id); load(); };
 
-  const money = (v) => `£${Number(v || 0).toLocaleString('en-GB', { minimumFractionDigits: 0 })}`;
+  const money = (v) => `$${Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 0 })}`;
   const input = "w-full px-3 py-2 bg-card border border-bdr rounded-xl text-sm text-paper placeholder-dim focus:outline-none focus:border-ember";
   const label = "text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-dim mb-1 block";
 
@@ -88,11 +88,11 @@ export default function ProductsPanel({ profile }) {
                   {CATEGORIES.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}</select></div>
                 <div><label className={label}>Billing</label><select className={input} value={draft.billing_type} onChange={e => setDraft({ ...draft, billing_type: e.target.value })}>
                   {Object.entries(BILLING).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></div>
-                <div><label className={label}>Selling price (£)</label><input type="number" className={input} value={draft.default_price} onChange={e => setDraft({ ...draft, default_price: e.target.value })} /></div>
-                <div><label className={label}>Cost price (£)</label><input type="number" className={input} value={draft.cost_price} onChange={e => setDraft({ ...draft, cost_price: e.target.value })} />
+                <div><label className={label}>Selling price ($)</label><input type="number" className={input} value={draft.default_price} onChange={e => setDraft({ ...draft, default_price: e.target.value })} /></div>
+                <div><label className={label}>Cost price ($)</label><input type="number" className={input} value={draft.cost_price} onChange={e => setDraft({ ...draft, cost_price: e.target.value })} />
                   {draft.default_price !== '' && draft.cost_price !== '' && Number(draft.default_price) > 0 && (
                     <div className="text-[11px] text-emerald-600 font-semibold mt-1">
-                      Margin: £{(Number(draft.default_price) - Number(draft.cost_price)).toFixed(2)} ({Math.round(((Number(draft.default_price) - Number(draft.cost_price)) / Number(draft.default_price)) * 100)}%)
+                      Margin: ${(Number(draft.default_price) - Number(draft.cost_price)).toFixed(2)} ({Math.round(((Number(draft.default_price) - Number(draft.cost_price)) / Number(draft.default_price)) * 100)}%)
                     </div>
                   )}</div>
                 <div><label className={label}>Unit (optional)</label><input className={input} value={draft.unit || ''} onChange={e => setDraft({ ...draft, unit: e.target.value })} placeholder="per till, per location…" /></div>

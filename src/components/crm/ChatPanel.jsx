@@ -9,8 +9,8 @@ const fmtTime = (d) => {
   if (!d) return '';
   const dt = new Date(d);
   const today = new Date().toDateString() === dt.toDateString();
-  return today ? dt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
-    : dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  return today ? dt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+    : dt.toLocaleDateString('en-US', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 };
 
 export default function ChatPanel({ profile, onNavigate }) {

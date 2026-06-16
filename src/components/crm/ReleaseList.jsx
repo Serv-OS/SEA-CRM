@@ -113,7 +113,7 @@ export default function ReleaseList({ profile, onSelect }) {
                     </div>
                     {r.released_at && (
                       <div className="text-xs text-dim mt-0.5">
-                        Released {new Date(r.released_at).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' })}
+                        Released {new Date(r.released_at).toLocaleDateString('en-US', { day:'numeric', month:'short', year:'numeric' })}
                       </div>
                     )}
                   </div>

@@ -19,8 +19,8 @@ function fmtDate(d) {
   const today = new Date();
   const sameDay = dt.toDateString() === today.toDateString();
   return sameDay
-    ? dt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
-    : dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+    ? dt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+    : dt.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
 }
 
 export default function InboxPanel({ profile, onNavigate }) {
@@ -318,7 +318,7 @@ function MessageView({ msg, profile, onNavigate, onBack, onArchive, callFn, sign
               <span className="font-medium text-paper">{from.name}</span>
               <span className="text-dim"> · {from.email}</span>
             </div>
-            <div className="text-[11px] text-dim mt-0.5">{msg.date ? new Date(msg.date).toLocaleString('en-GB') : ''}</div>
+            <div className="text-[11px] text-dim mt-0.5">{msg.date ? new Date(msg.date).toLocaleString('en-US') : ''}</div>
           </div>
         </div>
         <div className="flex items-center gap-2 mt-3 flex-wrap">

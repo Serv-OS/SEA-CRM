@@ -218,5 +218,5 @@ function timeAgo(ts) {
   if (d < 3600) return Math.floor(d / 60) + 'm ago';
   if (d < 86400) return Math.floor(d / 3600) + 'h ago';
   if (d < 2592000) return Math.floor(d / 86400) + 'd ago';
-  return new Date(ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' });
+  return new Date(ts).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: '2-digit' });
 }

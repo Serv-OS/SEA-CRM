@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { Receipt, Plus, Repeat, X, Trash2 } from 'lucide-react';
 
 export const money = (v) => `$${Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-const fmtD = (d) => d ? new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' }) : '—';
+const fmtD = (d) => d ? new Date(d + 'T00:00:00').toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: '2-digit' }) : '—';
 
 // Effective display status: sent/viewed past due = overdue
 export const invStatus = (inv) => {

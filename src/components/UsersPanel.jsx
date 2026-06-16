@@ -160,7 +160,7 @@ export default function UsersPanel({ profile }) {
                     <div className="w-7 h-7 rounded-full bg-muted/20 text-muted text-xs flex items-center justify-center shrink-0">&#x2709;</div>
                     <div className="min-w-0">
                       <div className="text-sm text-paper truncate">{inv.email}</div>
-                      <div className="text-xs text-dim">invited {new Date(inv.invited_at).toLocaleDateString('en-GB', { day:'numeric', month:'short' })}</div>
+                      <div className="text-xs text-dim">invited {new Date(inv.invited_at).toLocaleDateString('en-US', { day:'numeric', month:'short' })}</div>
                     </div>
                   </div>
                   <div className="col-span-3">
@@ -202,7 +202,7 @@ export default function UsersPanel({ profile }) {
                   <div className="min-w-0">
                     <div className="text-sm text-paper truncate">{u.display_name || u.email.split('@')[0]}</div>
                     <div className="text-xs text-muted truncate">{u.email}</div>
-                    <div className="text-[10px] text-dim">joined {new Date(u.created_at).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'2-digit' })}</div>
+                    <div className="text-[10px] text-dim">joined {new Date(u.created_at).toLocaleDateString('en-US', { day:'numeric', month:'short', year:'2-digit' })}</div>
                   </div>
                 </div>
                 <div className="col-span-2">

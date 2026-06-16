@@ -350,8 +350,8 @@ export default function TicketDetail({ ticketId, profile, onClose, onNavigate })
                   <Field label="Stage" value={STAGE_LABELS[ticket.stage]} />
                   <Field label="Owner" value={ownerName(ticket.owner_id)} />
                   <Field label="Source" value={ticket.source} />
-                  <Field label="Created" value={new Date(ticket.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' })} />
-                  {ticket.resolved_at && <Field label="Resolved" value={new Date(ticket.resolved_at).toLocaleDateString('en-GB')} />}
+                  <Field label="Created" value={new Date(ticket.created_at).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: '2-digit' })} />
+                  {ticket.resolved_at && <Field label="Resolved" value={new Date(ticket.resolved_at).toLocaleDateString('en-US')} />}
                   {ticket.description && <Field label="Description" value={ticket.description} />}
                   {ticket.notes && <Field label="Notes" value={ticket.notes} />}
                 </div>
@@ -360,7 +360,7 @@ export default function TicketDetail({ ticketId, profile, onClose, onNavigate })
               <Card title="SLA">
                 {(() => {
                   const sla = computeSla(ticket);
-                  const fmt = (ts) => ts ? new Date(ts).toLocaleString('en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }) : '--';
+                  const fmt = (ts) => ts ? new Date(ts).toLocaleString('en-US', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }) : '--';
                   return (
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
@@ -475,7 +475,7 @@ export default function TicketDetail({ ticketId, profile, onClose, onNavigate })
                         <span className="text-paper">{ownerName(h.changed_by)}</span>
                         <span className="text-muted">{h.from_stage ? STAGE_LABELS[h.from_stage] : 'Created'} &rarr; {STAGE_LABELS[h.to_stage]}</span>
                         <span className="text-dim ml-auto text-[10px]">
-                          {new Date(h.changed_at).toLocaleDateString('en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}
+                          {new Date(h.changed_at).toLocaleDateString('en-US', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}
                         </span>
                       </div>
                     ))}

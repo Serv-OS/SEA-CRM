@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
 import { PhoneCall, PhoneIncoming, PhoneOutgoing, PhoneMissed, Voicemail } from 'lucide-react';
 
-const fmtWhen = (d) => new Date(d).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+const fmtWhen = (d) => new Date(d).toLocaleString('en-US', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 const fmtDur = (s) => { const n = Number(s) || 0; return n >= 60 ? `${Math.floor(n / 60)}m ${n % 60}s` : `${n}s`; };
 
 // Outcome buckets for filtering

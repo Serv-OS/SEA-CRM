@@ -156,7 +156,7 @@ export default function InvDashboard({ profile, onNavigate }) {
                 <div key={m.id} className="px-5 py-2.5 flex items-center gap-3 text-sm">
                   <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded shrink-0 ${m.type === 'in' ? 'bg-emerald-100 text-emerald-700' : m.type === 'out' ? 'bg-purple-100 text-purple-700' : 'bg-orange-100 text-orange-700'}`}>{m.type.replace('_', ' ')}</span>
                   <span className="text-paper flex-1 min-w-0 truncate">{m.product_name} × {m.qty}{m.customer_name ? ` → ${m.customer_name}` : m.supplier_name ? ` ← ${m.supplier_name}` : ''}</span>
-                  <span className="text-xs text-dim shrink-0">{new Date(m.occurred_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                  <span className="text-xs text-dim shrink-0">{new Date(m.occurred_at).toLocaleDateString('en-US', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
                 </div>
               ))}
               {movements.length === 0 && <div className="px-5 py-6 text-center text-dim text-sm italic">No movements yet — start with Stock In or a Purchase Order.</div>}

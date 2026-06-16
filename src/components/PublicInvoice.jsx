@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 
 const FN = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
 const money = (v) => `$${Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
 
 export default function PublicInvoice({ token }) {
   const [data, setData] = useState(null);

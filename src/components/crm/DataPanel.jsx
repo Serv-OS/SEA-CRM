@@ -282,7 +282,7 @@ function DuplicatesTab({ profile }) {
                   onChange={() => setKeepers(k => ({ ...k, [grp.key]: r.id }))} />
                 <div className="flex-1 min-w-0">
                   <div className="text-sm text-paper truncate">{label(r)}</div>
-                  <div className="text-[10px] text-dim truncate">{sub(r)} · added {new Date(r.created_at).toLocaleDateString('en-GB')}</div>
+                  <div className="text-[10px] text-dim truncate">{sub(r)} · added {new Date(r.created_at).toLocaleDateString('en-US')}</div>
                 </div>
                 {keepers[grp.key] === r.id && <span className="text-[9px] px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded font-bold uppercase">Keep</span>}
               </label>

@@ -211,7 +211,7 @@ export default function LeadDetail({ leadId, profile, onClose, onNavigate }) {
                   <Field label="Current POS" value={lead.current_pos} />
                   <Field label="Next action" value={[lead.next_action, lead.next_action_date].filter(Boolean).join(' / ')} />
                   <Field label="Owner" value={ownerName(lead.owner_id)} />
-                  <Field label="Created" value={new Date(lead.created_at).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'2-digit' })} />
+                  <Field label="Created" value={new Date(lead.created_at).toLocaleDateString('en-US', { day:'numeric', month:'short', year:'2-digit' })} />
                   {lead.disqualified_reason && <Field label="Disqualified" value={lead.disqualified_reason} />}
                   {lead.notes && <Field label="Notes" value={lead.notes} />}
                 </div>

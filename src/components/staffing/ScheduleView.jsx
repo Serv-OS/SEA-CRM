@@ -321,7 +321,7 @@ function PublishModal({ profile, monday, days, shifts, staff, areas, onClose, on
   const [result, setResult] = useState(null);
   const areaName = (id) => areas.find(a => a.id === id)?.name;
   const nameOf = (id) => { const p = staff.find(s => s.id === id); return p?.display_name || p?.email?.split('@')[0] || '?'; };
-  const dayLabel = (iso) => { const d = new Date(iso + 'T00:00:00'); return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }); };
+  const dayLabel = (iso) => { const d = new Date(iso + 'T00:00:00'); return d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' }); };
 
   // recipients = staff with ≥1 shift this week (optionally only those with a draft)
   const userIds = [...new Set(shifts.map(s => s.user_id))];
@@ -331,7 +331,7 @@ function PublishModal({ profile, monday, days, shifts, staff, areas, onClose, on
     const p = staff.find(s => s.id === uid);
     const token = (uid.slice(0, 8));
     const lines = mine.map(s => `${dayLabel(s.date)} ${s.start_time}-${s.finish_time}${s.area_id ? ' ' + areaName(s.area_id) : ''}`);
-    const body = `Hi ${nameOf(uid)}, your shifts for the week of ${monday.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}:\n${lines.join('\n')}\nConfirm: crm.co/r/${token}`;
+    const body = `Hi ${nameOf(uid)}, your shifts for the week of ${monday.toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}:\n${lines.join('\n')}\nConfirm: crm.co/r/${token}`;
     return { uid, name: nameOf(uid), mobile: p?.mobile || null, count: mine.length, hasDraft, body };
   });
   const toSend = recipients.filter(r => (!onlyChanged || r.hasDraft));

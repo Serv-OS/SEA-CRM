@@ -43,9 +43,9 @@ export default function MyWork({ profile, onNavigate }) {
     return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
   })();
 
-  const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '';
+  const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { day: 'numeric', month: 'short' }) : '';
   const isOverdue = (d) => d && new Date(d) < new Date(new Date().toDateString());
-  const money = (v) => v ? `£${Number(v).toLocaleString('en-GB')}` : '';
+  const money = (v) => v ? `$${Number(v).toLocaleString('en-US')}` : '';
 
   return (
     <div className="h-full flex flex-col">

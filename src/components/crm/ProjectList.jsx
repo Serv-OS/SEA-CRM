@@ -203,10 +203,10 @@ export default function ProjectList({ profile, onSelect }) {
                   )}
                   {p.due_date && (
                     <span className={new Date(p.due_date) < new Date() && p.status === 'active' ? 'text-red-600 font-medium' : ''}>
-                      Due {new Date(p.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                      Due {new Date(p.due_date).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}
                     </span>
                   )}
-                  <span>Created {new Date(p.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' })}</span>
+                  <span>Created {new Date(p.created_at).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: '2-digit' })}</span>
                 </div>
 
                 {/* Task stats bar */}

@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { CreditCard, Plus, X, TrendingUp, Banknote } from 'lucide-react';
 import ProcessingAccountDrawer from './ProcessingAccountDrawer.jsx';
 
-export const gbp0 = (n) => '£' + (Number(n) || 0).toLocaleString('en-GB', { maximumFractionDigits: 0 });
+export const gbp0 = (n) => '$' + (Number(n) || 0).toLocaleString('en-US', { maximumFractionDigits: 0 });
 
 // Card scheme × presentment categories
 export const RATE_CATEGORIES = [
@@ -95,7 +95,7 @@ export default function PaymentsPanel({ profile, onNavigate }) {
 
           {/* Headline */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Headline icon={<Banknote size={18} />} value={gbp0(totalProcessed)} label="Amount processed" sub={`in ${new Date(period).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}`} accent />
+            <Headline icon={<Banknote size={18} />} value={gbp0(totalProcessed)} label="Amount processed" sub={`in ${new Date(period).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`} accent />
             <Headline icon={<TrendingUp size={18} />} value={gbp0(totalRevenue)} label="Our revenue" sub="margin this month" accent />
             <Headline value={liveCount} label="Live accounts" sub={`${accounts.length} total`} />
             <Headline value={totalProcessed > 0 ? ((totalRevenue / totalProcessed) * 100).toFixed(2) + '%' : '—'} label="Effective margin" sub="revenue ÷ processed" />
@@ -285,12 +285,12 @@ export function AccountModal({ account, companies, locations, onClose, onSaved }
             </table>
           </Group>
 
-          <Group title="Per-transaction fees (£) — all card types">
+          <Group title="Per-transaction fees ($) — all card types">
             <Three a={['current_txn_fee', 'Their / txn', '0.05']} b={['our_txn_fee', 'Our / txn', '0.03']} c={['buy_txn_fee', 'Buy / txn', '0.02']} f={f} set={set} />
           </Group>
 
           <div className="grid grid-cols-3 gap-3">
-            <div><label className={label}>Monthly volume £</label><input className={input} value={f.current_monthly_volume} onChange={e => set('current_monthly_volume', e.target.value)} placeholder="40000" /></div>
+            <div><label className={label}>Monthly volume $</label><input className={input} value={f.current_monthly_volume} onChange={e => set('current_monthly_volume', e.target.value)} placeholder="40000" /></div>
             <div><label className={label}>Processing partner</label><input className={input} value={f.partner} onChange={e => set('partner', e.target.value)} placeholder="e.g. Adyen" /></div>
             <div><label className={label}>Merchant ref</label><input className={input} value={f.merchant_ref} onChange={e => set('merchant_ref', e.target.value)} placeholder="MID" /></div>
           </div>

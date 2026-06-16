@@ -199,18 +199,18 @@ export default function OnboardingDetail({ onboardingId, profile, onClose, onNav
                   <Field label="Stage" value={STAGE_LABELS[ob.stage]} />
                   <Field label="Owner" value={ownerName(ob.owner_id)} />
                   <Field label="Install location" value={locations.find(l => l.id === ob.location_id)?.name} />
-                  <Field label="Created" value={new Date(ob.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' })} />
+                  <Field label="Created" value={new Date(ob.created_at).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: '2-digit' })} />
                   {ob.notes && <Field label="Notes" value={ob.notes} />}
                 </div>
               </Card>
 
               <Card title="Key Dates">
                 <div className="space-y-3">
-                  <Field label="Onboarding call" value={ob.kickoff_at ? new Date(ob.kickoff_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : null} />
-                  <Field label="Expected install" value={ob.expected_install_date ? new Date(ob.expected_install_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' }) : null} />
-                  <Field label="Actual install" value={ob.actual_install_date ? new Date(ob.actual_install_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' }) : null} />
-                  <Field label="Go-live" value={ob.target_go_live ? new Date(ob.target_go_live).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' }) : null} />
-                  <Field label="Activation" value={ob.activation_date ? new Date(ob.activation_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' }) : null} />
+                  <Field label="Onboarding call" value={ob.kickoff_at ? new Date(ob.kickoff_at).toLocaleString('en-US', { day: 'numeric', month: 'short', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : null} />
+                  <Field label="Expected install" value={ob.expected_install_date ? new Date(ob.expected_install_date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: '2-digit' }) : null} />
+                  <Field label="Actual install" value={ob.actual_install_date ? new Date(ob.actual_install_date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: '2-digit' }) : null} />
+                  <Field label="Go-live" value={ob.target_go_live ? new Date(ob.target_go_live).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: '2-digit' }) : null} />
+                  <Field label="Activation" value={ob.activation_date ? new Date(ob.activation_date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: '2-digit' }) : null} />
                 </div>
               </Card>
 
@@ -291,7 +291,7 @@ export default function OnboardingDetail({ onboardingId, profile, onClose, onNav
                         <span className="text-paper">{ownerName(h.changed_by)}</span>
                         <span className="text-muted">{h.from_stage ? STAGE_LABELS[h.from_stage] : 'Created'} &rarr; {STAGE_LABELS[h.to_stage]}</span>
                         <span className="text-dim ml-auto text-[10px]">
-                          {new Date(h.changed_at).toLocaleDateString('en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}
+                          {new Date(h.changed_at).toLocaleDateString('en-US', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}
                         </span>
                       </div>
                     ))}

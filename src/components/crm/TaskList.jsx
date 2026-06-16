@@ -243,7 +243,7 @@ export default function TaskList({ profile, onSelect }) {
           <span className={`px-1.5 py-0.5 text-[9px] font-bold uppercase rounded ${STATUS_STYLES[t.status]}`}>{t.status.replace('_', ' ')}</span>
           {t.due_date && (
             <span className={`text-xs ${isOverdue(t) ? 'text-red-600 font-bold' : 'text-dim'}`}>
-              {new Date(t.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+              {new Date(t.due_date).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}
             </span>
           )}
           {t.owner_id && (

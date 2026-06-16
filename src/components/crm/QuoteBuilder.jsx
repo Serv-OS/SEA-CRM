@@ -176,6 +176,12 @@ export default function QuoteBuilder({ quoteId, profile, onClose, onNavigate }) 
       recurring_arr: 0, updated_at: now,
     }).eq('id', quoteId);
 
+    // Keep the linked deal's contract value in lock-step with the quote total
+    // so the deal/pipeline/revenue always show the same number as the quote.
+    if (quote.deal_id) {
+      await supabase.from('deals').update({ value: customerTotal, currency: 'USD' }).eq('id', quote.deal_id);
+    }
+
     // 2) Customer-facing line items (replace) — never carry cost/margin
     await supabase.from('quote_line_items').delete().eq('quote_id', quoteId);
     const lines = buildCustomerLines(result);

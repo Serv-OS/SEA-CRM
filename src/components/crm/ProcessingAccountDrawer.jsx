@@ -3,9 +3,9 @@ import { supabase } from '../../lib/supabase';
 import { X, Pencil, Plus, Trash2, Building2 } from 'lucide-react';
 import { AccountModal, gbp0, marginPct, marginTxn, revenueOf, blendedRate, RATE_CATEGORIES } from './PaymentsPanel.jsx';
 
-const gbp2 = (n) => '£' + (Number(n) || 0).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const gbp2 = (n) => '$' + (Number(n) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const thisMonth = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; };
-const periodLabel = (p) => new Date(p).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+const periodLabel = (p) => new Date(p).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 
 export default function ProcessingAccountDrawer({ account, profile, onClose, onChanged, onNavigate, companies = [], locations = [] }) {
   const [acc, setAcc] = useState(account);
@@ -104,7 +104,7 @@ export default function ProcessingAccountDrawer({ account, profile, onClose, onC
                 </div>
               );
             })}
-            <div className="px-4 py-2 text-[11px] text-muted">Per-txn fees: their £{Number(acc.current_txn_fee || 0).toFixed(2)} · our £{Number(acc.our_txn_fee || 0).toFixed(2)} · buy £{Number(acc.buy_txn_fee || 0).toFixed(2)}</div>
+            <div className="px-4 py-2 text-[11px] text-muted">Per-txn fees: their ${Number(acc.current_txn_fee || 0).toFixed(2)} · our ${Number(acc.our_txn_fee || 0).toFixed(2)} · buy ${Number(acc.buy_txn_fee || 0).toFixed(2)}</div>
           </div>
 
           <div className="glass-inner rounded-xl p-4 grid grid-cols-3 gap-3 text-center">
@@ -128,9 +128,9 @@ export default function ProcessingAccountDrawer({ account, profile, onClose, onC
               <div className="p-4 border-b border-bdr space-y-3 bg-card/40">
                 <div className="grid grid-cols-2 gap-3">
                   <div><label className={lbl}>Month</label><input type="month" className={input} value={vform.month} onChange={e => setVform({ ...vform, month: e.target.value })} /></div>
-                  <div><label className={lbl}>Amount processed £</label><input className={input} value={vform.amount_processed} onChange={e => setVform({ ...vform, amount_processed: e.target.value })} placeholder="40000" /></div>
+                  <div><label className={lbl}>Amount processed $</label><input className={input} value={vform.amount_processed} onChange={e => setVform({ ...vform, amount_processed: e.target.value })} placeholder="40000" /></div>
                   <div><label className={lbl}>Transactions</label><input className={input} value={vform.transactions} onChange={e => setVform({ ...vform, transactions: e.target.value })} placeholder="optional" /></div>
-                  <div><label className={lbl}>Our revenue £ (override)</label><input className={input} value={vform.our_revenue} onChange={e => setVform({ ...vform, our_revenue: e.target.value })} placeholder="leave blank = estimate" /></div>
+                  <div><label className={lbl}>Our revenue $ (override)</label><input className={input} value={vform.our_revenue} onChange={e => setVform({ ...vform, our_revenue: e.target.value })} placeholder="leave blank = estimate" /></div>
                 </div>
                 <div className="flex gap-2"><button onClick={addVolume} className="btn-glass px-4 py-1.5 rounded-xl text-xs font-semibold">Save</button>
                   <button onClick={() => setAdding(false)} className="btn-ghost px-3 py-1.5 rounded-xl text-xs">Cancel</button></div>
@@ -163,7 +163,7 @@ export default function ProcessingAccountDrawer({ account, profile, onClose, onC
             </table>
           </div>
 
-          <div className="text-[11px] text-dim">Leave “Our revenue” blank and it’s estimated from your blended margin ({marginPct(accCalc).toFixed(2)}% + £{marginTxn(accCalc).toFixed(2)}/txn). When your processing partner is connected, monthly figures will sync here automatically.</div>
+          <div className="text-[11px] text-dim">Leave “Our revenue” blank and it’s estimated from your blended margin ({marginPct(accCalc).toFixed(2)}% + ${marginTxn(accCalc).toFixed(2)}/txn). When your processing partner is connected, monthly figures will sync here automatically.</div>
         </div>
       </div>
 

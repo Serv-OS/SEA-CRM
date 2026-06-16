@@ -132,7 +132,7 @@ export default function ContactDetail({ contactId, profile, onClose, onNavigate,
                   <Field label="Job Title" value={contact.job_title} />
                   <Field label="Source" value={contact.source} />
                   <Field label="Marketing" value={contact.marketing_opt_in ? 'Opted in' : 'Not opted in'} />
-                  {contact.gdpr_consent_at && <Field label="GDPR Consent" value={new Date(contact.gdpr_consent_at).toLocaleDateString('en-GB')} />}
+                  {contact.gdpr_consent_at && <Field label="GDPR Consent" value={new Date(contact.gdpr_consent_at).toLocaleDateString('en-US')} />}
                   {contact.notes && <Field label="Notes" value={contact.notes} />}
                 </div>
               </Card>

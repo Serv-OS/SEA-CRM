@@ -225,7 +225,7 @@ export default function CompanyDetail({ companyId, profile, onClose, onNavigate,
                         className="p-3 glass-inner rounded-xl cursor-pointer">
                         <div className="text-sm font-medium text-paper">{d.name}</div>
                         <div className="flex items-center gap-2 mt-1">
-                          <span className="text-xs text-ember font-mono font-bold">{d.value ? `£${Number(d.value).toLocaleString()}` : ''}</span>
+                          <span className="text-xs text-ember font-mono font-bold">{d.value ? `$${Number(d.value).toLocaleString()}` : ''}</span>
                           <span className="text-[10px] text-muted uppercase">{DEAL_STAGES[d.stage] || d.stage}</span>
                         </div>
                       </div>
