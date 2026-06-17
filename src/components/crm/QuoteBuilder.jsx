@@ -298,6 +298,59 @@ export default function QuoteBuilder({ quoteId, profile, onClose, onNavigate }) 
         <div className="grid grid-cols-12 gap-4 max-w-[1280px]">
           {/* Left: estimator inputs */}
           <div className="col-span-12 lg:col-span-8 space-y-4">
+            {/* Payment schedule (staged billing) — top of the column so it's easy to find */}
+            {quote.payment_terms === 'staged' && (
+              <div className="glass-card rounded-2xl overflow-hidden border-l-2 border-ember">
+                <div className="px-4 py-3 border-b border-bdr flex items-center gap-2">
+                  <h3 className="text-sm font-bold text-paper">Payment schedule</h3>
+                  <span className="text-[10px] text-dim">Deposit + milestones — charged manually as the build progresses</span>
+                  {canWrite && !stagesLocked && stages.length > 0 && <button onClick={() => addStage()} className="ml-auto text-xs text-ember hover:text-ember-deep font-medium">+ Add stage</button>}
+                </div>
+                {stages.length === 0 ? (
+                  <div className="p-5 text-center">
+                    <div className="text-xs text-dim mb-2">No stages yet — split the {money(customerTotal)} into a deposit + milestones.</div>
+                    {canWrite && <div className="flex gap-2 justify-center"><button onClick={seedSchedule} className="text-xs btn-glass px-3 py-1.5 rounded-lg font-medium">Deposit + 2 stages (40 / 30 / 30)</button><button onClick={() => addStage()} className="text-xs btn-ghost px-3 py-1.5 rounded-lg">+ Add one stage</button></div>}
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead><tr className="text-[10px] uppercase tracking-wider text-dim border-b border-bdr">
+                        <th className="text-left px-3 py-2">Stage</th><th className="px-2 py-2 w-16">Basis</th>
+                        <th className="text-right px-2 py-2 w-20">Value</th><th className="text-right px-3 py-2">Amount</th>
+                        <th className="px-2 py-2 w-24">Status</th><th className="w-8"></th>
+                      </tr></thead>
+                      <tbody>
+                        {stages.map((s, i) => (
+                          <tr key={s.key} className="border-b border-bdr/50 align-top">
+                            <td className="px-3 py-2">
+                              <input className={cell + ' w-full'} value={s.name} onChange={e => updateStage(s.key, { name: e.target.value })} disabled={!canWrite || stagesLocked} placeholder="Stage name" />
+                              {i === 0 && <span className="block text-[9px] text-ember font-bold uppercase mt-0.5">Deposit · charged at signing</span>}
+                            </td>
+                            <td className="px-2 py-2"><select className={cell + ' w-14'} value={s.basis} onChange={e => updateStage(s.key, { basis: e.target.value })} disabled={!canWrite || stagesLocked}><option value="percent">%</option><option value="fixed">$</option></select></td>
+                            <td className="px-2 py-2 text-right"><input type="number" className={cell + ' w-16 text-right'} value={s.value} onChange={e => updateStage(s.key, { value: e.target.value })} disabled={!canWrite || stagesLocked} placeholder="0" /></td>
+                            <td className="px-3 py-2 text-right font-mono text-paper">{money(stageAmount(s))}</td>
+                            <td className="px-2 py-2">
+                              {s.status && s.status !== 'pending'
+                                ? <span className={`text-[10px] font-bold uppercase ${s.status === 'paid' ? 'text-emerald-600' : s.status === 'failed' ? 'text-red-600' : 'text-blue-600'}`}>{s.status}</span>
+                                : <span className="text-[10px] text-dim">pending</span>}
+                              {s.invoice && <span className="block text-[9px] text-dim">INV-{s.invoice.invoice_number}</span>}
+                            </td>
+                            <td className="px-2 py-2 text-center">{canWrite && !stagesLocked && <button onClick={() => removeStage(s.key)} className="text-red-500 hover:text-red-600">×</button>}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                {stages.length > 0 && (
+                  <div className={`px-4 py-3 border-t border-bdr flex items-center justify-between text-xs ${stagesReconciled ? 'text-emerald-600' : 'text-amber-600'}`}>
+                    <span>{stagesReconciled ? '✓ Stages total the customer price' : (stagesRemainder >= 0 ? `${money(stagesRemainder)} still unallocated` : `${money(-stagesRemainder)} over the total`)}</span>
+                    <span className="font-mono">{money(stagesTotal)} / {money(customerTotal)}</span>
+                  </div>
+                )}
+                {stagesLocked && <div className="px-4 py-2 text-[10px] text-dim border-t border-bdr">Schedule locked — a stage has been invoiced or charged, so amounts can't change.</div>}
+              </div>
+            )}
             {/* Project details */}
             <div className="glass-card rounded-2xl p-4">
               <div className="text-sm font-bold text-paper mb-3">Project details</div>
@@ -392,59 +445,6 @@ export default function QuoteBuilder({ quoteId, profile, onClose, onNavigate }) 
               <textarea className={input + ' resize-none'} rows={2} value={quote.notes || ''} onChange={e => setQ('notes', e.target.value)} placeholder="Internal notes (not shown to customer)" disabled={!canWrite} />
             </div>
 
-            {/* Payment schedule (staged billing) */}
-            {quote.payment_terms === 'staged' && (
-              <div className="glass-card rounded-2xl overflow-hidden">
-                <div className="px-4 py-3 border-b border-bdr flex items-center gap-2">
-                  <h3 className="text-sm font-bold text-paper">Payment schedule</h3>
-                  <span className="text-[10px] text-dim">Deposit + milestones — charged manually as the build progresses</span>
-                  {canWrite && !stagesLocked && stages.length > 0 && <button onClick={() => addStage()} className="ml-auto text-xs text-ember hover:text-ember-deep font-medium">+ Add stage</button>}
-                </div>
-                {stages.length === 0 ? (
-                  <div className="p-5 text-center">
-                    <div className="text-xs text-dim mb-2">No stages yet — split the {money(customerTotal)} into a deposit + milestones.</div>
-                    {canWrite && <div className="flex gap-2 justify-center"><button onClick={seedSchedule} className="text-xs btn-glass px-3 py-1.5 rounded-lg font-medium">Deposit + 2 stages (40 / 30 / 30)</button><button onClick={() => addStage()} className="text-xs btn-ghost px-3 py-1.5 rounded-lg">+ Add one stage</button></div>}
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead><tr className="text-[10px] uppercase tracking-wider text-dim border-b border-bdr">
-                        <th className="text-left px-3 py-2">Stage</th><th className="px-2 py-2 w-16">Basis</th>
-                        <th className="text-right px-2 py-2 w-20">Value</th><th className="text-right px-3 py-2">Amount</th>
-                        <th className="px-2 py-2 w-24">Status</th><th className="w-8"></th>
-                      </tr></thead>
-                      <tbody>
-                        {stages.map((s, i) => (
-                          <tr key={s.key} className="border-b border-bdr/50 align-top">
-                            <td className="px-3 py-2">
-                              <input className={cell + ' w-full'} value={s.name} onChange={e => updateStage(s.key, { name: e.target.value })} disabled={!canWrite || stagesLocked} placeholder="Stage name" />
-                              {i === 0 && <span className="block text-[9px] text-ember font-bold uppercase mt-0.5">Deposit · charged at signing</span>}
-                            </td>
-                            <td className="px-2 py-2"><select className={cell + ' w-14'} value={s.basis} onChange={e => updateStage(s.key, { basis: e.target.value })} disabled={!canWrite || stagesLocked}><option value="percent">%</option><option value="fixed">$</option></select></td>
-                            <td className="px-2 py-2 text-right"><input type="number" className={cell + ' w-16 text-right'} value={s.value} onChange={e => updateStage(s.key, { value: e.target.value })} disabled={!canWrite || stagesLocked} placeholder="0" /></td>
-                            <td className="px-3 py-2 text-right font-mono text-paper">{money(stageAmount(s))}</td>
-                            <td className="px-2 py-2">
-                              {s.status && s.status !== 'pending'
-                                ? <span className={`text-[10px] font-bold uppercase ${s.status === 'paid' ? 'text-emerald-600' : s.status === 'failed' ? 'text-red-600' : 'text-blue-600'}`}>{s.status}</span>
-                                : <span className="text-[10px] text-dim">pending</span>}
-                              {s.invoice && <span className="block text-[9px] text-dim">INV-{s.invoice.invoice_number}</span>}
-                            </td>
-                            <td className="px-2 py-2 text-center">{canWrite && !stagesLocked && <button onClick={() => removeStage(s.key)} className="text-red-500 hover:text-red-600">×</button>}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-                {stages.length > 0 && (
-                  <div className={`px-4 py-3 border-t border-bdr flex items-center justify-between text-xs ${stagesReconciled ? 'text-emerald-600' : 'text-amber-600'}`}>
-                    <span>{stagesReconciled ? '✓ Stages total the customer price' : (stagesRemainder >= 0 ? `${money(stagesRemainder)} still unallocated` : `${money(-stagesRemainder)} over the total`)}</span>
-                    <span className="font-mono">{money(stagesTotal)} / {money(customerTotal)}</span>
-                  </div>
-                )}
-                {stagesLocked && <div className="px-4 py-2 text-[10px] text-dim border-t border-bdr">Schedule locked — a stage has been invoiced or charged, so amounts can't change.</div>}
-              </div>
-            )}
           </div>
 
           {/* Right: internal breakdown + customer total + settings */}
@@ -495,7 +495,7 @@ export default function QuoteBuilder({ quoteId, profile, onClose, onNavigate }) 
                 <div><label className={label}>Install date</label><input type="date" className={input} value={quote.go_live_date || ''} onChange={e => setQ('go_live_date', e.target.value)} disabled={!canWrite} /></div>
                 <div className="col-span-2"><label className={label}>Payment terms</label><select className={input} value={quote.payment_terms} onChange={e => setQ('payment_terms', e.target.value)} disabled={!canWrite}>
                   <option value="pay_now">Charge full now</option><option value="deposit">Deposit</option><option value="staged">Staged (deposit + milestones)</option><option value="invoice_later">Invoice later</option></select>
-                  {quote.payment_terms === 'staged' && <div className="text-[10px] text-dim mt-1">Define the stages in the Payment schedule panel on the left.</div>}</div>
+                  {quote.payment_terms === 'staged' && <div className="text-[10px] text-dim mt-1">Set up the deposit + milestones in the <span className="text-ember font-semibold">Payment schedule</span> panel at the top of the quote.</div>}</div>
                 {quote.payment_terms === 'deposit' && <div className="col-span-2"><label className={label}>Deposit %</label><input type="number" className={input} value={quote.deposit_percent || 0} onChange={e => setQ('deposit_percent', e.target.value)} disabled={!canWrite} /></div>}
               </div>
             </div>
