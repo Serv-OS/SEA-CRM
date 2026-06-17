@@ -29,12 +29,14 @@ serve(async (req) => {
     if (!quote) return json({ error: "Quote not found" }, 404);
 
     if (req.method === "GET") {
-      const [{ data: items }, { data: company }, { data: contact }, { data: location }, { data: settings }] = await Promise.all([
+      const [{ data: items }, { data: company }, { data: contact }, { data: location }, { data: settings }, { data: stages }] = await Promise.all([
         supabase.from("quote_line_items").select("*").eq("quote_id", quote.id).order("sort"),
         quote.company_id ? supabase.from("companies").select("name, address, city, postcode").eq("id", quote.company_id).maybeSingle() : Promise.resolve({ data: null }),
         quote.contact_id ? supabase.from("contacts").select("first_name, last_name, email, phone").eq("id", quote.contact_id).maybeSingle() : Promise.resolve({ data: null }),
         quote.location_id ? supabase.from("locations").select("name, address, city, postcode").eq("id", quote.location_id).maybeSingle() : Promise.resolve({ data: null }),
         supabase.from("support_settings").select("quote_terms, business_name, business_address, business_email, business_phone, quote_accent, logo_url").eq("id", 1).maybeSingle(),
+        // Customer-safe payment schedule (name + gross amount only — no cost/status)
+        supabase.from("payment_stages").select("name, amount, sort, is_deposit").eq("quote_id", quote.id).order("sort"),
       ]);
       if (quote.status === "sent") await supabase.from("quotes").update({ status: "viewed" }).eq("id", quote.id);
       const expired = quote.valid_until && new Date(quote.valid_until) < new Date(new Date().toDateString()) && !["won", "paid", "signed"].includes(quote.status);
@@ -56,6 +58,7 @@ serve(async (req) => {
         contact: contact ? { name: [contact.first_name, contact.last_name].filter(Boolean).join(" "), email: contact.email, phone: contact.phone } : null,
         location: location ? { name: location.name, address: [location.address, location.city, location.postcode].filter(Boolean).join(", ") } : null,
         items: items || [],
+        payment_stages: (stages || []).map((st: any) => ({ name: st.name, amount: Number(st.amount) || 0, is_deposit: !!st.is_deposit })),
       });
     }
 

@@ -69,6 +69,9 @@ export default function PublicQuote({ token }) {
   const seller = data.seller || {};
   const accent = seller.accent || '#E8743C';
   const accepted = paid || done || ['signed', 'paid', 'won'].includes(q.status);
+  const stages = data.payment_stages || [];
+  const isStaged = q.payment_terms === 'staged' && stages.length > 0;
+  const depositStage = stages.find(s => s.is_deposit);
 
   return wrap(
     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
@@ -142,13 +145,40 @@ export default function PublicQuote({ token }) {
       {/* Totals */}
       <div className="px-6 sm:px-8 py-4 bg-slate-50 border-y border-slate-200">
         <div className="ml-auto max-w-xs space-y-1">
-          <Row k="One-off subtotal" v={money(q.one_off_subtotal)} />
+          <Row k="Subtotal" v={money(q.one_off_subtotal)} />
           <Row k="Sales Tax" v={money(q.tax_amount)} />
-          <Row k="Due on acceptance" v={money(q.one_off_total)} bold accent={accent} />
+          <Row k={isStaged ? 'Contract total' : 'Due on acceptance'} v={money(q.one_off_total)} bold accent={accent} />
           {q.recurring_arr > 0 && <Row k="Ongoing (per year)" v={money(q.recurring_arr)} sub />}
         </div>
         {q.go_live_date && <div className="text-xs text-slate-500 mt-3">Planned go-live: <strong>{fmtDate(q.go_live_date)}</strong></div>}
       </div>
+
+      {/* Payment schedule (staged billing) */}
+      {isStaged && (
+        <div className="px-6 sm:px-8 py-4 border-b border-slate-200">
+          <div className="text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-2">Payment schedule</div>
+          <table className="w-full text-sm">
+            <tbody>
+              {stages.map((s, i) => (
+                <tr key={i} className="border-b border-slate-100 last:border-0">
+                  <td className="py-2 text-slate-700">
+                    <span className="font-medium">{s.name}</span>
+                    <span className="text-xs text-slate-400 ml-2">{s.is_deposit ? 'Due on acceptance' : `Stage ${i + 1} — due as work progresses`}</span>
+                  </td>
+                  <td className="py-2 text-right font-mono text-slate-800 whitespace-nowrap">{money(s.amount)}</td>
+                </tr>
+              ))}
+              <tr className="border-t-2 border-slate-200">
+                <td className="py-2 font-semibold text-slate-800">Total</td>
+                <td className="py-2 text-right font-mono font-bold" style={{ color: accent }}>{money(q.one_off_total)}</td>
+              </tr>
+            </tbody>
+          </table>
+          <div className="text-[11px] text-slate-500 mt-2">
+            The deposit is collected when you sign. Each later stage is charged to the same card as the project reaches that milestone.
+          </div>
+        </div>
+      )}
 
       {/* Terms */}
       {q.terms && (
@@ -172,7 +202,7 @@ export default function PublicQuote({ token }) {
           <div className="text-center text-slate-500 text-sm py-4">This quote has expired. Please contact us for an updated quote.</div>
         ) : (
           <>
-            <div className="text-sm text-slate-600 mb-3">By signing below you accept this order form and its terms.</div>
+            <div className="text-sm text-slate-600 mb-3">By signing below you accept this order form and its terms.{isStaged && ' You authorise us to securely save your card and charge it for each scheduled payment shown above as the project reaches that stage.'}</div>
             <input value={name} onChange={e => setName(e.target.value)} placeholder="Type your full name"
               className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-orange-400" />
             <div className="text-xs text-slate-500 mb-1">Draw your signature</div>
@@ -188,6 +218,7 @@ export default function PublicQuote({ token }) {
               className="w-full mt-3 py-3 text-white text-sm font-semibold rounded-lg transition hover:opacity-90 disabled:opacity-50">
               {submitting ? 'Processing…'
                 : q.payment_terms === 'invoice_later' ? 'Accept & sign'
+                : isStaged ? `Accept, sign & pay deposit (${money(depositStage?.amount || 0)})`
                 : q.payment_terms === 'deposit' ? `Accept, sign & pay ${q.deposit_percent}% deposit`
                 : 'Accept, sign & pay'}
             </button>
