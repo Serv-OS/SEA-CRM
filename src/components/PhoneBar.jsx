@@ -25,6 +25,17 @@ export default function PhoneBar({ profile }) {
   const goOnline = async () => {
     setStatus('connecting');
     try {
+      // Microphone access is required for call audio. Request it up front so the
+      // permission prompt appears before any call — otherwise calls connect but
+      // are completely silent (the SDK never gets a mic track).
+      try {
+        const mic = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mic.getTracks().forEach(t => t.stop());
+      } catch {
+        alert('Microphone access is blocked for this site. Click the lock / microphone icon in the address bar, set the microphone to Allow, then Go Online again.');
+        setStatus('offline');
+        return;
+      }
       const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/twilio-voice-token`,
