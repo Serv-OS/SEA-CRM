@@ -1,12 +1,14 @@
-// Twilio Usage Sync — pulls real usage + cost from the Twilio Usage Records API
-// and upserts a monthly row into public.twilio_usage (used by the back-office
-// "Phone (Twilio)" billing panel to compute the marked-up bill to the client).
+// Twilio Usage Sync — meters ONE phone number's usage + cost from the Twilio
+// Calls and Messages APIs and upserts a monthly row into public.twilio_usage.
+// The account is shared across clients, so we filter by the number stored in
+// support_settings.twilio_number (NOT account-wide usage). The monthly number
+// rental is a config value (support_settings.twilio_number_rental) since the
+// per-number rental isn't exposed in the usage APIs.
 //
-// Auth: callable by an owner/editor (user JWT) via the "Sync now" button, OR by
-// a cron/server caller presenting the service-role key as the Bearer token.
+// Used by the back-office "Phone (Twilio)" panel to compute the marked-up bill.
 //
-// Dormant-safe: if the Twilio secrets are not set it returns {configured:false}
-// and writes nothing — so it can be deployed before Twilio is connected.
+// Auth: owner/editor user JWT (the "Sync now" button) OR service-role key (cron).
+// Dormant-safe: returns {configured:false} if the Twilio secrets aren't set.
 //
 // Required Supabase Secrets (once Twilio is live): TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN
 
@@ -17,15 +19,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Leaf usage categories we sum — chosen so they never overlap hierarchically
-// (no double counting). `phonenumbers` is the monthly number rental.
-const CALL_IN = "calls-inbound";
-const CALL_OUT = "calls-outbound";
-const SMS_IN = "sms-inbound";
-const SMS_OUT = "sms-outbound";
-const NUMBERS = "phonenumbers";
-const COST_LEAVES = [CALL_IN, CALL_OUT, SMS_IN, SMS_OUT, NUMBERS, "recordings", "recordingstorage", "transcriptions", "mms-inbound", "mms-outbound"];
-
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -33,52 +26,21 @@ function json(body: unknown, status = 200) {
   });
 }
 
-// Fetch one period subresource (ThisMonth / LastMonth) and reduce to a row.
-async function fetchPeriod(accountSid: string, authToken: string, sub: "ThisMonth" | "LastMonth") {
-  const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Usage/Records/${sub}.json?PageSize=1000`;
-  const res = await fetch(url, {
-    headers: { Authorization: `Basic ${btoa(`${accountSid}:${authToken}`)}` },
-  });
-  if (!res.ok) {
-    const detail = await res.text();
-    throw new Error(`Twilio ${sub} ${res.status}: ${detail.slice(0, 300)}`);
-  }
-  const data = await res.json();
-  const records: any[] = data.usage_records || [];
-  const by: Record<string, any> = {};
-  for (const r of records) by[r.category] = r;
+// First-of-month + last-of-month (UTC) for the current month (off=0) or a prior month.
+function monthRange(off: number) {
+  const now = new Date();
+  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + off, 1));
+  const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + off + 1, 0));
+  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+  return { period: fmt(start), start: fmt(start), end: fmt(end) };
+}
 
-  const num = (cat: string, field: "price" | "count" | "usage") => Number(by[cat]?.[field] || 0);
+const abs = (v: unknown) => Math.abs(Number(v) || 0);
 
-  // Period = first of the month from any record's start_date (fallback: derive).
-  const start = records[0]?.start_date || null;
-  const period = start ? start.slice(0, 8) + "01" : null;
-
-  const number_cost = num(NUMBERS, "price");
-  let total_cost = 0;
-  const breakdown: Record<string, number> = {};
-  for (const cat of COST_LEAVES) {
-    const p = num(cat, "price");
-    if (p) breakdown[cat] = p;
-    total_cost += p;
-  }
-
-  return {
-    period,
-    inbound_calls: Math.round(num(CALL_IN, "count")),
-    outbound_calls: Math.round(num(CALL_OUT, "count")),
-    call_minutes: num(CALL_IN, "usage") + num(CALL_OUT, "usage"),
-    inbound_sms: Math.round(num(SMS_IN, "count")),
-    outbound_sms: Math.round(num(SMS_OUT, "count")),
-    number_count: Math.round(num(NUMBERS, "count")),
-    usage_cost: total_cost - number_cost,
-    number_cost,
-    total_cost,
-    currency: (records[0]?.price_unit || "usd").toLowerCase(),
-    breakdown,
-    source: "twilio_api",
-    synced_at: new Date().toISOString(),
-  };
+async function twilioGet(sid: string, token: string, url: string) {
+  const res = await fetch(url, { headers: { Authorization: `Basic ${btoa(`${sid}:${token}`)}` } });
+  if (!res.ok) throw new Error(`Twilio ${res.status}: ${(await res.text()).slice(0, 300)}`);
+  return res.json();
 }
 
 Deno.serve(async (req) => {
@@ -91,13 +53,13 @@ Deno.serve(async (req) => {
     );
 
     // --- Auth: service-role (cron) OR owner/editor user JWT ---
-    const token = (req.headers.get("Authorization") || "").replace("Bearer ", "").trim();
+    const tokenHdr = (req.headers.get("Authorization") || "").replace("Bearer ", "").trim();
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     let allowed = false;
-    if (token && token === serviceKey) {
-      allowed = true; // cron / server-to-server
-    } else if (token) {
-      const { data: { user } } = await supabase.auth.getUser(token);
+    if (tokenHdr && tokenHdr === serviceKey) {
+      allowed = true;
+    } else if (tokenHdr) {
+      const { data: { user } } = await supabase.auth.getUser(tokenHdr);
       if (user) {
         const { data: prof } = await supabase.from("profiles").select("role").eq("id", user.id).single();
         if (prof && (prof.role === "owner" || prof.role === "editor")) allowed = true;
@@ -105,25 +67,78 @@ Deno.serve(async (req) => {
     }
     if (!allowed) return json({ error: "Unauthorized" }, 401);
 
-    // --- Twilio config (dormant-safe) ---
-    const accountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
+    // --- Config ---
+    const sid = Deno.env.get("TWILIO_ACCOUNT_SID");
     const authToken = Deno.env.get("TWILIO_AUTH_TOKEN");
-    if (!accountSid || !authToken) {
+    if (!sid || !authToken) {
       return json({ configured: false, message: "Twilio is not connected yet (TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN not set)." });
     }
 
-    // Sync the current month and the previous full month.
-    const periods = ["ThisMonth", "LastMonth"] as const;
+    const { data: cfg } = await supabase
+      .from("support_settings")
+      .select("twilio_number, twilio_number_rental")
+      .eq("id", 1)
+      .maybeSingle();
+    const number = cfg?.twilio_number || Deno.env.get("TWILIO_FROM_NUMBER");
+    if (!number) return json({ configured: true, message: "No twilio_number set in Settings yet." });
+    const rental = Number(cfg?.twilio_number_rental ?? 1.15);
+
+    const enc = encodeURIComponent;
+    const base = `https://api.twilio.com/2010-04-01/Accounts/${sid}`;
+
     const rows = [];
-    for (const sub of periods) {
-      const row = await fetchPeriod(accountSid, authToken, sub);
-      if (!row.period) continue;
+    for (const off of [0, -1]) {
+      const { period, start, end } = monthRange(off);
+
+      // Calls: StartTime range, filtered by From (outbound) / To (inbound).
+      const callsUrl = (dir: "From" | "To") =>
+        `${base}/Calls.json?${dir}=${enc(number)}&StartTime%3E=${start}&StartTime%3C=${end}&PageSize=1000`;
+      // Messages: DateSent range, filtered by From / To.
+      const msgsUrl = (dir: "From" | "To") =>
+        `${base}/Messages.json?${dir}=${enc(number)}&DateSent%3E=${start}&DateSent%3C=${end}&PageSize=1000`;
+
+      const [outCalls, inCalls, outMsgs, inMsgs] = await Promise.all([
+        twilioGet(sid, authToken, callsUrl("From")),
+        twilioGet(sid, authToken, callsUrl("To")),
+        twilioGet(sid, authToken, msgsUrl("From")),
+        twilioGet(sid, authToken, msgsUrl("To")),
+      ]);
+
+      const outboundCalls: any[] = outCalls.calls || [];
+      const inboundCalls: any[] = inCalls.calls || [];
+      const outboundMsgs: any[] = outMsgs.messages || [];
+      const inboundMsgs: any[] = inMsgs.messages || [];
+
+      let seconds = 0, callCost = 0, smsCost = 0, currency = "usd";
+      for (const c of [...outboundCalls, ...inboundCalls]) { seconds += Number(c.duration) || 0; callCost += abs(c.price); if (c.price_unit) currency = String(c.price_unit).toLowerCase(); }
+      for (const m of [...outboundMsgs, ...inboundMsgs]) { smsCost += abs(m.price); if (m.price_unit) currency = String(m.price_unit).toLowerCase(); }
+
+      const usage_cost = callCost + smsCost;
+      // Flag if any list hit the page cap (would mean we under-counted — unlikely at SMB volume).
+      const truncated = [outCalls, inCalls, outMsgs, inMsgs].some((r: any) => r.next_page_uri);
+
+      const row = {
+        period,
+        inbound_calls: inboundCalls.length,
+        outbound_calls: outboundCalls.length,
+        call_minutes: Math.round((seconds / 60) * 10) / 10,
+        inbound_sms: inboundMsgs.length,
+        outbound_sms: outboundMsgs.length,
+        number_count: 1,
+        usage_cost,
+        number_cost: rental,
+        total_cost: usage_cost + rental,
+        currency,
+        breakdown: { calls: callCost, sms: smsCost, rental, number, truncated },
+        source: "twilio_api",
+        synced_at: new Date().toISOString(),
+      };
       const { error } = await supabase.from("twilio_usage").upsert(row, { onConflict: "period" });
-      if (error) throw new Error(`upsert ${sub}: ${error.message}`);
+      if (error) throw new Error(`upsert ${period}: ${error.message}`);
       rows.push(row);
     }
 
-    return json({ configured: true, synced: rows.length, periods: rows.map(r => ({ period: r.period, total_cost: r.total_cost })) });
+    return json({ configured: true, number, synced: rows.length, periods: rows.map(r => ({ period: r.period, usage_cost: r.usage_cost, total_cost: r.total_cost })) });
   } catch (e) {
     console.error("twilio-usage-sync error:", e);
     return json({ error: (e as Error).message }, 500);

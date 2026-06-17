@@ -13,6 +13,7 @@ export default function TwilioBillingCard({ profile }) {
   const [cfg, setCfg] = useState(null);
   const [rows, setRows] = useState([]);
   const [markup, setMarkup] = useState('');
+  const [rental, setRental] = useState('');
   const [billTo, setBillTo] = useState('');
   const [savingCfg, setSavingCfg] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -20,23 +21,28 @@ export default function TwilioBillingCard({ profile }) {
 
   const load = useCallback(async () => {
     const [s, u] = await Promise.all([
-      supabase.from('support_settings').select('twilio_number, twilio_markup_pct, twilio_bill_to').eq('id', 1).maybeSingle(),
+      supabase.from('support_settings').select('twilio_number, twilio_markup_pct, twilio_bill_to, twilio_number_rental').eq('id', 1).maybeSingle(),
       supabase.from('twilio_usage').select('*').order('period', { ascending: false }).limit(12),
     ]);
     setCfg(s.data || {});
     setMarkup(s.data?.twilio_markup_pct != null ? String(s.data.twilio_markup_pct) : '');
+    setRental(s.data?.twilio_number_rental != null ? String(s.data.twilio_number_rental) : '');
     setBillTo(s.data?.twilio_bill_to || '');
     setRows(u.data || []);
   }, []);
   useEffect(() => { load(); }, [load]);
 
   const markupPct = Number(markup) || 0;
-  const billOf = (r) => Number(r.total_cost || 0) * (1 + markupPct / 100);
+  const rentalNum = Number(rental) || 0;
+  // Rental + markup are live config, applied at display time over the synced usage.
+  const yourCostOf = (r) => Number(r.usage_cost || 0) + rentalNum;
+  const billOf = (r) => yourCostOf(r) * (1 + markupPct / 100);
 
   const saveCfg = async () => {
     setSavingCfg(true);
     await supabase.from('support_settings').update({
       twilio_markup_pct: markup === '' ? 0 : Number(markup),
+      twilio_number_rental: rental === '' ? 1.15 : Number(rental),
       twilio_bill_to: billTo.trim() || null,
     }).eq('id', 1);
     setSavingCfg(false);
@@ -81,11 +87,16 @@ export default function TwilioBillingCard({ profile }) {
       </div>
 
       {/* Markup config + current-month headline */}
-      <div className="px-5 py-4 border-b border-bdr grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+      <div className="px-5 py-4 border-b border-bdr grid grid-cols-2 md:grid-cols-5 gap-4 items-end">
         <div>
           <label className="text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-dim mb-1 block">Markup %</label>
           <input type="number" value={markup} onChange={e => setMarkup(e.target.value)} disabled={!canWrite}
             placeholder="30" className="w-full px-3 py-2 bg-card border border-bdr rounded-xl text-sm text-paper focus:outline-none focus:border-ember" />
+        </div>
+        <div>
+          <label className="text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-dim mb-1 block">Rental $/mo</label>
+          <input type="number" value={rental} onChange={e => setRental(e.target.value)} disabled={!canWrite}
+            placeholder="1.15" className="w-full px-3 py-2 bg-card border border-bdr rounded-xl text-sm text-paper focus:outline-none focus:border-ember" />
         </div>
         <div>
           <label className="text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-dim mb-1 block">Bill to</label>
@@ -93,12 +104,12 @@ export default function TwilioBillingCard({ profile }) {
             placeholder="Client name" className="w-full px-3 py-2 bg-card border border-bdr rounded-xl text-sm text-paper focus:outline-none focus:border-ember" />
         </div>
         <div>
-          {canWrite && <button onClick={saveCfg} disabled={savingCfg} className="btn-glass px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-50">{savingCfg ? 'Saving…' : 'Save markup'}</button>}
+          {canWrite && <button onClick={saveCfg} disabled={savingCfg} className="btn-glass px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-50">{savingCfg ? 'Saving…' : 'Save'}</button>}
         </div>
         <div className="text-right">
           <div className="text-[10px] font-mono font-bold uppercase tracking-[0.14em] text-dim">This month — bill</div>
           <div className="text-2xl font-bold tabular-nums text-paper">{current ? usd(billOf(current)) : '—'}</div>
-          {current && <div className="text-[11px] text-dim">cost {usd(current.total_cost)} + {markupPct}%</div>}
+          {current && <div className="text-[11px] text-dim">cost {usd(yourCostOf(current))} + {markupPct}%</div>}
         </div>
       </div>
 
@@ -111,7 +122,7 @@ export default function TwilioBillingCard({ profile }) {
               <th className="text-right px-3 py-2 font-bold">Calls (in/out)</th>
               <th className="text-right px-3 py-2 font-bold">Mins</th>
               <th className="text-right px-3 py-2 font-bold">SMS (in/out)</th>
-              <th className="text-right px-3 py-2 font-bold">Number</th>
+              <th className="text-right px-3 py-2 font-bold">Rental</th>
               <th className="text-right px-3 py-2 font-bold">Usage cost</th>
               <th className="text-right px-3 py-2 font-bold">Your cost</th>
               <th className="text-right px-5 py-2 font-bold">Bill client</th>
@@ -126,9 +137,9 @@ export default function TwilioBillingCard({ profile }) {
                 <td className="px-3 py-2.5 text-right tabular-nums text-muted">{r.inbound_calls}/{r.outbound_calls}</td>
                 <td className="px-3 py-2.5 text-right tabular-nums text-muted">{Math.round(Number(r.call_minutes) || 0)}</td>
                 <td className="px-3 py-2.5 text-right tabular-nums text-muted">{r.inbound_sms}/{r.outbound_sms}</td>
-                <td className="px-3 py-2.5 text-right tabular-nums text-muted">{usd(r.number_cost)}</td>
+                <td className="px-3 py-2.5 text-right tabular-nums text-muted">{usd(rentalNum)}</td>
                 <td className="px-3 py-2.5 text-right tabular-nums text-muted">{usd(r.usage_cost)}</td>
-                <td className="px-3 py-2.5 text-right tabular-nums text-paper">{usd(r.total_cost)}</td>
+                <td className="px-3 py-2.5 text-right tabular-nums text-paper">{usd(yourCostOf(r))}</td>
                 <td className="px-5 py-2.5 text-right tabular-nums font-semibold text-emerald-600">{usd(billOf(r))}</td>
               </tr>
             ))}
