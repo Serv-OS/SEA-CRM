@@ -159,8 +159,12 @@ export default function OnboardingDetail({ onboardingId, profile, onClose, onNav
               <div className="grid grid-cols-2 gap-3 mt-3">
                 <div><label className={label}>Expected install date</label>
                   <input type="date" className={input} value={draft.expected_install_date || ''} onChange={e => set('expected_install_date', e.target.value || null)} /></div>
-                <div><label className={label}>Actual install date</label>
-                  <input type="date" className={input} value={draft.actual_install_date || ''} onChange={e => set('actual_install_date', e.target.value || null)} /></div>
+                <div><label className={label}>Hardware delivery date</label>
+                  <input type="date" className={input} value={draft.hardware_delivery_date || ''} onChange={e => set('hardware_delivery_date', e.target.value || null)} /></div>
+                <div><label className={label}>Demo/Install start date</label>
+                  <input type="date" className={input} value={draft.demo_install_start_date || ''} onChange={e => set('demo_install_start_date', e.target.value || null)} /></div>
+                <div><label className={label}>Expected completion date</label>
+                  <input type="date" className={input} value={draft.expected_completion_date || ''} onChange={e => set('expected_completion_date', e.target.value || null)} /></div>
               </div>
               <div className="mt-3"><label className={label}>Notes</label><textarea className={input + ' resize-none'} rows={3} value={draft.notes || ''} onChange={e => set('notes', e.target.value)} /></div>
               <div className="flex gap-2 mt-4">
@@ -186,7 +190,9 @@ export default function OnboardingDetail({ onboardingId, profile, onClose, onNav
               <Card title="Install Dates">
                 <div className="space-y-3">
                   <Field label="Expected install" value={ob.expected_install_date ? new Date(ob.expected_install_date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: '2-digit' }) : null} />
-                  <Field label="Actual install" value={ob.actual_install_date ? new Date(ob.actual_install_date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: '2-digit' }) : null} />
+                  <Field label="Hardware delivery" value={ob.hardware_delivery_date ? new Date(ob.hardware_delivery_date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: '2-digit' }) : null} />
+                  <Field label="Demo/Install start" value={ob.demo_install_start_date ? new Date(ob.demo_install_start_date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: '2-digit' }) : null} />
+                  <Field label="Expected completion" value={ob.expected_completion_date ? new Date(ob.expected_completion_date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: '2-digit' }) : null} />
                 </div>
               </Card>
 
