@@ -157,11 +157,6 @@ export default function OnboardingDetail({ onboardingId, profile, onClose, onNav
                   </select></div>
               </div>
               <div className="grid grid-cols-2 gap-3 mt-3">
-                <div><label className={label}>Install location</label>
-                  <select className={input} value={draft.location_id || ''} onChange={e => set('location_id', e.target.value || null)}>
-                    <option value="">— None —</option>
-                    {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-                  </select></div>
                 <div><label className={label}>Expected install date</label>
                   <input type="date" className={input} value={draft.expected_install_date || ''} onChange={e => set('expected_install_date', e.target.value || null)} /></div>
                 <div><label className={label}>Actual install date</label>
@@ -183,7 +178,6 @@ export default function OnboardingDetail({ onboardingId, profile, onClose, onNav
                 <div className="space-y-3">
                   <Field label="Stage" value={STAGE_LABELS[ob.stage]} />
                   <Field label="Owner" value={ownerName(ob.owner_id)} />
-                  <Field label="Install location" value={locations.find(l => l.id === ob.location_id)?.name} />
                   <Field label="Created" value={new Date(ob.created_at).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: '2-digit' })} />
                   {ob.notes && <Field label="Notes" value={ob.notes} />}
                 </div>
