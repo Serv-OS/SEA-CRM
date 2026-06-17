@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { TEAM_LABELS } from './UsersPanel.jsx';
 
 import { getGoogleClientId } from '../lib/googleClientId';
+import { useMicrosoftConnection } from '../lib/useMicrosoft.js';
 const REDIRECT_URI = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gmail-oauth-callback`;
 const PERSONAL_SCOPES = 'openid email https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/chat.spaces.readonly https://www.googleapis.com/auth/chat.messages https://www.googleapis.com/auth/chat.memberships.readonly https://www.googleapis.com/auth/directory.readonly';
 
@@ -26,6 +27,7 @@ export default function AccountPanel({ profile, onSaved }) {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
   const [google, setGoogle] = useState(null);
+  const msAcct = useMicrosoftConnection(profile.id);
   const [dmTest, setDmTest] = useState(null);
   const sendDmTest = async () => {
     setDmTest('sending');
@@ -230,30 +232,30 @@ export default function AccountPanel({ profile, onSaved }) {
             </div>
           </div>
 
-          {/* Google connection (personal inbox + calendar) */}
+          {/* Microsoft / Outlook connection (personal mailbox) */}
           <div className="glass-card rounded-2xl overflow-hidden">
             <div className="px-5 py-4 border-b border-bdr flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-white border border-bdr flex items-center justify-center text-lg">{'\u{1F4C5}'}</div>
+              <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-lg">{'✉️'}</div>
               <div className="flex-1">
-                <div className="text-base font-bold text-paper">Google account</div>
-                <div className="text-xs text-muted">Connect your inbox &amp; calendar — schedule meetings and triage email in one place</div>
+                <div className="text-base font-bold text-paper">Microsoft / Outlook account</div>
+                <div className="text-xs text-muted">Connect your own Outlook mailbox — read &amp; reply to your email inside the CRM</div>
               </div>
             </div>
             <div className="p-5">
-              {google ? (
+              {msAcct.connected ? (
                 <div className="flex items-center gap-3 p-3 glass-inner rounded-xl">
                   <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-sm font-bold">{'\u{2713}'}</div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-paper">{google.email}</div>
-                    <div className="text-xs text-muted">Inbox, calendar &amp; chat connected · Reconnect if Chat is empty</div>
+                    <div className="text-sm font-medium text-paper">{msAcct.connected.email}</div>
+                    <div className="text-xs text-muted">Your Outlook mailbox is connected</div>
                   </div>
-                  <button onClick={connectGoogle} className="px-2 py-1 text-xs text-paper border border-bdr rounded-xl hover:bg-card">Reconnect</button>
-                  <button onClick={disconnectGoogle} className="px-2 py-1 text-xs text-red-600 border border-red-200 rounded-xl hover:bg-red-50">Disconnect</button>
+                  <button onClick={msAcct.connect} className="px-2 py-1 text-xs text-paper border border-bdr rounded-xl hover:bg-card">Reconnect</button>
+                  <button onClick={async () => { if (!confirm('Disconnect your Outlook mailbox?')) return; await supabase.from('user_integrations').delete().eq('profile_id', profile.id); msAcct.refresh(); }} className="px-2 py-1 text-xs text-red-600 border border-red-200 rounded-xl hover:bg-red-50">Disconnect</button>
                 </div>
               ) : (
                 <div>
-                  <button onClick={connectGoogle} className="btn-glass px-5 py-2.5 rounded-xl text-sm font-semibold">Connect Google</button>
-                  <div className="text-[11px] text-dim mt-2">Connects your own Gmail + Google Calendar (separate from the shared support inbox). You'll be asked to allow email and calendar access.</div>
+                  <button onClick={msAcct.connect} className="btn-glass px-5 py-2.5 rounded-xl text-sm font-semibold">Connect Microsoft</button>
+                  <div className="text-[11px] text-dim mt-2">Connects your own Outlook mailbox (separate from the shared support inbox). You'll be asked to allow email access.</div>
                 </div>
               )}
             </div>

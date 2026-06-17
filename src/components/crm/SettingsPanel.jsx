@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { TEAM_OPTIONS, TEAM_LABELS } from '../UsersPanel.jsx';
 import AiSettingsCard from './AiSettingsCard.jsx';
 import BrandingCard from './BrandingCard.jsx';
+import { connectMicrosoft, useMicrosoftSupportConnection, clearMicrosoftConfigCache } from '../../lib/useMicrosoft.js';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 
@@ -13,6 +14,7 @@ export default function SettingsPanel({ profile }) {
   const [stripe, setStripe] = useState(null);
   const [stripeKey, setStripeKey] = useState('');
   const [stripeBusy, setStripeBusy] = useState(false);
+  const msSupport = useMicrosoftSupportConnection();
 
   const isOwner = profile.role === 'owner';
 
@@ -57,8 +59,11 @@ export default function SettingsPanel({ profile }) {
       logo_url: next.logo_url ?? null,
       logo_url_dark: next.logo_url_dark ?? null,
       twilio_number: next.twilio_number ?? null,
+      microsoft_client_id: next.microsoft_client_id ?? null,
+      microsoft_tenant_id: next.microsoft_tenant_id ?? null,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'id' });
+    clearMicrosoftConfigCache();
   };
 
   const uploadLogo = async (e, field = 'logo_url') => {
@@ -249,6 +254,54 @@ export default function SettingsPanel({ profile }) {
                 <div className="text-[11px] text-dim leading-relaxed pt-1 border-t border-bdr">
                   The greeting plays when a call comes in and agents are online. The voicemail message plays when no one is available or the call isn't answered — the caller's message is then recorded, transcribed and attached to a support ticket.
                   {!isOwner && <span className="block mt-1">Only owners can edit these.</span>}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Microsoft 365 email */}
+          {settings && (
+            <div className="glass-card rounded-2xl overflow-hidden">
+              <div className="px-5 py-4 border-b border-bdr flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-lg">{'✉️'}</div>
+                <div className="flex-1">
+                  <div className="text-base font-bold text-paper">Microsoft 365 email</div>
+                  <div className="text-xs text-muted">Support mailbox — inbound mail becomes tickets, replies send from it</div>
+                </div>
+                {msSupport.connected
+                  ? <span className="text-xs font-semibold text-emerald-600">{'●'} {msSupport.connected.email}</span>
+                  : <span className="text-xs text-muted">Not connected</span>}
+              </div>
+              <div className="p-5 space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-dim mb-1 block">Application (client) ID</label>
+                    <input disabled={!isOwner}
+                      className="w-full px-3 py-2 bg-card border border-bdr rounded-xl text-sm text-paper placeholder-dim focus:outline-none focus:border-ember disabled:opacity-60"
+                      value={settings.microsoft_client_id || ''}
+                      onChange={e => setSettings(s => ({ ...s, microsoft_client_id: e.target.value }))}
+                      onBlur={e => saveSettings({ microsoft_client_id: e.target.value.trim() || null })}
+                      placeholder="00000000-0000-0000-0000-000000000000" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-dim mb-1 block">Directory (tenant) ID</label>
+                    <input disabled={!isOwner}
+                      className="w-full px-3 py-2 bg-card border border-bdr rounded-xl text-sm text-paper placeholder-dim focus:outline-none focus:border-ember disabled:opacity-60"
+                      value={settings.microsoft_tenant_id || ''}
+                      onChange={e => setSettings(s => ({ ...s, microsoft_tenant_id: e.target.value }))}
+                      onBlur={e => saveSettings({ microsoft_tenant_id: e.target.value.trim() || null })}
+                      placeholder="your tenant id (or 'common')" />
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <button type="button" disabled={!isOwner || !settings.microsoft_client_id} onClick={() => connectMicrosoft(false)}
+                    className="btn-glass px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-50">
+                    {msSupport.connected ? 'Reconnect support mailbox' : 'Connect support mailbox'}
+                  </button>
+                  <span className="text-[11px] text-dim">New mail is checked every minute and turned into Support tickets.</span>
+                </div>
+                <div className="text-[11px] text-dim leading-relaxed">
+                  Create an Entra ID app registration with Microsoft Graph <strong>Mail.ReadWrite</strong> + <strong>Mail.Send</strong> (delegated) + <strong>offline_access</strong>, paste its Application &amp; Directory IDs above, then connect the support mailbox.
                 </div>
               </div>
             </div>
