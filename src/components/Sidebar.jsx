@@ -106,18 +106,23 @@ export default function Sidebar({ profile, projects, activeProject, setActivePro
         </div>
 
         {/* Collapsible groups */}
-        {COLLAPSIBLE.map(g => (
+        {COLLAPSIBLE.map(g => {
+          // Billing & Margins (reseller costs/markup) is owner-only.
+          const items = g.items.filter(([key]) => key !== 'processing' || profile.role === 'owner');
+          if (!items.length) return null;
+          return (
           <div key={g.id}>
-            <GroupHeader label={g.label} count={g.items.length} open={open[g.id]} onToggle={() => toggle(g.id)} />
+            <GroupHeader label={g.label} count={items.length} open={open[g.id]} onToggle={() => toggle(g.id)} />
             {open[g.id] && (
               <div className="space-y-0.5">
-                {g.items.map(([key, label, Icon]) => (
+                {items.map(([key, label, Icon]) => (
                   <NavItem key={key} icon={Icon} label={label} active={activeKey === key} onClick={() => setView(key)} />
                 ))}
               </div>
             )}
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Footer */}

@@ -69,6 +69,9 @@ export default function TwilioBillingCard({ profile }) {
 
   const current = rows[0];
 
+  // Reseller phone billing is owner-only.
+  if (profile.role !== 'owner') return null;
+
   return (
     <div className="glass-card rounded-2xl overflow-hidden">
       <div className="px-5 py-3.5 border-b border-bdr flex items-center gap-2 flex-wrap">
@@ -89,7 +92,7 @@ export default function TwilioBillingCard({ profile }) {
       {/* Markup config + current-month headline */}
       <div className="px-5 py-4 border-b border-bdr grid grid-cols-2 md:grid-cols-5 gap-4 items-end">
         <div>
-          <label className="text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-dim mb-1 block">Markup %</label>
+          <label className="text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-dim mb-1 block">Markup % · 50 = +50%</label>
           <input type="number" value={markup} onChange={e => setMarkup(e.target.value)} disabled={!canWrite}
             placeholder="30" className="w-full px-3 py-2 bg-card border border-bdr rounded-xl text-sm text-paper focus:outline-none focus:border-ember" />
         </div>
