@@ -49,27 +49,60 @@ export default function PricingCatalogue({ profile }) {
   const addMaterial = () => setMaterials([...materials, { _new: true, name: '', cost: 0, mult: 1, sort: materials.length, active: true }]);
   const addDemo = () => setDemo([...demo, { _new: true, label: '', rate_per_sqft: 0, sort: demo.length, active: true }]);
 
-  const clean = (rows, fields) => rows.map((r, i) => {
-    const out = { sort: i };
-    fields.forEach(f => { out[f] = r[f]; });
-    if (!r._new && r.id) out.id = r.id;
-    return out;
-  });
+  const num = (v) => Number(v) || 0;
+
+  // Build ordered rows (sort = display index) and split brand-new rows from
+  // existing ones. New rows MUST omit `id` so the DB default (gen_random_uuid)
+  // fills it — sending id:null in a mixed upsert batch violates the NOT NULL
+  // constraint and silently fails the whole batch, which is why new line items
+  // used to vanish on refresh.
+  const partition = (rows, shape) => {
+    const ordered = rows.map((r, i) => {
+      const out = { ...shape(r), sort: i };
+      if (!r._new && r.id) out.id = r.id;
+      return out;
+    });
+    return { inserts: ordered.filter((r) => !r.id), updates: ordered.filter((r) => r.id) };
+  };
 
   const save = async () => {
     setSaving(true); setSaved(false);
-    await supabase.from('quote_config').upsert({
+    const errors = [];
+
+    const cfg = await supabase.from('quote_config').upsert({
       id: 1,
-      markup_default: Number(config.markup_default) || 1.6,
-      permits_per_sqft: Number(config.permits_per_sqft) || 0,
-      debris_per_sqft: Number(config.debris_per_sqft) || 0,
-      install_mat_divisor: Number(config.install_mat_divisor) || 1000,
+      markup_default: num(config.markup_default) || 1.6,
+      permits_per_sqft: num(config.permits_per_sqft),
+      debris_per_sqft: num(config.debris_per_sqft),
+      install_mat_divisor: num(config.install_mat_divisor) || 1000,
       updated_at: new Date().toISOString(),
     });
-    await supabase.from('quote_config_products').upsert(clean(products, ['name', 'type', 'unit_cost', 'install_rate', 'unit_label', 'active']).map(r => ({ ...r, unit_cost: Number(r.unit_cost) || 0, install_rate: Number(r.install_rate) || 0 })), { onConflict: 'id' });
-    await supabase.from('quote_config_install_materials').upsert(clean(materials, ['name', 'cost', 'mult', 'active']).map(r => ({ ...r, cost: Number(r.cost) || 0, mult: Number(r.mult) || 0 })), { onConflict: 'id' });
-    await supabase.from('quote_config_demo_rates').upsert(clean(demo, ['label', 'rate_per_sqft', 'active']).map(r => ({ ...r, rate_per_sqft: Number(r.rate_per_sqft) || 0 })), { onConflict: 'id' });
-    setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 2500);
+    if (cfg.error) errors.push(`Rates: ${cfg.error.message}`);
+
+    const tables = [
+      ['quote_config_products', products, (r) => ({ name: r.name, type: r.type || 'sqft', unit_cost: num(r.unit_cost), install_rate: num(r.install_rate), unit_label: r.unit_label, active: r.active !== false })],
+      ['quote_config_install_materials', materials, (r) => ({ name: r.name, cost: num(r.cost), mult: num(r.mult), active: r.active !== false })],
+      ['quote_config_demo_rates', demo, (r) => ({ label: r.label, rate_per_sqft: num(r.rate_per_sqft), active: r.active !== false })],
+    ];
+    for (const [table, rows, shape] of tables) {
+      const { inserts, updates } = partition(rows, shape);
+      if (inserts.length) {
+        const { error } = await supabase.from(table).insert(inserts); // no id → DB generates uuid
+        if (error) errors.push(`${table}: ${error.message}`);
+      }
+      if (updates.length) {
+        const { error } = await supabase.from(table).upsert(updates, { onConflict: 'id' });
+        if (error) errors.push(`${table}: ${error.message}`);
+      }
+    }
+
+    setSaving(false);
+    if (errors.length) {
+      console.error('Pricing catalogue save failed:', errors);
+      alert('Some changes could not be saved:\n\n' + errors.join('\n') + '\n\nYour edits are still on screen — please try again.');
+      return; // keep local state; do NOT reload (that would wipe unsaved rows)
+    }
+    setSaved(true); setTimeout(() => setSaved(false), 2500);
     load();
   };
 
