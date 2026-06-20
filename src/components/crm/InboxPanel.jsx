@@ -1,9 +1,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
-import { useGoogleConnection } from '../../lib/useGoogle';
+import { useMicrosoftConnection } from '../../lib/useMicrosoft';
 import { Mail, RefreshCw, Archive, Reply, Search, Link2, Plus, ExternalLink, Ticket, CheckSquare } from 'lucide-react';
 
-const FN = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gmail-personal`;
+const FN = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ms-personal`;
 
 // Parse "Display Name <email@host>" -> { name, email }
 function parseAddr(raw = '') {
@@ -24,7 +24,7 @@ function fmtDate(d) {
 }
 
 export default function InboxPanel({ profile, onNavigate }) {
-  const { connected, connect } = useGoogleConnection(profile.id);
+  const { connected, connect } = useMicrosoftConnection(profile.id);
   const [messages, setMessages] = useState([]);
   const [signature, setSignature] = useState('');
   const [signatureLogo, setSignatureLogo] = useState(false);
