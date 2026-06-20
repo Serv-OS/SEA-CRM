@@ -1,10 +1,10 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
-import { useGoogleConnection } from '../../lib/useGoogle';
+import { useMicrosoftConnection } from '../../lib/useMicrosoft';
 import { Calendar as CalIcon, RefreshCw, ChevronLeft, ChevronRight, MapPin, Users, Video, ExternalLink } from 'lucide-react';
 import ScheduleMeeting from './ScheduleMeeting.jsx';
 
-const FN = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-calendar`;
+const FN = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ms-calendar`;
 const WINDOW_DAYS = 14;
 
 const dayKey = (d) => new Date(d).toISOString().slice(0, 10);
@@ -19,7 +19,7 @@ const fmtDayHeading = (iso) => {
 const fmtTime = (d) => new Date(d).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 
 export default function CalendarPanel({ profile, onNavigate }) {
-  const { connected, connect } = useGoogleConnection(profile.id);
+  const { connected, connect } = useMicrosoftConnection(profile.id);
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -58,11 +58,11 @@ export default function CalendarPanel({ profile, onNavigate }) {
     <div className="h-full flex flex-col items-center justify-center text-center p-8">
       <div className="w-14 h-14 rounded-2xl glass-inner flex items-center justify-center mb-4"><CalIcon size={26} className="text-ember" /></div>
       <div className="text-lg font-bold text-paper mb-1">Connect your calendar</div>
-      <div className="text-sm text-muted max-w-sm mb-4">Link your Google account to see your schedule and book meetings (with invites) right here.</div>
+      <div className="text-sm text-muted max-w-sm mb-4">Link your Microsoft 365 account to see your schedule and book meetings (with invites) right here.</div>
       <button onClick={connect} className="btn-glass px-5 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2">
-        <CalIcon size={16} /> Connect Google
+        <CalIcon size={16} /> Connect Microsoft
       </button>
-      <div className="text-[11px] text-dim mt-2">Opens a Google sign-in window. Takes a few seconds.</div>
+      <div className="text-[11px] text-dim mt-2">Opens a Microsoft sign-in window. Takes a few seconds.</div>
     </div>
   );
 

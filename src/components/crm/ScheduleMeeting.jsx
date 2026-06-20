@@ -21,7 +21,7 @@ export default function ScheduleMeeting({ subjectType, subjectId, contactId, att
     const start = new Date(`${date}T${time}`);
     const end = new Date(start.getTime() + Number(duration) * 60000);
     const { data: { session } } = await supabase.auth.getSession();
-    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-calendar`, {
+    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ms-calendar`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
       body: JSON.stringify({
