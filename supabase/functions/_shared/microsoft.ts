@@ -1,9 +1,14 @@
 // Shared Microsoft 365 / Graph helpers — used by ms-oauth-callback, ms-check,
 // ms-send and ms-personal. Mirrors the Gmail integration's token handling.
 //
-// Required Supabase secrets: MS_CLIENT_ID, MS_CLIENT_SECRET, MS_TENANT_ID.
-//   - MS_TENANT_ID = your Entra ID directory (tenant) id for a single-org app
-//     (falls back to "common" for multi-tenant).
+// Required Supabase secrets: MS_CLIENT_ID, MS_TENANT_ID, and ONE client
+// credential —
+//   - certificate auth (preferred; this tenant blocks client secrets):
+//     MS_CLIENT_CERT_PRIVATE_KEY = the cert's PKCS8 private key PEM, and
+//     MS_CLIENT_CERT_THUMBPRINT  = the cert thumbprint (hex, exactly as Azure
+//     shows it after you upload the public cert); OR
+//   - MS_CLIENT_SECRET (legacy fallback, if the tenant allows secrets).
+//   MS_TENANT_ID = your Entra directory (tenant) id (falls back to "common").
 
 export const MS_GRAPH = "https://graph.microsoft.com/v1.0";
 
@@ -19,6 +24,66 @@ export function msAuthority(): string {
   return `https://login.microsoftonline.com/${msTenant()}`;
 }
 
+// ── Client credential (certificate assertion, or legacy secret) ─────────────
+
+const b64url = (bytes: Uint8Array) =>
+  btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const b64urlStr = (s: string) => b64url(new TextEncoder().encode(s));
+
+// Azure shows the cert thumbprint as hex; the JWT `x5t` header is the base64url
+// of those raw SHA-1 bytes.
+function thumbprintToX5t(thumb: string): string {
+  const hex = (thumb || "").replace(/[^0-9a-fA-F]/g, "");
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < bytes.length; i++) bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
+  return b64url(bytes);
+}
+
+function pemToPkcs8(pem: string): ArrayBuffer {
+  const b64 = pem.replace(/-----[^-]+-----/g, "").replace(/\s+/g, "");
+  const bin = atob(b64);
+  const buf = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+  return buf.buffer;
+}
+
+// A short-lived JWT signed with the app certificate's private key — proves the
+// client's identity to Entra in place of a client secret.
+async function buildClientAssertion(clientId: string, pkPem: string, thumb: string): Promise<string> {
+  const now = Math.floor(Date.now() / 1000);
+  const header = { alg: "RS256", typ: "JWT", x5t: thumbprintToX5t(thumb) };
+  const payload = {
+    aud: `${msAuthority()}/oauth2/v2.0/token`,
+    iss: clientId, sub: clientId,
+    jti: crypto.randomUUID(),
+    nbf: now, exp: now + 600,
+  };
+  const signingInput = `${b64urlStr(JSON.stringify(header))}.${b64urlStr(JSON.stringify(payload))}`;
+  const key = await crypto.subtle.importKey(
+    "pkcs8", pemToPkcs8(pkPem),
+    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["sign"],
+  );
+  const sig = await crypto.subtle.sign("RSASSA-PKCS1-v1_5", key, new TextEncoder().encode(signingInput));
+  return `${signingInput}.${b64url(new Uint8Array(sig))}`;
+}
+
+/** Credential params for the token request: certificate assertion if configured
+ * (this tenant blocks secrets), else the legacy client_secret. */
+async function clientCredential(): Promise<Record<string, string>> {
+  const clientId = Deno.env.get("MS_CLIENT_ID")!;
+  const pkPem = Deno.env.get("MS_CLIENT_CERT_PRIVATE_KEY");
+  const thumb = Deno.env.get("MS_CLIENT_CERT_THUMBPRINT");
+  if (pkPem && thumb) {
+    return {
+      client_assertion_type: "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+      client_assertion: await buildClientAssertion(clientId, pkPem, thumb),
+    };
+  }
+  const secret = Deno.env.get("MS_CLIENT_SECRET");
+  if (secret) return { client_secret: secret };
+  throw new Error("No MS client credential configured: set MS_CLIENT_CERT_PRIVATE_KEY + MS_CLIENT_CERT_THUMBPRINT (or MS_CLIENT_SECRET).");
+}
+
 /** OAuth: exchange an authorization code for tokens (the connect flow). */
 export async function msTokenFromCode(code: string, redirectUri: string) {
   const res = await fetch(`${msAuthority()}/oauth2/v2.0/token`, {
@@ -26,7 +91,7 @@ export async function msTokenFromCode(code: string, redirectUri: string) {
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
       client_id: Deno.env.get("MS_CLIENT_ID")!,
-      client_secret: Deno.env.get("MS_CLIENT_SECRET")!,
+      ...(await clientCredential()),
       code,
       redirect_uri: redirectUri,
       grant_type: "authorization_code",
@@ -43,7 +108,7 @@ export async function msTokenFromRefresh(refreshToken: string) {
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
       client_id: Deno.env.get("MS_CLIENT_ID")!,
-      client_secret: Deno.env.get("MS_CLIENT_SECRET")!,
+      ...(await clientCredential()),
       refresh_token: refreshToken,
       grant_type: "refresh_token",
       scope: MS_SCOPES,
