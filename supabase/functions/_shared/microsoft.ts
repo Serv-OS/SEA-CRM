@@ -14,7 +14,7 @@ export const MS_GRAPH = "https://graph.microsoft.com/v1.0";
 
 // Delegated scopes: read/write + send mail for the connected mailbox, plus a
 // refresh token (offline_access) and the signed-in user's basic profile.
-export const MS_SCOPES = "offline_access openid email profile User.Read Mail.ReadWrite Mail.Send";
+export const MS_SCOPES = "offline_access openid email profile User.Read Mail.ReadWrite Mail.Send Calendars.ReadWrite";
 
 export function msTenant(): string {
   return Deno.env.get("MS_TENANT_ID") || "common";

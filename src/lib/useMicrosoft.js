@@ -5,7 +5,7 @@ import { supabase } from './supabase';
 // `state` carries the user's JWT; a "personal:" prefix routes to the per-user
 // mailbox (user_integrations), no prefix to the shared support mailbox.
 const REDIRECT_URI = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ms-oauth-callback`;
-const SCOPES = 'offline_access openid email profile User.Read Mail.ReadWrite Mail.Send';
+const SCOPES = 'offline_access openid email profile User.Read Mail.ReadWrite Mail.Send Calendars.ReadWrite';
 
 let _cfg = null;
 export async function getMicrosoftConfig() {
