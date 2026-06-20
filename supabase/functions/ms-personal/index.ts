@@ -60,6 +60,33 @@ serve(async (req) => {
       return json({ messages, nextPageToken: data["@odata.nextLink"] || null });
     }
 
+    // ---- THREAD: every message in a conversation, NEW content only ----
+    // uniqueBody returns just this message's text (no quoted history), so the
+    // thread reads like a real email client instead of each reply re-quoting
+    // everything above it.
+    if (action === "thread") {
+      const cid = reqBody.threadId;
+      if (!cid) return json({ error: "Missing threadId" }, 422);
+      const filter = encodeURIComponent(`conversationId eq '${String(cid).replace(/'/g, "''")}'`);
+      const select = encodeURIComponent("id,conversationId,subject,from,toRecipients,receivedDateTime,internetMessageId,isRead,uniqueBody,bodyPreview");
+      const data = await graph(accessToken, `${MS_GRAPH}/me/messages?$filter=${filter}&$top=50&$select=${select}`) as { value?: any[] };
+      const messages = (data.value || [])
+        .sort((a, b) => new Date(a.receivedDateTime || 0).getTime() - new Date(b.receivedDateTime || 0).getTime())
+        .map((m) => {
+          const ub = m.uniqueBody || {};
+          const isHtml = ub.contentType === "html";
+          return {
+            id: m.id, threadId: m.conversationId, messageId: m.internetMessageId,
+            from: m.from?.emailAddress ? `${m.from.emailAddress.name || ""} <${m.from.emailAddress.address}>`.trim() : "",
+            to: (m.toRecipients || []).map((r: any) => r.emailAddress?.address).filter(Boolean).join(", "),
+            subject: m.subject || "", date: m.receivedDateTime, unread: m.isRead === false,
+            text: isHtml ? stripHtml(ub.content || "") : (ub.content || m.bodyPreview || ""),
+            html: isHtml ? ub.content : "",
+          };
+        });
+      return json({ messages, subject: messages[messages.length - 1]?.subject || "" });
+    }
+
     if (action === "get") {
       if (!reqBody.id) return json({ error: "Missing id" }, 422);
       const m = await graph(accessToken, `/me/messages/${reqBody.id}?$select=id,conversationId,subject,from,toRecipients,ccRecipients,receivedDateTime,internetMessageId,body,isRead`) as any;
