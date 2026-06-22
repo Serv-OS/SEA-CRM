@@ -49,7 +49,7 @@ const ACTIVE_MAP = {
   release_detail: 'releases', invoice_detail: 'invoices', quote_detail: 'quotes',
 };
 
-const DEFAULT_GROUPS = { appbuild: false, sales: true, pricing: true, website: true, delivery: false, support: false, product: false, workforce: false, insights: false };
+const DEFAULT_GROUPS = { appbuild: true, sales: true, pricing: true, website: true, delivery: false, support: false, product: false, workforce: false, insights: false };
 
 export default function Sidebar({ profile, projects, activeProject, setActiveProject, view, setView, onSignOut, onRefresh, theme }) {
   const [logos, setLogos] = useState({ light: null, dark: null });
@@ -97,6 +97,45 @@ export default function Sidebar({ profile, projects, activeProject, setActivePro
 
       {/* Nav */}
       <div className="flex-1 overflow-y-auto px-2 py-3">
+
+        {/* App Build (dynamic projects) — add a project with +, open a project to
+            reach its Board and Features (where you add features + tie bugs). */}
+        <GroupHeader label="App Build" count={projects.length} open={open.appbuild}
+          onToggle={() => toggle('appbuild')}
+          onAdd={canWrite ? () => { setOpen(o => ({ ...o, appbuild: true })); setAdding(true); } : null} />
+        {open.appbuild && (
+          <div className="space-y-0.5 mb-1">
+            {adding && (
+              <form onSubmit={createProject} className="px-2 py-1 flex gap-1.5">
+                <input value={projName} onChange={e => setProjName(e.target.value)} autoFocus placeholder="Project name"
+                  className="flex-1 px-2 py-1 bg-card border border-bdr rounded-lg text-sm text-paper placeholder-dim" />
+                <button type="submit" className="px-2 py-1 bg-ember text-ink rounded-lg text-xs font-semibold">Add</button>
+              </form>
+            )}
+            {projects.map(p => {
+              const Icon = PROJECT_ICON[(p.name || '').toLowerCase()] || Package;
+              const isActive = activeProject?.id === p.id;
+              const onProjectView = isActive && (view === 'board' || view === 'features');
+              return (
+                <div key={p.id}>
+                  <NavItem icon={Icon} label={p.name} active={view === 'board' && isActive}
+                    onClick={() => { setActiveProject(p); setView('board'); }} />
+                  {onProjectView && (
+                    <div className="ml-4 pl-2 border-l border-bdr space-y-0.5">
+                      <NavItem icon={LayoutGrid} label="Board" active={view === 'board'}
+                        onClick={() => { setActiveProject(p); setView('board'); }} />
+                      <NavItem icon={Star} label="Features" active={view === 'features'}
+                        onClick={() => { setActiveProject(p); setView('features'); }} />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            {projects.length === 0 && !adding && (
+              <div className="px-3 py-1.5 text-xs text-dim">No projects yet{canWrite ? ' — tap + to add one.' : '.'}</div>
+            )}
+          </div>
+        )}
 
         {/* My Work (pinned) */}
         <div className="space-y-0.5">
