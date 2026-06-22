@@ -46,6 +46,23 @@ export default function AccountPanel({ profile, onSaved }) {
   const [signatureLogo, setSignatureLogo] = useState(false);
   const [brandingLogo, setBrandingLogo] = useState(null);
 
+  // Self-service password set/change — no email involved.
+  const [pw, setPw] = useState('');
+  const [pw2, setPw2] = useState('');
+  const [pwBusy, setPwBusy] = useState(false);
+  const [pwMsg, setPwMsg] = useState('');
+  const changePassword = async (e) => {
+    e.preventDefault();
+    setPwMsg('');
+    if (pw.length < 8) { setPwMsg('Use at least 8 characters.'); return; }
+    if (pw !== pw2) { setPwMsg('Passwords do not match.'); return; }
+    setPwBusy(true);
+    const { error } = await supabase.auth.updateUser({ password: pw });
+    setPwBusy(false);
+    if (error) { setPwMsg(error.message); return; }
+    setPw(''); setPw2(''); setPwMsg('✓ Password updated — use it next time you sign in.');
+  };
+
   useEffect(() => {
     load();
     const handler = (e) => {
@@ -230,6 +247,35 @@ export default function AccountPanel({ profile, onSaved }) {
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Password */}
+          <div className="glass-card rounded-2xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-bdr">
+              <div className="text-base font-bold text-paper">Password</div>
+              <div className="text-xs text-muted">Set or change your password — used to sign in (no email needed)</div>
+            </div>
+            <form onSubmit={changePassword} className="p-5 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className={label}>New password</label>
+                  <input className={input} type="password" autoComplete="new-password" value={pw}
+                    onChange={e => setPw(e.target.value)} placeholder="At least 8 characters" />
+                </div>
+                <div>
+                  <label className={label}>Confirm password</label>
+                  <input className={input} type="password" autoComplete="new-password" value={pw2}
+                    onChange={e => setPw2(e.target.value)} placeholder="Repeat password" />
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <button type="submit" disabled={pwBusy || !pw || !pw2}
+                  className="px-4 py-2 btn-glass rounded-xl text-sm disabled:opacity-50">
+                  {pwBusy ? 'Updating...' : 'Update password'}
+                </button>
+                {pwMsg && <span className={`text-sm font-medium ${pwMsg.startsWith('✓') ? 'text-emerald-600' : 'text-red-500'}`}>{pwMsg}</span>}
+              </div>
+            </form>
           </div>
 
           {/* Microsoft / Outlook connection (personal mailbox) */}
