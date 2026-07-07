@@ -1,6 +1,6 @@
-# Posupject
+# SEA Design Build — CRM
 
-Lightweight feature & bug tracker for POSUP and related projects.
+ServOS CRM instance for SEA Design Build.
 
 ## Stack
 
