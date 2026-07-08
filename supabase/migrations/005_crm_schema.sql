@@ -35,10 +35,10 @@ ALTER TABLE public.activity RENAME COLUMN project_id TO backlog_project_id;
 -- Update realtime publication (drop old, add renamed)
 DO $$ BEGIN
   ALTER PUBLICATION supabase_realtime DROP TABLE public.items;
-EXCEPTION WHEN undefined_object THEN NULL; END $$;
+EXCEPTION WHEN undefined_object OR undefined_table THEN NULL; END $$;
 DO $$ BEGIN
   ALTER PUBLICATION supabase_realtime DROP TABLE public.buckets;
-EXCEPTION WHEN undefined_object THEN NULL; END $$;
+EXCEPTION WHEN undefined_object OR undefined_table THEN NULL; END $$;
 DO $$ BEGIN
   ALTER PUBLICATION supabase_realtime ADD TABLE public.backlog_items;
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
