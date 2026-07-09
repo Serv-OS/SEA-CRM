@@ -14,6 +14,33 @@ const cors = {
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
 
+// Attach uploaded files (base64 data URLs from the public form) to a record.
+// Routed through this function so the private `attachments` bucket is written
+// with the service role — the browser never gets storage write access.
+// deno-lint-ignore no-explicit-any
+async function attachFiles(supabase: any, files: any[], subjectType: string, subjectId: string) {
+  if (!Array.isArray(files)) return;
+  for (const f of files.slice(0, 8)) {
+    try {
+      const b64 = String(f?.dataBase64 || "").split(",").pop() || "";
+      if (!b64) continue;
+      const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+      if (bytes.length > 15 * 1024 * 1024) continue; // 15 MB cap per file
+      const safe = String(f?.name || "upload").replace(/[^\w.\-]+/g, "_").slice(0, 80) || "upload";
+      const path = `${subjectType}/${subjectId}/${crypto.randomUUID()}-${safe}`;
+      const type = f?.type || "application/octet-stream";
+      const { error: upErr } = await supabase.storage.from("attachments")
+        .upload(path, new Blob([bytes], { type }), { contentType: type, upsert: false });
+      if (upErr) continue;
+      await supabase.from("attachments").insert({
+        subject_type: subjectType, subject_id: subjectId,
+        file_name: f?.name || safe, file_path: path,
+        mime_type: type, size_bytes: bytes.length, source: "form",
+      });
+    } catch { /* skip a bad file, keep the lead */ }
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
 
@@ -44,7 +71,7 @@ serve(async (req) => {
     // ---- POST: process a submission ----
     if (req.method === "POST") {
       const body = await req.json();
-      const { slug, data = {}, page_url = null, referrer = null, src = null } = body;
+      const { slug, data = {}, files = [], page_url = null, referrer = null, src = null } = body;
       if (!slug) return json({ error: "Missing slug" }, 400);
 
       const { data: form } = await supabase
@@ -126,8 +153,12 @@ serve(async (req) => {
         }
       }
 
-      // Resolve / create location (under the company)
+      // Resolve / create location. Enterprise forms give a company + location
+      // name; homeowner lead forms give just an address — create a location
+      // either way so the full address (street/city/state/zip) is captured and
+      // linked to the lead. company_id may be null (contact-centric).
       let locationId: string | null = null;
+      const hasAddress = !!(mapped.location_address || mapped.location_city || mapped.location_state || mapped.location_postcode);
       if (mapped.location_name && companyId) {
         const { data: existingLoc } = await supabase.from("locations")
           .select("id").eq("company_id", companyId).ilike("name", mapped.location_name).limit(1);
@@ -137,16 +168,30 @@ serve(async (req) => {
             name: mapped.location_name, company_id: companyId,
             address: mapped.location_address || null,
             city: mapped.location_city || null,
+            state: mapped.location_state || null,
             postcode: mapped.location_postcode || null,
             status: "prospect",
           }).select("id").single();
           locationId = loc?.id || null;
         }
-        if (locationId && contactId) {
-          await supabase.from("associations").insert({
-            from_type: "contact", from_id: contactId, to_type: "location", to_id: locationId, label: "primary_contact",
-          });
-        }
+      } else if (hasAddress) {
+        const locName = mapped.location_name
+          || [mapped.first_name, mapped.last_name].filter(Boolean).join(" ")
+          || mapped.location_city || "New lead";
+        const { data: loc } = await supabase.from("locations").insert({
+          name: locName, company_id: companyId,
+          address: mapped.location_address || null,
+          city: mapped.location_city || null,
+          state: mapped.location_state || null,
+          postcode: mapped.location_postcode || null,
+          status: "prospect",
+        }).select("id").single();
+        locationId = loc?.id || null;
+      }
+      if (locationId && contactId) {
+        await supabase.from("associations").insert({
+          from_type: "contact", from_id: contactId, to_type: "location", to_id: locationId, label: "primary_contact",
+        });
       }
 
       const personName = [mapped.first_name, mapped.last_name].filter(Boolean).join(" ");
@@ -172,6 +217,7 @@ serve(async (req) => {
           return json({ error: "Could not create ticket" }, 500);
         }
         await supabase.from("stage_history").insert({ object_type: "ticket", object_id: ticket.id, from_stage: null, to_stage: "new" });
+        await attachFiles(supabase, files, "ticket", ticket.id);
         if (contactId) {
           await supabase.from("associations").insert({
             from_type: "ticket", from_id: ticket.id, to_type: "contact", to_id: contactId, label: "primary_contact",
@@ -208,6 +254,7 @@ serve(async (req) => {
           return json({ error: "Could not create lead" }, 500);
         }
         await supabase.from("stage_history").insert({ object_type: "lead", object_id: lead.id, from_stage: null, to_stage: "new_lead" });
+        await attachFiles(supabase, files, "lead", lead.id);
         submission.created_lead_id = lead.id;
         submission.created_contact_id = contactId;
         submission.created_company_id = companyId;

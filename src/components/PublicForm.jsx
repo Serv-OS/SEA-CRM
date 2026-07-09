@@ -10,6 +10,7 @@ export default function PublicForm({ slug }) {
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState('');
+  const [files, setFiles] = useState([]);
 
   const src = new URLSearchParams(window.location.search).get('src');
 
@@ -33,6 +34,19 @@ export default function PublicForm({ slug }) {
 
   const setVal = (k, v) => setValues(prev => ({ ...prev, [k]: v }));
 
+  // Read chosen files to base64 data URLs — posted through forms-public, which
+  // stores them privately and attaches them to the new lead. 15 MB cap each.
+  const handleFiles = (fileList) => {
+    const arr = Array.from(fileList || []).slice(0, 8);
+    Promise.all(arr.map(file => new Promise((resolve) => {
+      if (file.size > 15 * 1024 * 1024) { resolve(null); return; }
+      const r = new FileReader();
+      r.onload = () => resolve({ name: file.name, type: file.type, dataBase64: r.result });
+      r.onerror = () => resolve(null);
+      r.readAsDataURL(file);
+    }))).then(list => setFiles(list.filter(Boolean)));
+  };
+
   const submit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
@@ -44,6 +58,7 @@ export default function PublicForm({ slug }) {
         body: JSON.stringify({
           slug,
           data: values,
+          files,
           src,
           page_url: document.referrer || window.location.href,
           referrer: document.referrer || null,
@@ -103,6 +118,12 @@ export default function PublicForm({ slug }) {
               <option value="">{f.placeholder || 'Select…'}</option>
               {(f.options || []).map(o => <option key={o} value={o}>{o}</option>)}
             </select>
+          ) : f.type === 'file' ? (
+            <div>
+              <input className={input + ' py-2 file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:bg-slate-100 file:text-slate-700'}
+                type="file" multiple accept="image/*,.pdf,.heic,.heif" onChange={e => handleFiles(e.target.files)} />
+              {files.length > 0 && <div className="text-[11px] text-slate-500 mt-1">{files.length} file{files.length > 1 ? 's' : ''} attached</div>}
+            </div>
           ) : (
             <input className={input} type={f.type || 'text'} required={f.required}
               placeholder={f.placeholder || ''} value={values[f.key] || ''}

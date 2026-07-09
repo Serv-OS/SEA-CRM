@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 
-const FIELD_TYPES = ['text', 'email', 'tel', 'textarea', 'select'];
+const FIELD_TYPES = ['text', 'email', 'tel', 'textarea', 'select', 'file'];
 const MAPS_COMMON = [
   { v: 'none', l: "Don't map (store as note)" },
   // Contact
@@ -18,7 +18,8 @@ const MAPS_COMMON = [
   { v: 'location_name', l: 'Location · Name' },
   { v: 'location_address', l: 'Location · Address' },
   { v: 'location_city', l: 'Location · City' },
-  { v: 'location_postcode', l: 'Location · Postcode' },
+  { v: 'location_state', l: 'Location · State' },
+  { v: 'location_postcode', l: 'Location · Postcode / ZIP' },
   { v: 'message', l: 'Message / notes' },
 ];
 const MAPS_LEAD = [
