@@ -190,12 +190,20 @@ serve(async (req) => {
         // filled the Locations list with entries like "Peter Roberts" and
         // "Nicole Shea", which read as people rather than addresses and made it
         // look as though no location had been created at all.
+        //
+        // People type the city into the street field constantly ("57 B Sunshine
+        // Ave Sausalito"), so the city is only appended when it isn't in there
+        // already, and stray commas from part-filled forms are collapsed.
+        const addr = (mapped.location_address || "").trim();
+        const city = (mapped.location_city || "").trim();
+        const tidy = (v: string) =>
+          v.replace(/\s*,\s*/g, ", ").replace(/(?:,\s*){2,}/g, ", ").replace(/^[,\s]+|[,\s]+$/g, "").trim();
+        const cityAlreadyThere = !!city && addr.toLowerCase().includes(city.toLowerCase());
+        const fromAddress = tidy([addr, cityAlreadyThere ? "" : city].filter(Boolean).join(", "));
+        const person = [mapped.first_name, mapped.last_name].filter(Boolean).join(" ");
         const locName = mapped.location_name
-          || [mapped.location_address, mapped.location_city].filter(Boolean).join(", ")
-          || (() => {
-            const person = [mapped.first_name, mapped.last_name].filter(Boolean).join(" ");
-            return person ? `${person} — property` : "";
-          })()
+          || fromAddress
+          || (person ? `${person} — property` : "")
           || "New lead";
         const { data: loc } = await supabase.from("locations").insert({
           name: locName, company_id: companyId,
