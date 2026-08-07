@@ -186,9 +186,17 @@ serve(async (req) => {
           locationId = loc?.id || null;
         }
       } else if (hasAddress) {
+        // Name the property after the property. Preferring the person's name
+        // filled the Locations list with entries like "Peter Roberts" and
+        // "Nicole Shea", which read as people rather than addresses and made it
+        // look as though no location had been created at all.
         const locName = mapped.location_name
-          || [mapped.first_name, mapped.last_name].filter(Boolean).join(" ")
-          || mapped.location_city || "New lead";
+          || [mapped.location_address, mapped.location_city].filter(Boolean).join(", ")
+          || (() => {
+            const person = [mapped.first_name, mapped.last_name].filter(Boolean).join(" ");
+            return person ? `${person} — property` : "";
+          })()
+          || "New lead";
         const { data: loc } = await supabase.from("locations").insert({
           name: locName, company_id: companyId,
           address: mapped.location_address || null,
