@@ -30,3 +30,18 @@ verify_jwt = false
 verify_jwt = false
 [functions.twilio-voicemail]
 verify_jwt = false
+
+# Audited 17 Aug 2026 against the LIVE posture before enabling CI: these are
+# public in production but were missing here, so the first bulk deploy would
+# have locked them behind JWT — killing the support reply path (ms-send),
+# Steve's new-lead alerts (notify-dispatch) and the mail pollers.
+[functions.admin-set-password]
+verify_jwt = false
+[functions.gmail-check]
+verify_jwt = false
+[functions.gmail-send]
+verify_jwt = false
+[functions.ms-send]
+verify_jwt = false
+[functions.notify-dispatch]
+verify_jwt = false
