@@ -125,6 +125,19 @@ serve(async (req) => {
       if (blockedBy) {
         blockedHits.set(blockedBy, (blockedHits.get(blockedBy) || 0) + 1);
         blocked++;
+        // Sweep it out of the inbox as well as out of the CRM. Without this the
+        // mail still sits there for a human to wade through, which is most of
+        // what makes junk annoying. Mail.ReadWrite covers a move; a real
+        // server-side rule would need MailboxSettings.ReadWrite and a reconnect.
+        // Best-effort: a mailbox that refuses the move must not stall the poll.
+        try {
+          await graph(accessToken, `/me/messages/${m.id}/move`, {
+            method: "POST",
+            body: JSON.stringify({ destinationId: "junkemail" }),
+          });
+        } catch (e) {
+          console.error("could not move blocked message to Junk:", (e as Error).message?.slice(0, 160));
+        }
         continue;
       }
 
