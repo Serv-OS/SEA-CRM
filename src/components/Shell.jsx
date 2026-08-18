@@ -42,6 +42,7 @@ import OnboardingBoard from './crm/OnboardingBoard.jsx';
 import OnboardingDetail from './crm/OnboardingDetail.jsx';
 import TicketList from './crm/TicketList.jsx';
 import TicketDetail from './crm/TicketDetail.jsx';
+import BlockedSendersPanel from './crm/BlockedSendersPanel.jsx';
 import ModulesPanel from './crm/ModulesPanel.jsx';
 import FeatureRequestList from './crm/FeatureRequestList.jsx';
 import FeatureRequestDetail from './crm/FeatureRequestDetail.jsx';
@@ -258,6 +259,8 @@ export default function Shell({ session }) {
         return <OnboardingBoard profile={profile} onSelectOnboarding={(id) => { setView('onboarding_detail'); setDetailId(id); }} onNavigate={navigateTo} />;
       case 'onboarding_detail':
         return <OnboardingDetail onboardingId={detailId} profile={profile} onClose={() => setView('onboarding')} onNavigate={navigateTo} />;
+      case 'junk':
+        return <BlockedSendersPanel profile={profile} />;
       case 'tickets':
         return <TicketList profile={profile} onSelect={(id) => { setView('ticket_detail'); setDetailId(id); }} onNavigate={navigateTo} />;
       case 'ticket_detail':

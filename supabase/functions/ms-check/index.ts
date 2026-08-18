@@ -81,6 +81,25 @@ serve(async (req) => {
       return !!ownDomain && e.split("@")[1] === ownDomain;
     };
 
+    // Junk list, loaded once per run rather than per message. Same idea as
+    // isInternal above, but data-driven so the team can block a sender from the
+    // ticket itself without waiting on a deploy.
+    const { data: blockRows } = await supabase.from("blocked_senders").select("id, value, kind");
+    const blockedEmails = new Map<string, string>();   // address -> rule id
+    const blockedDomains = new Map<string, string>();  // domain  -> rule id
+    for (const b of (blockRows || [])) {
+      const v = String(b.value || "").toLowerCase().trim();
+      if (!v) continue;
+      if (b.kind === "domain") blockedDomains.set(v.replace(/^@/, ""), b.id);
+      else blockedEmails.set(v, b.id);
+    }
+    const blockRuleFor = (e: string): string | null => {
+      e = (e || "").toLowerCase().trim();
+      if (!e) return null;
+      return blockedEmails.get(e) ?? blockedDomains.get(e.split("@")[1] || "") ?? null;
+    };
+    const blockedHits = new Map<string, number>();
+
     // Mail since the watermark (5-min overlap; message-id dedup covers it).
     const sinceMs = conn.last_polled_at ? new Date(conn.last_polled_at).getTime() : Date.now();
     const since = new Date(sinceMs - 5 * 60 * 1000).toISOString();
@@ -90,6 +109,7 @@ serve(async (req) => {
     const list = await graph(accessToken, path) as { value?: any[] };
     const messages = list?.value || [];
     let processed = 0;
+    let blocked = 0;
 
     for (const m of messages) {
       const messageId = m.internetMessageId || m.id;
@@ -98,6 +118,15 @@ serve(async (req) => {
       const senderEmail = (m.from?.emailAddress?.address || "").toLowerCase();
       const senderName = m.from?.emailAddress?.name || "";
       if (isInternal(senderEmail)) continue;
+
+      // Junk: refuse it before anything is created. Counted so the team can see
+      // a rule is doing work (and spot one that never fires).
+      const blockedBy = blockRuleFor(senderEmail);
+      if (blockedBy) {
+        blockedHits.set(blockedBy, (blockedHits.get(blockedBy) || 0) + 1);
+        blocked++;
+        continue;
+      }
 
       // Dedup across overlapping polls.
       const { data: dup } = await supabase.from("crm_activities").select("id").eq("message_id", messageId).limit(1);
@@ -192,7 +221,14 @@ serve(async (req) => {
     }
 
     await supabase.from("microsoft_connections").update({ last_polled_at: runStarted }).eq("id", conn.id);
-    return json({ success: true, processed, total: messages.length, mailbox: conn.email });
+    // Stamp the rules that fired, so "is this rule still needed" is answerable.
+    for (const [id, n] of blockedHits) {
+      const { data: cur } = await supabase.from("blocked_senders").select("hits").eq("id", id).maybeSingle();
+      await supabase.from("blocked_senders")
+        .update({ hits: (cur?.hits || 0) + n, last_hit_at: new Date().toISOString() }).eq("id", id);
+    }
+
+    return json({ success: true, processed, blocked, total: messages.length, mailbox: conn.email });
   } catch (e) {
     console.error("ms-check error:", (e as Error).message);
     return json({ error: (e as Error).message }, 500);
