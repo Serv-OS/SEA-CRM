@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
+import { markTicketJunk } from '../../lib/junk';
 import { supabase } from '../../lib/supabase';
 import SlaBadge from './SlaBadge.jsx';
 import { ListContainer, RecordCard, CardHead, Chip, ChipRow, MetaRow, OwnerTag } from './cardKit.jsx';
@@ -50,6 +51,22 @@ export default function TicketList({ profile, onSelect, onNavigate }) {
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, []);
+
+  // Junk from the list: the common case is several spam tickets at once, and
+  // opening each one to clear it is the thing that stops people bothering.
+  const junkRow = async (t) => {
+    const from = (t.customer_email || '').toLowerCase();
+    const domain = from.split('@')[1] || '';
+    const justThis = confirm(`Block ${from} and close this ticket?\n\nOK = this address only.\nCancel = block the whole domain (@${domain}).`);
+    let kind = 'email';
+    if (!justThis) {
+      if (!confirm(`Block EVERY sender at @${domain}?`)) return;
+      kind = 'domain';
+    }
+    const r = await markTicketJunk(t, profile, { kind });
+    if (!r.ok) alert(r.message);
+    load();
+  };
 
   const load = async () => {
     setLoading(true);
@@ -210,6 +227,14 @@ export default function TicketList({ profile, onSelect, onNavigate }) {
                 </span>
               )}
               <SlaBadge ticket={t} />
+              {canWrite && t.customer_email && !['resolved', 'closed'].includes(t.stage) && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); junkRow(t); }}
+                  title={`Block ${t.customer_email} and close this ticket`}
+                  className="inline-flex items-center px-2 py-1 text-xs font-bold rounded-lg bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100">
+                  Junk
+                </button>
+              )}
             </ChipRow>
             <MetaRow>
               <OwnerTag name={ownerName(t.owner_id)} />

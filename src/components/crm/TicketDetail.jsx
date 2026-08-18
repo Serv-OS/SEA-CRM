@@ -7,6 +7,7 @@ import SlaBadge from './SlaBadge.jsx';
 import { computeSla, fmtMinutes } from '../../lib/sla';
 import AttachmentsCard from './AttachmentsCard.jsx';
 import TimerButton from './TimerButton.jsx';
+import { markTicketJunk } from '../../lib/junk';
 
 const STAGES = ['new','in_progress','waiting_on_customer','escalated','resolved','closed'];
 const STAGE_LABELS = { new:'New', in_progress:'In Progress', waiting_on_customer:'Waiting on Customer', escalated:'Escalated', resolved:'Resolved', closed:'Closed' };
@@ -187,41 +188,22 @@ export default function TicketDetail({ ticketId, profile, onClose, onNavigate })
   };
 
   // Junk: block the sender so their next message never becomes a ticket, then
-  // take this one out of the queue. Blocking the whole domain is offered
-  // because most junk comes from a throwaway address on a domain that keeps
-  // sending — blocking one address at a time never ends.
+  // take this one out of the queue. Shared with the ticket list via lib/junk.
   const markJunk = async () => {
     const from = (ticket.customer_email || '').toLowerCase().trim();
     if (!from) { alert('This ticket has no sender email, so there is nothing to block.'); return; }
     const domain = from.split('@')[1] || '';
-    const whole = confirm(
-      `Block future messages from:\n\n  ${from}\n\nOK = block this address only.\nCancel = choose to block the whole domain (@${domain}) instead.`
+    const justThis = confirm(
+      `Block future messages from:\n\n  ${from}\n\nOK = block this address only.\nCancel = block the whole domain (@${domain}).`
     );
-    let value = from, kind = 'email';
-    if (!whole) {
+    let kind = 'email';
+    if (!justThis) {
       if (!confirm(`Block EVERY sender at @${domain}?\n\nUse this for a domain that keeps sending junk from new addresses.`)) return;
-      value = domain; kind = 'domain';
+      kind = 'domain';
     }
-    const { error } = await supabase.from('blocked_senders')
-      .insert({ value, kind, reason: `Marked as junk from ticket #${ticket.ticket_number}`, blocked_by: profile.id });
-    // A duplicate just means it is already blocked, which is the desired state.
-    if (error && !/duplicate|unique/i.test(error.message)) { alert('Could not block: ' + error.message); return; }
-
-    if (ticket.stage !== 'closed') {
-      await supabase.from('tickets').update({ stage: 'closed', closed_at: new Date().toISOString() }).eq('id', ticketId);
-      await supabase.from('stage_history').insert({
-        object_type: 'ticket', object_id: ticketId, from_stage: ticket.stage, to_stage: 'closed', changed_by: profile.id,
-      });
-    }
-    await supabase.from('crm_activities').insert({
-      type: 'note', subject_type: 'ticket', subject_id: ticketId, actor_id: profile.id, is_internal: true,
-      subject: 'Marked as junk',
-      body: kind === 'domain' ? `Blocked every sender at @${value}.` : `Blocked ${value}.`,
-      channel_metadata: { kind: 'junk_blocked', value, block_kind: kind },
-    });
-    alert(kind === 'domain' ? `Blocked @${value}. Mail from that domain will no longer create tickets.`
-                            : `Blocked ${value}. Their mail will no longer create tickets.`);
-    load();
+    const r = await markTicketJunk(ticket, profile, { kind });
+    alert(r.message);
+    if (r.ok) load();
   };
 
   const createLinkedProject = async () => {
@@ -291,7 +273,7 @@ export default function TicketDetail({ ticketId, profile, onClose, onNavigate })
             {canWrite && <button onClick={startEdit} className="btn-ghost px-3 lg:px-4 py-1.5 lg:py-2 rounded-xl text-xs lg:text-sm">Edit</button>}
             {canWrite && ticket.customer_email && (
               <button onClick={markJunk} title="Block this sender and close the ticket"
-                className="hidden lg:block px-3 py-2 text-xs text-amber-700 border border-amber-200 rounded-xl hover:bg-amber-50 transition">Junk</button>
+                className="px-3 py-2 text-xs text-amber-700 border border-amber-200 rounded-xl hover:bg-amber-50 transition">Junk</button>
             )}
             {profile.role === 'owner' && (
               <button onClick={deleteRecord} className="hidden lg:block px-3 py-2 text-xs text-red-600 border border-red-200 rounded-xl hover:bg-red-50 transition">Delete</button>
