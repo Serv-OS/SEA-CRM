@@ -4,15 +4,11 @@ import { handleClosedWon } from '../../lib/dealHelpers';
 import TimerButton from './TimerButton.jsx';
 import AssociationManager from './AssociationManager.jsx';
 import ActivityTimeline from './ActivityTimeline.jsx';
+import { DEAL_STAGE_KEYS, stageLabel } from '../../lib/dealStages';
 
-const STAGES = [
-  'estimate','proposal_sent','negotiation','verbal','contract_signed','closed_won','closed_lost'
-];
-const STAGE_LABELS = {
-  estimate:'Estimate / Quote', proposal_sent:'Proposal Sent', negotiation:'Negotiation',
-  verbal:'Verbal Commitment', contract_signed:'Contract Signed',
-  closed_won:'Won', closed_lost:'Lost',
-};
+const STAGES = DEAL_STAGE_KEYS;
+// Unknown or historical keys still read as words, never as a blank.
+const STAGE_LABELS = new Proxy({}, { get: (_, k) => stageLabel(typeof k === 'string' ? k : '') });
 
 export default function DealDetail({ dealId, profile, onClose, onNavigate }) {
   const [deal, setDeal] = useState(null);
@@ -105,7 +101,8 @@ export default function DealDetail({ dealId, profile, onClose, onNavigate }) {
     const patch = { stage: newStage };
     if (newStage === 'closed_won' || newStage === 'closed_lost') patch.closed_at = new Date().toISOString();
     else patch.closed_at = null;
-    await supabase.from('deals').update(patch).eq('id', dealId);
+    const { error } = await supabase.from('deals').update(patch).eq('id', dealId);
+    if (error) { alert('Could not change the stage: ' + error.message); return; }
     await supabase.from('stage_history').insert({ object_type: 'deal', object_id: dealId, from_stage: deal.stage, to_stage: newStage, changed_by: profile.id });
     if (newStage === 'closed_won') { const ob = await handleClosedWon(dealId, profile.id); if (ob) alert('Build stage created automatically.'); }
     load();

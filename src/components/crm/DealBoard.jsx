@@ -1,16 +1,9 @@
 import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
 import { handleClosedWon } from '../../lib/dealHelpers';
+import { DEAL_STAGES, FIRST_STAGE } from '../../lib/dealStages';
 
-const STAGES = [
-  { key: 'estimate',        label: 'Estimate / Quote',   color: '#3b82f6' },
-  { key: 'proposal_sent',   label: 'Proposal Sent',      color: '#6366f1' },
-  { key: 'negotiation',     label: 'Negotiation',        color: '#eab308' },
-  { key: 'verbal',          label: 'Verbal Commitment',  color: '#a855f7' },
-  { key: 'contract_signed', label: 'Contract Signed',    color: '#C75A29' },
-  { key: 'closed_won',      label: 'Won',                color: '#10b981' },
-  { key: 'closed_lost',     label: 'Lost',               color: '#ef4444' },
-];
+const STAGES = DEAL_STAGES;
 
 export default function DealBoard({ profile, onSelectDeal, onNavigate }) {
   const [deals, setDeals] = useState([]);
@@ -85,7 +78,10 @@ export default function DealBoard({ profile, onSelectDeal, onNavigate }) {
     } else {
       patch.closed_at = null;
     }
-    await supabase.from('deals').update(patch).eq('id', dealId);
+    // Never swallow this. A refused stage change used to look like nothing
+    // happening, which is how the board and the database drifted apart.
+    const { error } = await supabase.from('deals').update(patch).eq('id', dealId);
+    if (error) { alert('Could not move this deal: ' + error.message); load(); return; }
     // Write stage history
     await supabase.from('stage_history').insert({
       object_type: 'deal',
@@ -126,6 +122,7 @@ export default function DealBoard({ profile, onSelectDeal, onNavigate }) {
     const { data, error } = await supabase.from('deals').insert({
       name: newName.trim(),
       company_id: newCompany,
+      stage: FIRST_STAGE,
       value: newValue ? parseFloat(newValue) : null,
       owner_id: profile.id,
     }).select().single();
@@ -133,7 +130,7 @@ export default function DealBoard({ profile, onSelectDeal, onNavigate }) {
     if (data) {
       // Write initial stage history
       await supabase.from('stage_history').insert({
-        object_type: 'deal', object_id: data.id, from_stage: null, to_stage: 'new_lead', changed_by: profile.id,
+        object_type: 'deal', object_id: data.id, from_stage: null, to_stage: FIRST_STAGE, changed_by: profile.id,
       });
       // Auto-link the location if one was selected
       if (newLocation) {

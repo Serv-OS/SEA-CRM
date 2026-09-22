@@ -10,6 +10,7 @@ import ProcessingRatesCard from './ProcessingRatesCard.jsx';
 import HardwareCard from './HardwareCard.jsx';
 import InvoicesCard from './InvoicesCard.jsx';
 import { primaryLead } from '../../lib/leadStages';
+import { stageLabel } from '../../lib/dealStages';
 
 const STATUS_COLORS = {
   prospect: 'bg-blue-100 text-blue-700 border border-blue-200',
@@ -105,7 +106,7 @@ export default function CompanyDetail({ companyId, profile, onClose, onNavigate,
   const input = "w-full px-3 py-2 bg-card border border-bdr rounded text-sm text-paper placeholder-dim focus:outline-none focus:border-ember";
   const label = "text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-dim mb-1 block";
 
-  const DEAL_STAGES = { new_lead:'New Lead', contacted:'Contacted', qualified:'Qualified', demo_booked:'Demo Booked', demo_done:'Demo Done', proposal_sent:'Proposal', negotiation:'Negotiation', closed_won:'Won', closed_lost:'Lost' };
+  const DEAL_STAGES = new Proxy({}, { get: (_, k) => stageLabel(typeof k === 'string' ? k : '') });
 
   return (
     <div className="h-full flex flex-col">

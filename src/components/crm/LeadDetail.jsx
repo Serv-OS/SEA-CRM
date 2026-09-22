@@ -8,6 +8,7 @@ import CallButton from '../CallButton.jsx';
 import ScheduleMeeting from './ScheduleMeeting.jsx';
 import LeadBadge from './LeadBadge.jsx';
 import { LEAD_STAGES, LEAD_STAGE_MAP } from '../../lib/leadStages';
+import { FIRST_STAGE } from '../../lib/dealStages';
 
 const STAGE_FLOW = ['new_lead', 'attempting', 'contacted', 'qualified'];
 const SOURCE_OPTIONS = ['website', 'referral', 'cold_outreach', 'event', 'trade_show', 'social', 'inbound_call', 'inbound_email', 'pos_review_site', 'partner', 'other'];
@@ -99,9 +100,10 @@ export default function LeadDetail({ leadId, profile, onClose, onNavigate }) {
     }
     const { data: deal } = await supabase.from('deals').insert({
       name: `Deal: ${lead.name}`, company_id: lead.company_id, owner_id: lead.owner_id || profile.id, source: lead.source,
+      stage: FIRST_STAGE,
     }).select().single();
     if (deal) {
-      await supabase.from('stage_history').insert({ object_type: 'deal', object_id: deal.id, from_stage: null, to_stage: 'estimate', changed_by: profile.id });
+      await supabase.from('stage_history').insert({ object_type: 'deal', object_id: deal.id, from_stage: null, to_stage: FIRST_STAGE, changed_by: profile.id });
       if (lead.contact_id) await supabase.from('associations').insert({ from_type: 'deal', from_id: deal.id, to_type: 'contact', to_id: lead.contact_id, label: 'primary_contact' });
       if (lead.location_id) await supabase.from('associations').insert({ from_type: 'deal', from_id: deal.id, to_type: 'location', to_id: lead.location_id, label: 'affected_location' });
       await supabase.from('leads').update({ stage: 'qualified', deal_id: deal.id }).eq('id', leadId);

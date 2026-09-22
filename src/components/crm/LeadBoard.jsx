@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
+import { FIRST_STAGE } from '../../lib/dealStages';
 
 const STAGES = [
   { key: 'new_lead',      label: 'New',                color: '#3b82f6' },
@@ -149,10 +150,11 @@ export default function LeadBoard({ profile, onNavigate, prefill, onPrefillConsu
       company_id: lead.company_id,
       owner_id: lead.owner_id || profile.id,
       source: lead.source,
+      stage: FIRST_STAGE,
     }).select().single();
 
     if (deal) {
-      await supabase.from('stage_history').insert({ object_type: 'deal', object_id: deal.id, from_stage: null, to_stage: 'estimate', changed_by: profile.id });
+      await supabase.from('stage_history').insert({ object_type: 'deal', object_id: deal.id, from_stage: null, to_stage: FIRST_STAGE, changed_by: profile.id });
       if (lead.contact_id) {
         await supabase.from('associations').insert({ from_type: 'deal', from_id: deal.id, to_type: 'contact', to_id: lead.contact_id, label: 'primary_contact' });
       }

@@ -13,6 +13,7 @@ import ProcessingRatesCard from './ProcessingRatesCard.jsx';
 import HardwareCard from './HardwareCard.jsx';
 import InvoicesCard from './InvoicesCard.jsx';
 import { primaryLead } from '../../lib/leadStages';
+import { stageLabel } from '../../lib/dealStages';
 
 const STATUS_OPTIONS = ['prospect', 'onboarding', 'live', 'churned'];
 const STATUS_COLORS = {
@@ -119,7 +120,7 @@ export default function LocationDetail({ locationId, profile, onClose, onNavigat
   const label = "text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-dim mb-1 block";
 
   const MODULE_STATUS = { quoted:'bg-slate-100 text-slate-600 border border-slate-200', included:'bg-blue-100 text-blue-700 border border-blue-200', enabling:'bg-orange-100 text-orange-700 border border-orange-200', live:'bg-emerald-100 text-emerald-700 border border-emerald-200', disabled:'bg-red-100 text-red-700 border border-red-200' };
-  const DEAL_STAGES = { new_lead:'New Lead', contacted:'Contacted', qualified:'Qualified', demo_booked:'Demo Booked', demo_done:'Demo Done', proposal_sent:'Proposal', negotiation:'Negotiation', closed_won:'Won', closed_lost:'Lost' };
+  const DEAL_STAGES = new Proxy({}, { get: (_, k) => stageLabel(typeof k === 'string' ? k : '') });
 
   return (
     <div className="h-full flex flex-col">
