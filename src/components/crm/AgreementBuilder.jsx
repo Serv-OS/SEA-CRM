@@ -30,9 +30,10 @@ export default function AgreementBuilder({ agreementId, profile, onClose, onNavi
     const [{ data: ag }, { data: li }, { data: s }] = await Promise.all([
       supabase.from('agreements').select('*').eq('id', agreementId).single(),
       supabase.from('agreement_line_items').select('*').eq('agreement_id', agreementId).order('sort'),
-      supabase.from('support_settings').select('business_name, quote_accent, logo_url').eq('id', 1).maybeSingle(),
+      supabase.from('support_settings').select('business_name, quote_accent, logo_url, agreement_payment_details').eq('id', 1).maybeSingle(),
     ]);
-    setA(ag); setLines(li || []);
+    // Payment details come from Settings unless this agreement has its own.
+    setA(ag && !ag.payment_details && s?.agreement_payment_details ? { ...ag, payment_details: s.agreement_payment_details } : ag); setLines(li || []);
     setSeller({ name: s?.business_name, accent: s?.quote_accent || '#b27b26', logo_url: s?.logo_url });
     if (!ag) return;
     // The deal's people and property, to fill the client names and address.
@@ -210,7 +211,7 @@ export default function AgreementBuilder({ agreementId, profile, onClose, onNavi
 
             <div className="glass-card rounded-2xl p-4 space-y-2">
               <h3 className="text-sm font-bold text-paper">Payment details</h3>
-              <div className="text-[11px] text-dim">Shown to the client next to Pay by card. Carried over to the next agreement.</div>
+              <div className="text-[11px] text-dim">Shown to the client next to Pay by card. Filled from Settings, Agreement payment details; change it here for this agreement only.</div>
               <textarea rows={4} className={input + ' resize-none'} disabled={!canWrite || !!a.paid_at} value={a.payment_details || ''} onChange={e => set('payment_details', e.target.value)}
                 placeholder={'Checks payable to SEA Construction\nBank: ...  Routing: ...  Account: ...'} />
             </div>

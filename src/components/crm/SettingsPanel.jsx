@@ -59,6 +59,7 @@ export default function SettingsPanel({ profile }) {
       after_hours_email_message: next.after_hours_email_message ?? null,
       after_hours_voicemail_prompt: next.after_hours_voicemail_prompt ?? null,
       quote_terms: next.quote_terms ?? null,
+      agreement_payment_details: next.agreement_payment_details ?? null,
       invoice_terms: next.invoice_terms ?? null,
       business_name: next.business_name ?? null,
       business_address: next.business_address ?? null,
@@ -582,6 +583,28 @@ export default function SettingsPanel({ profile }) {
                   onChange={e => setSettings(s => ({ ...s, quote_terms: e.target.value }))}
                   onBlur={e => saveSettings({ quote_terms: e.target.value })}
                   placeholder="e.g. Prices exclude sales tax where applicable. Payment terms as per contract…" />
+                {!isOwner && <div className="text-[11px] text-dim mt-1">Only owners can edit these.</div>}
+              </div>
+            </div>
+          )}
+
+          {/* Agreement payment details (migration 083) */}
+          {settings && (
+            <div className="glass-card rounded-2xl overflow-hidden">
+              <div className="px-5 py-4 border-b border-bdr flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-ember/15 border border-ember/25 flex items-center justify-center text-lg">{'\u{1F3E6}'}</div>
+                <div className="flex-1">
+                  <div className="text-base font-bold text-paper">Agreement payment details</div>
+                  <div className="text-xs text-muted">How to pay by check, bank transfer or Zelle. Shown on every agreement next to Pay by card (an agreement can change its own)</div>
+                </div>
+              </div>
+              <div className="p-5">
+                <textarea disabled={!isOwner} rows={5}
+                  className="w-full px-3 py-2 bg-card border border-bdr rounded-xl text-sm text-paper placeholder-dim focus:outline-none focus:border-ember resize-none disabled:opacity-60"
+                  value={settings.agreement_payment_details || ''}
+                  onChange={e => setSettings(s => ({ ...s, agreement_payment_details: e.target.value }))}
+                  onBlur={e => saveSettings({ agreement_payment_details: e.target.value })}
+                  placeholder={'Checks payable to SEA Construction\nBank: ...  Routing: ...  Account: ...\nZelle: ...'} />
                 {!isOwner && <div className="text-[11px] text-dim mt-1">Only owners can edit these.</div>}
               </div>
             </div>

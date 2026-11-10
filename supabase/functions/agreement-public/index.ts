@@ -76,7 +76,7 @@ serve(async (req) => {
     if (req.method === "GET") {
       const [{ lines, total }, { data: s }, c1, c2, sl] = await Promise.all([
         linesAndTotal(supabase, a.id),
-        supabase.from("support_settings").select("business_name, business_address, business_email, business_phone, quote_accent, logo_url").eq("id", 1).maybeSingle(),
+        supabase.from("support_settings").select("business_name, business_address, business_email, business_phone, quote_accent, logo_url, agreement_payment_details").eq("id", 1).maybeSingle(),
         signedUrl(supabase, a.client1_signature_path), signedUrl(supabase, a.client2_signature_path), signedUrl(supabase, a.seller_signature_path),
       ]);
       if (a.status === "sent") await supabase.from("agreements").update({ status: "viewed" }).eq("id", a.id);
@@ -85,7 +85,7 @@ serve(async (req) => {
       return json({
         agreement: {
           kind: a.kind, agreement_date: a.agreement_date, client_names: a.client_names, property_address: a.property_address,
-          payment_details: a.payment_details, card_fee_percent: Number(a.card_fee_percent), client2_required: a.client2_required,
+          payment_details: a.payment_details || s?.agreement_payment_details || null, card_fee_percent: Number(a.card_fee_percent), client2_required: a.client2_required,
           client1: { name: a.client1_name, signed_at: a.client1_signed_at, signature_url: c1 },
           client2: { name: a.client2_name, signed_at: a.client2_signed_at, signature_url: c2 },
           seller: { name: a.seller_name, signed_at: a.seller_signed_at, signature_url: sl },
