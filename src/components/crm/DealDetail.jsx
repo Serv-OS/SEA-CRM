@@ -5,6 +5,7 @@ import TimerButton from './TimerButton.jsx';
 import AssociationManager from './AssociationManager.jsx';
 import ActivityTimeline from './ActivityTimeline.jsx';
 import { DEAL_STAGE_KEYS, stageLabel } from '../../lib/dealStages';
+import { agreementStage, KIND_LABEL, usd } from '../../lib/agreements';
 
 const STAGES = DEAL_STAGE_KEYS;
 // Unknown or historical keys still read as words, never as a blank.
@@ -19,6 +20,7 @@ export default function DealDetail({ dealId, profile, onClose, onNavigate }) {
   const [history, setHistory] = useState([]);
   const [projects, setProjects] = useState([]);
   const [quotes, setQuotes] = useState([]);
+  const [agreements, setAgreements] = useState([]);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState({});
 
@@ -43,6 +45,10 @@ export default function DealDetail({ dealId, profile, onClose, onNavigate }) {
     setHistory(h.data || []);
     setProjects(prj.data || []);
     setQuotes(qz.data || []);
+    // Stage agreements (migration 082). The Feasibility Agreement stage creates
+    // its own; an error (migration not run yet) just shows none.
+    supabase.from('agreements').select('id, kind, status, total, client_names, client1_signed_at, client2_signed_at, client2_required, seller_signed_at, paid_at')
+      .eq('deal_id', dealId).order('created_at').then(r => setAgreements(r.data || []));
     if (d.data?.company_id) setCompany(c.data?.find(co => co.id === d.data.company_id) || null);
   };
 
@@ -64,6 +70,14 @@ export default function DealDetail({ dealId, profile, onClose, onNavigate }) {
     }).select().single();
     if (error) { alert('Could not create quote: ' + error.message); return; }
     onNavigate?.('quote', data.id);
+  };
+
+  // The Feasibility Agreement is made by the database when the deal reaches its
+  // stage; this makes one by hand (e.g. after a void) the same way.
+  const createAgreement = async () => {
+    const { data, error } = await supabase.rpc('ensure_feasibility_agreement', { p_deal_id: dealId });
+    if (error) { alert('Could not create the agreement: ' + error.message); return; }
+    onNavigate?.('agreement', data);
   };
 
   const startEdit = () => { setDraft({ ...deal }); setEditing(true); };
@@ -239,6 +253,23 @@ export default function DealDetail({ dealId, profile, onClose, onNavigate }) {
 
             {/* RIGHT: Quotes + Projects + Stage History */}
             <div className="col-span-4 space-y-4">
+              <Card title="Agreements" count={agreements.length}
+                action={canWrite && !agreements.some(x => x.kind === 'feasibility' && x.status !== 'void') ? { label: '+ Feasibility', onClick: createAgreement } : null}>
+                {agreements.length > 0 ? (
+                  <div className="space-y-2">
+                    {agreements.map(x => (
+                      <div key={x.id} onClick={() => onNavigate?.('agreement', x.id)} className="p-3 glass-inner rounded-xl cursor-pointer flex items-center gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium text-paper">{KIND_LABEL[x.kind] || 'Agreement'}</div>
+                          <div className="text-xs text-muted truncate">{usd(x.total)}{x.client_names ? ` · ${x.client_names}` : ''}</div>
+                        </div>
+                        <span className="px-1.5 py-0.5 text-[9px] font-bold uppercase rounded bg-slate-100 text-slate-600 border border-slate-200 shrink-0">{agreementStage(x)}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : <div className="text-xs text-dim italic py-3 text-center">{deal?.stage === 'feasibility_agreement' ? 'Being created…' : 'Made when the deal reaches Feasibility Agreement'}</div>}
+              </Card>
+
               <Card title="Quotes" count={quotes.length}
                 action={canWrite ? { label: '+ New quote', onClick: createQuote } : null}>
                 {quotes.length > 0 ? (

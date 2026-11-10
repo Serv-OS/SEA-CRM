@@ -60,6 +60,7 @@ import ChatPanel from './crm/ChatPanel.jsx';
 import DataPanel from './crm/DataPanel.jsx';
 import LeadDetail from './crm/LeadDetail.jsx';
 import QuoteBuilder from './crm/QuoteBuilder.jsx';
+import AgreementBuilder from './crm/AgreementBuilder.jsx';
 import { Sun, Moon } from 'lucide-react';
 
 // The URL reflects the current view so refresh, the browser back button and
@@ -171,6 +172,7 @@ export default function Shell({ session }) {
     else if (type === 'task') { setView('task_detail'); setDetailId(id); }
     else if (type === 'lead') { if (id) { setView('lead_detail'); setDetailId(id); } else setView('leads'); }
     else if (type === 'quote') { setView('quote_detail'); setDetailId(id); }
+    else if (type === 'agreement') { setView('agreement_detail'); setDetailId(id); }
     else if (type === 'processing') { setView('processing'); }
     else if (type === 'invoice') { setView('invoice_detail'); setDetailId(id); }
     else if (type === 'account') { setView('account'); }
@@ -288,6 +290,8 @@ export default function Shell({ session }) {
         return <WebsitePanel />;
       case 'data':
         return <DataPanel profile={profile} />;
+      case 'agreement_detail':
+        return <AgreementBuilder agreementId={detailId} profile={profile} onClose={() => setView('deals')} onNavigate={navigateTo} />;
       case 'quote_detail':
         return <QuoteBuilder quoteId={detailId} profile={profile} onClose={() => setView('quotes')} onNavigate={navigateTo} />;
       case 'settings':

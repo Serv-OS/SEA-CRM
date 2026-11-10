@@ -137,6 +137,17 @@ serve(async (req) => {
       const paid = (session.amount_total || 0) / 100;
       const quoteId = session.metadata?.quote_id;
 
+      // A stage agreement fee paid by card (agreement-public). The fee and the
+      // card fee are kept apart, so the agreement shows what it was for.
+      const agreementId = session.metadata?.agreement_id;
+      if (agreementId && session.payment_status === "paid") {
+        const fee = Number(session.metadata?.fee) || paid;
+        await supabase.from("agreements").update({
+          paid_at: new Date().toISOString(), amount_paid: fee, card_fee_paid: Math.max(0, Math.round((paid - fee) * 100) / 100),
+          paid_method: "card", updated_at: new Date().toISOString(),
+        }).eq("id", agreementId).is("paid_at", null);
+      }
+
       if (quoteId) {
         if (session.metadata?.save_card) await saveCardFromSession(stripe, supabase, session);
 

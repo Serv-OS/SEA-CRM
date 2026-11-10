@@ -5,6 +5,7 @@ import Auth from './components/Auth.jsx';
 import Shell from './components/Shell.jsx';
 import PublicForm from './components/PublicForm.jsx';
 import PublicQuote from './components/PublicQuote.jsx';
+import PublicAgreement from './components/PublicAgreement.jsx';
 import PublicInvoice from './components/PublicInvoice.jsx';
 
 export default function App() {
@@ -15,6 +16,8 @@ export default function App() {
   const formMatch = window.location.pathname.match(/^\/f\/([^/?#]+)/);
   // Public quote route: /q/<token>
   const quoteMatch = window.location.pathname.match(/^\/q\/([^/?#]+)/);
+  // Public agreement route: /a/<token> (stage agreements, migration 082)
+  const agreementMatch = window.location.pathname.match(/^\/a\/([^/?#]+)/);
   // Public invoice route: /i/<token>
   const invoiceMatch = window.location.pathname.match(/^\/i\/([^/?#]+)/);
 
@@ -31,6 +34,7 @@ export default function App() {
   if (formMatch) {
     return <PublicForm slug={decodeURIComponent(formMatch[1])} />;
   }
+  if (agreementMatch) return <PublicAgreement token={decodeURIComponent(agreementMatch[1])} />;
   if (quoteMatch) {
     return <PublicQuote token={decodeURIComponent(quoteMatch[1])} />;
   }

@@ -45,3 +45,6 @@ verify_jwt = false
 verify_jwt = false
 [functions.notify-dispatch]
 verify_jwt = false
+
+[functions.agreement-public]
+verify_jwt = false
