@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase';
 import DisqualifyDialog from './DisqualifyDialog.jsx';
 import { FIRST_STAGE } from '../../lib/dealStages';
 import { PROJECT_SCOPES, scopeLabel } from '../../lib/projectScope.js';
+import { LEAD_SOURCES, sourceLabel } from '../../lib/leadSources.js';
 
 const STAGES = [
   { key: 'new_lead',      label: 'New',                color: '#3b82f6' },
@@ -21,7 +22,6 @@ const PRIORITY_STYLES = {
   cold: 'bg-slate-100 text-slate-600 border border-slate-200',
 };
 
-const SOURCE_OPTIONS = ['website', 'referral', 'cold_outreach', 'event', 'trade_show', 'social', 'inbound_call', 'inbound_email', 'pos_review_site', 'partner', 'other'];
 
 export default function LeadBoard({ profile, onNavigate, prefill, onPrefillConsumed }) {
   const [leads, setLeads] = useState([]);
@@ -273,7 +273,7 @@ export default function LeadBoard({ profile, onNavigate, prefill, onPrefillConsu
             <div className="grid grid-cols-4 gap-3">
               <div><label className={label}>Lead name *</label><input className={input} value={newName} onChange={e => setNewName(e.target.value)} placeholder="e.g. Smith kitchen remodel" autoFocus /></div>
               <div><label className={label}>Source</label><select className={input} value={newSource} onChange={e => setNewSource(e.target.value)}>
-                {SOURCE_OPTIONS.map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}</select></div>
+                {LEAD_SOURCES.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}</select></div>
               <div><label className={label}>Priority</label><select className={input} value={newPriority} onChange={e => setNewPriority(e.target.value)}>
                 <option value="hot">Hot</option><option value="warm">Warm</option><option value="medium">Medium</option><option value="cold">Cold</option></select></div>
               <div><label className={label}>Project scope</label><select className={input} value={newScope} onChange={e => setNewScope(e.target.value)}>
@@ -372,7 +372,7 @@ export default function LeadBoard({ profile, onNavigate, prefill, onPrefillConsu
                       {lead.next_action && <div className="text-[10px] text-ember mt-1">{'\u{25B6}'} {lead.next_action}</div>}
 
                       <div className="flex items-center gap-1 mt-2">
-                        {lead.source && <span className="px-1 py-0.5 text-[8px] bg-slate-100 text-slate-600 rounded">{lead.source.replace(/_/g, ' ')}</span>}
+                        {lead.source && <span className="px-1 py-0.5 text-[8px] bg-slate-100 text-slate-600 rounded">{sourceLabel(lead.source)}</span>}
                         {stage.key === 'contacted' && canWrite && (
                           <button onClick={(e) => { e.stopPropagation(); qualifyLead(lead); }}
                             className="ml-auto px-2 py-0.5 text-[9px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg hover:bg-emerald-200">Qualify</button>
@@ -419,7 +419,7 @@ export default function LeadBoard({ profile, onNavigate, prefill, onPrefillConsu
                   <td className="px-3 py-3 text-xs text-muted">{contactFullName(lead.contact_id)}</td>
                   <td className="px-3 py-3 text-center"><span className={`px-1.5 py-0.5 text-[9px] font-bold uppercase rounded ${PRIORITY_STYLES[lead.priority]}`}>{lead.priority}</span></td>
                   <td className="px-3 py-3"><span className="px-1.5 py-0.5 text-[9px] font-bold uppercase rounded bg-blue-100 text-blue-700 border border-blue-200">{STAGE_LABELS[lead.stage]}</span></td>
-                  <td className="px-3 py-3 text-xs text-muted">{lead.source?.replace(/_/g, ' ')}</td>
+                  <td className="px-3 py-3 text-xs text-muted">{sourceLabel(lead.source)}</td>
                   <td className="px-3 py-3 text-xs text-muted">{scopeLabel(lead.project_scope)}</td>
                   <td className="px-3 py-3 text-xs text-muted">{ownerName(lead.owner_id)}</td>
                   <td className="px-3 py-3 text-right">

@@ -11,9 +11,9 @@ import LeadBadge from './LeadBadge.jsx';
 import { LEAD_STAGES, LEAD_STAGE_MAP } from '../../lib/leadStages';
 import { FIRST_STAGE } from '../../lib/dealStages';
 import { PROJECT_SCOPES, scopeLabel } from '../../lib/projectScope.js';
+import { LEAD_SOURCES, sourceLabel } from '../../lib/leadSources.js';
 
 const STAGE_FLOW = ['new_lead', 'attempting', 'contacted', 'qualified'];
-const SOURCE_OPTIONS = ['website', 'referral', 'cold_outreach', 'event', 'trade_show', 'social', 'inbound_call', 'inbound_email', 'pos_review_site', 'partner', 'other'];
 
 export default function LeadDetail({ leadId, profile, onClose, onNavigate }) {
   const [lead, setLead] = useState(null);
@@ -146,7 +146,7 @@ export default function LeadDetail({ leadId, profile, onClose, onNavigate }) {
             <LeadBadge stage={lead.stage} full />
           </div>
           <div className="text-xs text-muted mt-0.5">
-            {lead.source && <span>{lead.source.replace(/_/g, ' ')} / </span>}
+            {lead.source && <span>{sourceLabel(lead.source)} / </span>}
             {lead.priority} priority / Owner: {ownerName(lead.owner_id)}
           </div>
         </div>
@@ -193,14 +193,14 @@ export default function LeadDetail({ leadId, profile, onClose, onNavigate }) {
                 <div><label className={label}>Name</label><input className={input} value={draft.name || ''} onChange={e => set('name', e.target.value)} /></div>
                 <div className="grid grid-cols-2 gap-3">
                   <div><label className={label}>Source</label><select className={input} value={draft.source || ''} onChange={e => set('source', e.target.value)}>
-                    <option value="">--</option>{SOURCE_OPTIONS.map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}</select></div>
+                    <option value="">--</option>{LEAD_SOURCES.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}</select></div>
                   <div><label className={label}>Priority</label><select className={input} value={draft.priority || 'medium'} onChange={e => set('priority', e.target.value)}>
                     <option value="hot">Hot</option><option value="warm">Warm</option><option value="medium">Medium</option><option value="cold">Cold</option></select></div>
                   <div><label className={label}>Project scope</label><select className={input} value={draft.project_scope || ''} onChange={e => set('project_scope', e.target.value)}>
                     <option value="">--</option>{PROJECT_SCOPES.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}</select></div>
                   <div><label className={label}>Owner</label><select className={input} value={draft.owner_id || ''} onChange={e => set('owner_id', e.target.value || null)}>
                     <option value="">Unassigned</option>{members.map(m => <option key={m.id} value={m.id}>{m.display_name || m.email}</option>)}</select></div>
-                  <div><label className={label}>Next action</label><input className={input} value={draft.next_action || ''} onChange={e => set('next_action', e.target.value)} placeholder="e.g. Book demo" /></div>
+                  <div><label className={label}>Next action</label><input className={input} value={draft.next_action || ''} onChange={e => set('next_action', e.target.value)} placeholder="e.g. Site visit" /></div>
                   <div><label className={label}>Next action date</label><input type="date" className={input} value={draft.next_action_date || ''} onChange={e => set('next_action_date', e.target.value)} /></div>
                 </div>
                 <div><label className={label}>Project details</label><textarea className={input + ' resize-none'} rows={4} value={draft.notes || ''} onChange={e => set('notes', e.target.value)} placeholder="What the customer wants done" /></div>
@@ -214,7 +214,7 @@ export default function LeadDetail({ leadId, profile, onClose, onNavigate }) {
             <div className="col-span-4 space-y-4">
               <Card title="Lead Info">
                 <div className="space-y-3">
-                  <Field label="Source" value={lead.source?.replace(/_/g, ' ')} />
+                  <Field label="Source" value={sourceLabel(lead.source)} />
                   <Field label="Priority" value={lead.priority} />
                   <Field label="Project scope" value={scopeLabel(lead.project_scope)} />
                   <Field label="Email" value={contact?.email} />

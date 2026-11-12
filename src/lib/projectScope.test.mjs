@@ -44,3 +44,13 @@ test('the public form function translates the same website answers the same way'
   assert.match(fn, /project_scope: scopeFromWebsite\(mapped\.project_scope \|\| mapped\.venue_type\)/, 'forms-public writes the scope from either map');
   assert.ok(!/venue_type: mapped\.venue_type/.test(fn), 'forms-public no longer writes venue_type');
 });
+
+test('lead sources are a builder’s, not a restaurant’s, on both screens', () => {
+  for (const f of ['../components/crm/LeadDetail.jsx', '../components/crm/LeadBoard.jsx']) {
+    const src = fs.readFileSync(new URL(f, import.meta.url), 'utf8');
+    for (const old of ['pos_review_site', 'cold_outreach', 'trade_show', 'Book demo', 'SOURCE_OPTIONS']) {
+      assert.ok(!src.includes(old), `${f} still has ${old}`);
+    }
+    assert.match(src, /LEAD_SOURCES\.map\(/, `${f} offers the builder source list`);
+  }
+});
