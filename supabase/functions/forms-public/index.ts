@@ -41,6 +41,34 @@ async function attachFiles(supabase: any, files: any[], subjectType: string, sub
   }
 }
 
+// Project scope on a lead. Mirror of src/lib/projectScope.js (a test pins the
+// two lists together). The website's "Service Required" answers are mapped to
+// the CRM's scope keys so both sides speak one list. A field still mapped to
+// the old venue_type target is read as the scope too.
+const SCOPE_KEYS = new Set(["new_construction", "remodel", "addition", "adu", "kitchen", "bathroom", "other"]);
+const WEBSITE_SERVICE_TO_SCOPE: Record<string, string> = {
+  "bathroom remodel": "bathroom",
+  "kitchen remodel": "kitchen",
+  "home or room addition": "addition",
+  "full home remodel": "remodel",
+  "new construction": "new_construction",
+  "adu": "adu",
+  "other": "other",
+};
+function scopeFromWebsite(text: unknown): string | null {
+  const t = String(text ?? "").trim().toLowerCase();
+  if (!t) return null;
+  if (SCOPE_KEYS.has(t)) return t;
+  if (WEBSITE_SERVICE_TO_SCOPE[t]) return WEBSITE_SERVICE_TO_SCOPE[t];
+  if (/\bkitchen\b/.test(t)) return "kitchen";
+  if (/\bbath/.test(t)) return "bathroom";
+  if (/\badu\b/.test(t)) return "adu";
+  if (/\baddition\b/.test(t)) return "addition";
+  if (/\bnew (construction|build)\b/.test(t)) return "new_construction";
+  if (/\bremodel/.test(t)) return "remodel";
+  return "other";
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
 
@@ -269,9 +297,7 @@ serve(async (req) => {
           company_id: companyId,
           contact_id: contactId,
           location_id: locationId,
-          venue_type: mapped.venue_type || null,
-          covers: mapped.covers ? parseInt(mapped.covers) : null,
-          current_pos: mapped.current_pos || null,
+          project_scope: scopeFromWebsite(mapped.project_scope || mapped.venue_type),
           priority: form.settings?.default_priority || "warm",
           notes: (mapped.message || "") + extrasNote + pageNote,
         }).select("id").single();

@@ -23,9 +23,7 @@ const MAPS_COMMON = [
   { v: 'message', l: 'Message / notes' },
 ];
 const MAPS_LEAD = [
-  { v: 'venue_type', l: 'Lead · Venue type' },
-  { v: 'covers', l: 'Lead · Covers' },
-  { v: 'current_pos', l: 'Lead · Current POS' },
+  { v: 'project_scope', l: 'Lead · Project scope' },
 ];
 const MAPS_SUPPORT = [{ v: 'subject', l: 'Ticket · Subject' }];
 

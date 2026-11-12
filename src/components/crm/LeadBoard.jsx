@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import DisqualifyDialog from './DisqualifyDialog.jsx';
 import { FIRST_STAGE } from '../../lib/dealStages';
+import { PROJECT_SCOPES, scopeLabel } from '../../lib/projectScope.js';
 
 const STAGES = [
   { key: 'new_lead',      label: 'New',                color: '#3b82f6' },
@@ -21,7 +22,6 @@ const PRIORITY_STYLES = {
 };
 
 const SOURCE_OPTIONS = ['website', 'referral', 'cold_outreach', 'event', 'trade_show', 'social', 'inbound_call', 'inbound_email', 'pos_review_site', 'partner', 'other'];
-const VENUE_TYPES = ['restaurant', 'bar', 'cafe', 'fast_casual', 'qsr', 'hotel_fb', 'nightclub', 'food_hall', 'catering', 'other'];
 
 export default function LeadBoard({ profile, onNavigate, prefill, onPrefillConsumed }) {
   const [leads, setLeads] = useState([]);
@@ -38,9 +38,7 @@ export default function LeadBoard({ profile, onNavigate, prefill, onPrefillConsu
   const [newName, setNewName] = useState('');
   const [newSource, setNewSource] = useState('website');
   const [newPriority, setNewPriority] = useState('medium');
-  const [newVenueType, setNewVenueType] = useState('');
-  const [newCovers, setNewCovers] = useState('');
-  const [newCurrentPos, setNewCurrentPos] = useState('');
+  const [newScope, setNewScope] = useState('');
   const [newNotes, setNewNotes] = useState('');
   // Search-and-link
   const [companySearch, setCompanySearch] = useState('');
@@ -69,7 +67,7 @@ export default function LeadBoard({ profile, onNavigate, prefill, onPrefillConsu
     const [l, c, loc, ct, m] = await Promise.all([
       supabase.from('leads').select('*').order('created_at', { ascending: false }),
       supabase.from('companies').select('id, name, domain').order('name'),
-      supabase.from('locations').select('id, name, company_id, venue_type, city').order('name'),
+      supabase.from('locations').select('id, name, company_id, city').order('name'),
       supabase.from('contacts').select('id, first_name, last_name, email, phone').order('last_name'),
       supabase.from('profiles').select('id, email, display_name'),
     ]);
@@ -221,6 +219,7 @@ export default function LeadBoard({ profile, onNavigate, prefill, onPrefillConsu
       name: newName.trim(),
       source: newSource,
       priority: newPriority,
+      project_scope: newScope || null,
       location_id: locationId,
       contact_id: contactId,
       notes: newNotes.trim() || null,
@@ -228,8 +227,8 @@ export default function LeadBoard({ profile, onNavigate, prefill, onPrefillConsu
     }).select('id').single();
 
     // Reset form
-    setNewName(''); setNewSource('website'); setNewPriority('medium'); setNewVenueType('');
-    setNewCovers(''); setNewCurrentPos(''); setNewNotes('');
+    setNewName(''); setNewSource('website'); setNewPriority('medium'); setNewScope('');
+    setNewNotes('');
     setCompanySearch(''); setSelectedCompany(null);
     setLocationSearch(''); setSelectedLocation(null);
     setContactSearch(''); setSelectedContact(null);
@@ -271,12 +270,14 @@ export default function LeadBoard({ profile, onNavigate, prefill, onPrefillConsu
       {showCreate && (
         <div className="px-6 py-4 border-b border-bdr overflow-y-auto max-h-[50vh]">
           <form onSubmit={createLead} className="space-y-3">
-            <div className="grid grid-cols-3 gap-3">
-              <div><label className={label}>Lead name *</label><input className={input} value={newName} onChange={e => setNewName(e.target.value)} placeholder="e.g. The Ivy - New POS" autoFocus /></div>
+            <div className="grid grid-cols-4 gap-3">
+              <div><label className={label}>Lead name *</label><input className={input} value={newName} onChange={e => setNewName(e.target.value)} placeholder="e.g. Smith kitchen remodel" autoFocus /></div>
               <div><label className={label}>Source</label><select className={input} value={newSource} onChange={e => setNewSource(e.target.value)}>
                 {SOURCE_OPTIONS.map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}</select></div>
               <div><label className={label}>Priority</label><select className={input} value={newPriority} onChange={e => setNewPriority(e.target.value)}>
                 <option value="hot">Hot</option><option value="warm">Warm</option><option value="medium">Medium</option><option value="cold">Cold</option></select></div>
+              <div><label className={label}>Project scope</label><select className={input} value={newScope} onChange={e => setNewScope(e.target.value)}>
+                <option value="">--</option>{PROJECT_SCOPES.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}</select></div>
             </div>
 
             {/* Search-and-link: Location + Contact */}
@@ -333,7 +334,7 @@ export default function LeadBoard({ profile, onNavigate, prefill, onPrefillConsu
               </div>
             )}
 
-            <div><label className={label}>Notes</label><textarea className={input + ' resize-none'} rows={2} value={newNotes} onChange={e => setNewNotes(e.target.value)} placeholder="Pain points, context..." /></div>
+            <div><label className={label}>Notes</label><textarea className={input + ' resize-none'} rows={2} value={newNotes} onChange={e => setNewNotes(e.target.value)} placeholder="What the customer wants done" /></div>
 
             <div className="flex gap-2">
               <button type="submit" className="px-4 py-2 bg-ember text-white text-sm font-semibold rounded-xl">Create lead</button>
@@ -367,8 +368,7 @@ export default function LeadBoard({ profile, onNavigate, prefill, onPrefillConsu
                       {lead.company_id && <div className="text-[10px] text-muted mb-0.5">{'\u{1F3E2}'} {companyName(lead.company_id)}</div>}
                       {lead.location_id && <div className="text-[10px] text-muted mb-0.5">{'\u{1F4CD}'} {locationName(lead.location_id)}</div>}
                       {lead.contact_id && <div className="text-[10px] text-muted mb-0.5">{'\u{1F464}'} {contactFullName(lead.contact_id)}</div>}
-                      {lead.venue_type && <div className="text-[10px] text-dim">{lead.venue_type.replace(/_/g, ' ')}{lead.covers ? ` / ${lead.covers} covers` : ''}</div>}
-                      {lead.current_pos && <div className="text-[10px] text-dim">Current: {lead.current_pos}</div>}
+                      {lead.project_scope && <div className="text-[10px] text-dim">{scopeLabel(lead.project_scope)}</div>}
                       {lead.next_action && <div className="text-[10px] text-ember mt-1">{'\u{25B6}'} {lead.next_action}</div>}
 
                       <div className="flex items-center gap-1 mt-2">
@@ -406,7 +406,7 @@ export default function LeadBoard({ profile, onNavigate, prefill, onPrefillConsu
                 <th className="px-3 py-2.5 text-center">Priority</th>
                 <th className="px-3 py-2.5 text-left">Stage</th>
                 <th className="px-3 py-2.5 text-left">Source</th>
-                <th className="px-3 py-2.5 text-left">Venue</th>
+                <th className="px-3 py-2.5 text-left">Scope</th>
                 <th className="px-3 py-2.5 text-left">Owner</th>
                 <th className="px-3 py-2.5 text-right">Actions</th>
               </tr>
@@ -420,7 +420,7 @@ export default function LeadBoard({ profile, onNavigate, prefill, onPrefillConsu
                   <td className="px-3 py-3 text-center"><span className={`px-1.5 py-0.5 text-[9px] font-bold uppercase rounded ${PRIORITY_STYLES[lead.priority]}`}>{lead.priority}</span></td>
                   <td className="px-3 py-3"><span className="px-1.5 py-0.5 text-[9px] font-bold uppercase rounded bg-blue-100 text-blue-700 border border-blue-200">{STAGE_LABELS[lead.stage]}</span></td>
                   <td className="px-3 py-3 text-xs text-muted">{lead.source?.replace(/_/g, ' ')}</td>
-                  <td className="px-3 py-3 text-xs text-muted">{lead.venue_type?.replace(/_/g, ' ')}</td>
+                  <td className="px-3 py-3 text-xs text-muted">{scopeLabel(lead.project_scope)}</td>
                   <td className="px-3 py-3 text-xs text-muted">{ownerName(lead.owner_id)}</td>
                   <td className="px-3 py-3 text-right">
                     {!['qualified', 'disqualified'].includes(lead.stage) && canWrite && (

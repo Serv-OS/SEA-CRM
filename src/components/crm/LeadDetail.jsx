@@ -10,10 +10,10 @@ import ScheduleMeeting from './ScheduleMeeting.jsx';
 import LeadBadge from './LeadBadge.jsx';
 import { LEAD_STAGES, LEAD_STAGE_MAP } from '../../lib/leadStages';
 import { FIRST_STAGE } from '../../lib/dealStages';
+import { PROJECT_SCOPES, scopeLabel } from '../../lib/projectScope.js';
 
 const STAGE_FLOW = ['new_lead', 'attempting', 'contacted', 'qualified'];
 const SOURCE_OPTIONS = ['website', 'referral', 'cold_outreach', 'event', 'trade_show', 'social', 'inbound_call', 'inbound_email', 'pos_review_site', 'partner', 'other'];
-const VENUE_TYPES = ['restaurant', 'bar', 'cafe', 'fast_casual', 'qsr', 'hotel_fb', 'nightclub', 'food_hall', 'catering', 'other'];
 
 export default function LeadDetail({ leadId, profile, onClose, onNavigate }) {
   const [lead, setLead] = useState(null);
@@ -59,7 +59,7 @@ export default function LeadDetail({ leadId, profile, onClose, onNavigate }) {
     setMembers(m.data || []);
     // Linked records still fetched for the header Call button
     if (l.data?.company_id) supabase.from('companies').select('id, name, phone, domain').eq('id', l.data.company_id).single().then(r => setCompany(r.data)); else setCompany(null);
-    if (l.data?.location_id) supabase.from('locations').select('id, name, phone, city, venue_type').eq('id', l.data.location_id).single().then(r => setLocation(r.data)); else setLocation(null);
+    if (l.data?.location_id) supabase.from('locations').select('id, name, phone, address, city, state, postcode').eq('id', l.data.location_id).single().then(r => setLocation(r.data)); else setLocation(null);
     if (l.data?.contact_id) supabase.from('contacts').select('id, first_name, last_name, phone, email').eq('id', l.data.contact_id).single().then(r => setContact(r.data)); else setContact(null);
     if (l.data?.deal_id) supabase.from('deals').select('*').eq('id', l.data.deal_id).single().then(r => setDeal(r.data)); else setDeal(null);
     if (l.data) { await ensureAssociations(l.data); setReady(true); }
@@ -80,8 +80,7 @@ export default function LeadDetail({ leadId, profile, onClose, onNavigate }) {
   const save = async () => {
     const patch = {
       name: draft.name, source: draft.source || null, priority: draft.priority,
-      venue_type: draft.venue_type || null, covers: draft.covers ? parseInt(draft.covers) : null,
-      current_pos: draft.current_pos || null, next_action: draft.next_action || null,
+      project_scope: draft.project_scope || null, next_action: draft.next_action || null,
       next_action_date: draft.next_action_date || null, notes: draft.notes || null,
       owner_id: draft.owner_id || null,
     };
@@ -197,16 +196,14 @@ export default function LeadDetail({ leadId, profile, onClose, onNavigate }) {
                     <option value="">--</option>{SOURCE_OPTIONS.map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}</select></div>
                   <div><label className={label}>Priority</label><select className={input} value={draft.priority || 'medium'} onChange={e => set('priority', e.target.value)}>
                     <option value="hot">Hot</option><option value="warm">Warm</option><option value="medium">Medium</option><option value="cold">Cold</option></select></div>
-                  <div><label className={label}>Venue type</label><select className={input} value={draft.venue_type || ''} onChange={e => set('venue_type', e.target.value)}>
-                    <option value="">--</option>{VENUE_TYPES.map(v => <option key={v} value={v}>{v.replace(/_/g, ' ')}</option>)}</select></div>
-                  <div><label className={label}>Covers</label><input type="number" className={input} value={draft.covers || ''} onChange={e => set('covers', e.target.value)} /></div>
-                  <div><label className={label}>Current POS</label><input className={input} value={draft.current_pos || ''} onChange={e => set('current_pos', e.target.value)} /></div>
+                  <div><label className={label}>Project scope</label><select className={input} value={draft.project_scope || ''} onChange={e => set('project_scope', e.target.value)}>
+                    <option value="">--</option>{PROJECT_SCOPES.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}</select></div>
                   <div><label className={label}>Owner</label><select className={input} value={draft.owner_id || ''} onChange={e => set('owner_id', e.target.value || null)}>
                     <option value="">Unassigned</option>{members.map(m => <option key={m.id} value={m.id}>{m.display_name || m.email}</option>)}</select></div>
                   <div><label className={label}>Next action</label><input className={input} value={draft.next_action || ''} onChange={e => set('next_action', e.target.value)} placeholder="e.g. Book demo" /></div>
                   <div><label className={label}>Next action date</label><input type="date" className={input} value={draft.next_action_date || ''} onChange={e => set('next_action_date', e.target.value)} /></div>
                 </div>
-                <div><label className={label}>Notes</label><textarea className={input + ' resize-none'} rows={3} value={draft.notes || ''} onChange={e => set('notes', e.target.value)} /></div>
+                <div><label className={label}>Project details</label><textarea className={input + ' resize-none'} rows={4} value={draft.notes || ''} onChange={e => set('notes', e.target.value)} placeholder="What the customer wants done" /></div>
                 <div className="flex gap-2"><button onClick={save} className="btn-glass px-5 py-2 rounded-xl text-sm">Save</button><button onClick={() => setEditing(false)} className="btn-ghost px-4 py-2 rounded-xl text-sm">Cancel</button></div>
               </div>
             </Card>
@@ -219,14 +216,15 @@ export default function LeadDetail({ leadId, profile, onClose, onNavigate }) {
                 <div className="space-y-3">
                   <Field label="Source" value={lead.source?.replace(/_/g, ' ')} />
                   <Field label="Priority" value={lead.priority} />
-                  <Field label="Venue type" value={lead.venue_type?.replace(/_/g, ' ')} />
-                  <Field label="Covers" value={lead.covers} />
-                  <Field label="Current POS" value={lead.current_pos} />
+                  <Field label="Project scope" value={scopeLabel(lead.project_scope)} />
+                  <Field label="Email" value={contact?.email} />
+                  <Field label="Phone" value={contact?.phone || location?.phone} />
+                  <Field label="Property" value={[location?.address, location?.city, location?.state, location?.postcode].filter(Boolean).join(', ')} />
                   <Field label="Next action" value={[lead.next_action, lead.next_action_date].filter(Boolean).join(' / ')} />
                   <Field label="Owner" value={ownerName(lead.owner_id)} />
                   <Field label="Created" value={new Date(lead.created_at).toLocaleDateString('en-US', { day:'numeric', month:'short', year:'2-digit' })} />
                   {lead.disqualified_reason && <Field label="Disqualified" value={lead.disqualified_reason} />}
-                  {lead.notes && <Field label="Notes" value={lead.notes} />}
+                  {lead.notes && <Field label="Project details" value={lead.notes} />}
                 </div>
               </Card>
 
