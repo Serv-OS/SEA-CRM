@@ -7,6 +7,7 @@ import ActivityTimeline from './ActivityTimeline.jsx';
 import { DEAL_STAGE_KEYS, stageLabel } from '../../lib/dealStages';
 import { agreementStage, KIND_LABEL, usd } from '../../lib/agreements';
 import { sortScopes, currentScope, scopeChanged, scopeCaption } from '../../lib/scopeOfWork';
+import ScopeEditor from './ScopeEditor.jsx';
 
 const STAGES = DEAL_STAGE_KEYS;
 // Unknown or historical keys still read as words, never as a blank.
@@ -88,8 +89,8 @@ export default function DealDetail({ dealId, profile, onClose, onNavigate }) {
   };
 
   // A new scope is the next version; unsigned contracts on the deal take it too.
-  const saveScope = async () => {
-    const body = (scopeDraft || '').trim();
+  const saveScope = async (text) => {
+    const body = (text || '').trim();
     if (!body) { alert('Type the scope of work first.'); return; }
     if (!scopeChanged(currentScope(scopes)?.body, body)) { setScopeDraft(null); return; }
     const { error } = await supabase.rpc('add_deal_scope', { p_deal_id: dealId, p_body: body });
@@ -247,16 +248,11 @@ export default function DealDetail({ dealId, profile, onClose, onNavigate }) {
 
               <Card title="Scope of work" count={scopes.length || undefined}
                 action={canWrite && scopeDraft === null ? { label: scopes.length ? '+ New scope' : '+ Add scope', onClick: () => setScopeDraft(currentScope(scopes)?.body || '') } : null}>
-                {scopeDraft !== null ? (
-                  <div className="space-y-2">
-                    <textarea className={input + ' resize-none'} rows={6} value={scopeDraft} onChange={e => setScopeDraft(e.target.value)} placeholder="What the work covers at this stage" />
-                    <div className="text-[10px] text-dim">Saved as version {(currentScope(scopes)?.version || 0) + 1} at {STAGE_LABELS[deal.stage]}. Earlier versions are kept. Contracts not yet signed take this scope.</div>
-                    <div className="flex gap-2">
-                      <button onClick={saveScope} className="btn-glass px-4 py-1.5 rounded-xl text-sm">Save scope</button>
-                      <button onClick={() => setScopeDraft(null)} className="btn-ghost px-3 py-1.5 rounded-xl text-sm">Cancel</button>
-                    </div>
-                  </div>
-                ) : scopes.length ? (
+                {scopeDraft !== null && (
+                  <ScopeEditor value={scopeDraft} onSave={saveScope} onClose={() => setScopeDraft(null)}
+                    caption={`Saved as version ${(currentScope(scopes)?.version || 0) + 1} at ${STAGE_LABELS[deal.stage]}. Earlier versions are kept. Contracts not yet signed take this scope.`} />
+                )}
+                {scopes.length ? (
                   <div className="space-y-3">
                     <div>
                       <div className="text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-dim mb-0.5">{scopeCaption(scopes[0], ownerName(scopes[0].created_by))}</div>

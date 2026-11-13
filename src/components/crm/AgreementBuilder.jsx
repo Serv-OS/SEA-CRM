@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import AgreementDocument from '../AgreementDocument.jsx';
 import SignaturePad from '../SignaturePad.jsx';
+import ScopeEditor from './ScopeEditor.jsx';
 import { agreementTotal, cardFee, cardTotal, usd, agreementStage, clientsSigned, KIND_LABEL, fmtDocDate } from '../../lib/agreements';
 
 const FN = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
@@ -14,6 +15,7 @@ const personName = (c) => [c?.first_name, c?.last_name].filter(Boolean).join(' '
 export default function AgreementBuilder({ agreementId, profile, onClose, onNavigate }) {
   const [a, setA] = useState(null);
   const [loadedScope, setLoadedScope] = useState('');
+  const [scopeOpen, setScopeOpen] = useState(false);
   const [lines, setLines] = useState([]);
   const [contacts, setContacts] = useState([]);
   const [location, setLocation] = useState(null);
@@ -114,6 +116,15 @@ export default function AgreementBuilder({ agreementId, profile, onClose, onNavi
     return true;
   };
 
+  // The large editor saves the scope on its own: on this contract and as the deal's next version.
+  const saveScopeNow = async (body) => {
+    const { error } = await supabase.from('agreements').update({ scope_of_work: body, updated_at: new Date().toISOString() }).eq('id', a.id);
+    if (error) { alert('Could not save the scope of work:\n\n' + error.message); return; }
+    if (a.deal_id && body.trim() !== loadedScope.trim()) await supabase.rpc('add_deal_scope', { p_deal_id: a.deal_id, p_body: body, p_agreement_id: a.id });
+    setScopeOpen(false); setMsg('Scope saved'); setTimeout(() => setMsg(''), 2000);
+    await load();
+  };
+
   const link = `${window.location.origin}/a/${a.public_token}`;
   const getLink = async () => {
     if (!a.client_names?.trim() || !a.property_address?.trim()) { alert('Add the client names and the property address first.'); return; }
@@ -195,10 +206,14 @@ export default function AgreementBuilder({ agreementId, profile, onClose, onNavi
             </div>
 
             <div className="glass-card rounded-2xl p-4 space-y-2">
-              <h3 className="text-sm font-bold text-paper">Scope of work</h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-paper">Scope of work</h3>
+                {!locked && <button onClick={() => setScopeOpen(true)} className="text-xs text-ember hover:text-ember-deep font-medium">Open large editor</button>}
+              </div>
               <div className="text-[11px] text-dim">Printed on the agreement under the opening line. Filled from the deal; a change here is saved on the deal as the next version.</div>
-              <textarea rows={5} className={input + ' resize-none'} disabled={locked} value={a.scope_of_work || ''} onChange={e => set('scope_of_work', e.target.value)}
+              <textarea rows={12} className={input + ' resize-y text-base leading-relaxed'} disabled={locked} value={a.scope_of_work || ''} onChange={e => set('scope_of_work', e.target.value)}
                 placeholder="What the work covers" />
+              {scopeOpen && <ScopeEditor value={a.scope_of_work || ''} onSave={saveScopeNow} onClose={() => setScopeOpen(false)} caption={`${KIND_LABEL[a.kind] || 'Agreement'} for ${a.client_names || 'the client'}. Saved on this contract and on the deal as the next version.`} />}
             </div>
 
             <div className="glass-card rounded-2xl p-4 space-y-3">

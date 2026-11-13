@@ -333,7 +333,7 @@ export default function LeadBoard({ profile, onNavigate, prefill, onPrefillConsu
               </div>
             )}
 
-            <div><label className={label}>Scope of work</label><textarea className={input + ' resize-none'} rows={2} value={newNotes} onChange={e => setNewNotes(e.target.value)} placeholder="What the customer wants done" /></div>
+            <div><label className={label}>Scope of work</label><textarea className={input + ' resize-y text-base leading-relaxed'} rows={8} value={newNotes} onChange={e => setNewNotes(e.target.value)} placeholder="What the customer wants done" /></div>
 
             <div className="flex gap-2">
               <button type="submit" className="px-4 py-2 bg-ember text-white text-sm font-semibold rounded-xl">Create lead</button>

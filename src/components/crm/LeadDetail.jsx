@@ -207,7 +207,7 @@ export default function LeadDetail({ leadId, profile, onClose, onNavigate }) {
                   <div><label className={label}>Next action</label><input className={input} value={draft.next_action || ''} onChange={e => set('next_action', e.target.value)} placeholder="e.g. Site visit" /></div>
                   <div><label className={label}>Next action date</label><input type="date" className={input} value={draft.next_action_date || ''} onChange={e => set('next_action_date', e.target.value)} /></div>
                 </div>
-                <div><label className={label}>Scope of work</label><textarea className={input + ' resize-none'} rows={4} value={draft.notes || ''} onChange={e => set('notes', e.target.value)} placeholder="What the customer wants done. This becomes the scope on the deal and its contracts." /></div>
+                <div><label className={label}>Scope of work</label><textarea className={input + ' resize-y text-base leading-relaxed'} rows={12} value={draft.notes || ''} onChange={e => set('notes', e.target.value)} placeholder="What the customer wants done. This becomes the scope on the deal and its contracts." /></div>
                 <div className="flex gap-2"><button onClick={save} className="btn-glass px-5 py-2 rounded-xl text-sm">Save</button><button onClick={() => setEditing(false)} className="btn-ghost px-4 py-2 rounded-xl text-sm">Cancel</button></div>
               </div>
             </Card>
@@ -228,7 +228,7 @@ export default function LeadDetail({ leadId, profile, onClose, onNavigate }) {
                   <Field label="Owner" value={ownerName(lead.owner_id)} />
                   <Field label="Created" value={new Date(lead.created_at).toLocaleDateString('en-US', { day:'numeric', month:'short', year:'2-digit' })} />
                   {lead.disqualified_reason && <Field label="Disqualified" value={lead.disqualified_reason} />}
-                  {lead.notes && <Field label="Scope of work" value={lead.notes} />}
+                  {lead.notes && <Field label="Scope of work" value={<span className="whitespace-pre-line">{lead.notes}</span>} />}
                 </div>
               </Card>
 
