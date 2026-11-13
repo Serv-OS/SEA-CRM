@@ -151,6 +151,8 @@ export default function LeadBoard({ profile, onNavigate, prefill, onPrefillConsu
 
     if (deal) {
       await supabase.from('stage_history').insert({ object_type: 'deal', object_id: deal.id, from_stage: null, to_stage: FIRST_STAGE, changed_by: profile.id });
+      // The lead's scope of work is version 1 on the deal (and on its first contract).
+      if (lead.notes?.trim()) await supabase.rpc('add_deal_scope', { p_deal_id: deal.id, p_body: lead.notes });
       if (lead.contact_id) {
         await supabase.from('associations').insert({ from_type: 'deal', from_id: deal.id, to_type: 'contact', to_id: lead.contact_id, label: 'primary_contact' });
       }
@@ -331,7 +333,7 @@ export default function LeadBoard({ profile, onNavigate, prefill, onPrefillConsu
               </div>
             )}
 
-            <div><label className={label}>Notes</label><textarea className={input + ' resize-none'} rows={2} value={newNotes} onChange={e => setNewNotes(e.target.value)} placeholder="What the customer wants done" /></div>
+            <div><label className={label}>Scope of work</label><textarea className={input + ' resize-none'} rows={2} value={newNotes} onChange={e => setNewNotes(e.target.value)} placeholder="What the customer wants done" /></div>
 
             <div className="flex gap-2">
               <button type="submit" className="px-4 py-2 bg-ember text-white text-sm font-semibold rounded-xl">Create lead</button>

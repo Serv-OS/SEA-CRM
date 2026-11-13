@@ -13,6 +13,7 @@ const personName = (c) => [c?.first_name, c?.last_name].filter(Boolean).join(' '
 // sums come from lib/agreements, the same ones the client's page uses.
 export default function AgreementBuilder({ agreementId, profile, onClose, onNavigate }) {
   const [a, setA] = useState(null);
+  const [loadedScope, setLoadedScope] = useState('');
   const [lines, setLines] = useState([]);
   const [contacts, setContacts] = useState([]);
   const [location, setLocation] = useState(null);
@@ -34,6 +35,7 @@ export default function AgreementBuilder({ agreementId, profile, onClose, onNavi
     ]);
     // Payment details come from Settings unless this agreement has its own.
     setA(ag && !ag.payment_details && s?.agreement_payment_details ? { ...ag, payment_details: s.agreement_payment_details } : ag); setLines(li || []);
+    setLoadedScope(ag?.scope_of_work || '');
     setSeller({ name: s?.business_name, accent: s?.quote_accent || '#b27b26', logo_url: s?.logo_url });
     if (!ag) return;
     // The deal's people and property, to fill the client names and address.
@@ -92,9 +94,14 @@ export default function AgreementBuilder({ agreementId, profile, onClose, onNavi
       payment_details: a.payment_details || null, card_fee_percent: Number(a.card_fee_percent) || 0,
       client2_required: !!a.client2_required, contact_id: a.contact_id || null, second_contact_id: a.second_contact_id || null,
       location_id: a.location_id || null, total, updated_at: new Date().toISOString(), ...extra,
+      ...(locked ? {} : { scope_of_work: a.scope_of_work || null }),
     };
     const { error } = await supabase.from('agreements').update(patch).eq('id', a.id);
     if (error) { setSaving(false); alert('Could not save the agreement:\n\n' + error.message); return false; }
+    // A scope changed here is the deal's next version too, so every page shows the same one.
+    if (!locked && a.deal_id && (a.scope_of_work || '').trim() && (a.scope_of_work || '').trim() !== loadedScope.trim()) {
+      await supabase.rpc('add_deal_scope', { p_deal_id: a.deal_id, p_body: a.scope_of_work, p_agreement_id: a.id });
+    }
     if (!locked) {
       const { error: de } = await supabase.from('agreement_line_items').delete().eq('agreement_id', a.id);
       const rows = lines.filter(l => (l.name || '').trim() || Number(l.unit_price))
@@ -185,6 +192,13 @@ export default function AgreementBuilder({ agreementId, profile, onClose, onNavi
                   <input type="checkbox" disabled={locked} checked={!!a.client2_required} onChange={e => set('client2_required', e.target.checked)} className="accent-ember" /> Second client signs
                 </label>
               </div>
+            </div>
+
+            <div className="glass-card rounded-2xl p-4 space-y-2">
+              <h3 className="text-sm font-bold text-paper">Scope of work</h3>
+              <div className="text-[11px] text-dim">Printed on the agreement under the opening line. Filled from the deal; a change here is saved on the deal as the next version.</div>
+              <textarea rows={5} className={input + ' resize-none'} disabled={locked} value={a.scope_of_work || ''} onChange={e => set('scope_of_work', e.target.value)}
+                placeholder="What the work covers" />
             </div>
 
             <div className="glass-card rounded-2xl p-4 space-y-3">

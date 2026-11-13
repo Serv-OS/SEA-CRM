@@ -42,11 +42,14 @@ export const KIND_LABEL = { feasibility: 'Feasibility Agreement' };
  * The Feasibility Agreement text, as blocks the page and the CRM both render.
  * Wording is SEA's document of Oct 2026 (typos fixed).
  */
-export function feasibilityBlocks({ clientNames, propertyAddress, sellerName = 'SEA Construction' }) {
+export function feasibilityBlocks({ clientNames, propertyAddress, scopeOfWork, sellerName = 'SEA Construction' }) {
   const who = clientNames?.trim() || '[Client names]';
   const where = propertyAddress?.trim() || '[Property address]';
+  const scope = scopeOfWork?.trim();
   return [
     { p: `Client(s) ${who} hereby contract with ${sellerName} at ${where} to discover client(s) renovation goals and provide a buildable schematic design and budget based on client(s) wants and needs.` },
+    // The scope of work the contract was made with (migration 086), kept as typed.
+    ...(scope ? [{ h: 'Scope of Work' }, { pre: scope }] : []),
     { h: 'Feasibility Agreement Process' },
     { h2: 'Initial Onsite Meeting', p: 'Design Team (SEA, Interior Designer & Architect) interviews client(s) onsite to determine project goals, to inspect existing conditions and LiDAR the home.' },
     { h2: 'Office (behind the scenes)', p: 'Design Team will explore options to create a 3D design draft and 2 schematic designs that best address the challenges to the existing layout.' },

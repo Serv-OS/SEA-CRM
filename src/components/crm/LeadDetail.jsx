@@ -105,6 +105,8 @@ export default function LeadDetail({ leadId, profile, onClose, onNavigate }) {
     }).select().single();
     if (deal) {
       await supabase.from('stage_history').insert({ object_type: 'deal', object_id: deal.id, from_stage: null, to_stage: FIRST_STAGE, changed_by: profile.id });
+      // The lead's scope of work is version 1 on the deal (and on its first contract).
+      if (lead.notes?.trim()) await supabase.rpc('add_deal_scope', { p_deal_id: deal.id, p_body: lead.notes });
       if (lead.contact_id) await supabase.from('associations').insert({ from_type: 'deal', from_id: deal.id, to_type: 'contact', to_id: lead.contact_id, label: 'primary_contact' });
       if (lead.location_id) await supabase.from('associations').insert({ from_type: 'deal', from_id: deal.id, to_type: 'location', to_id: lead.location_id, label: 'affected_location' });
       await supabase.from('leads').update({ stage: 'qualified', deal_id: deal.id }).eq('id', leadId);
@@ -205,7 +207,7 @@ export default function LeadDetail({ leadId, profile, onClose, onNavigate }) {
                   <div><label className={label}>Next action</label><input className={input} value={draft.next_action || ''} onChange={e => set('next_action', e.target.value)} placeholder="e.g. Site visit" /></div>
                   <div><label className={label}>Next action date</label><input type="date" className={input} value={draft.next_action_date || ''} onChange={e => set('next_action_date', e.target.value)} /></div>
                 </div>
-                <div><label className={label}>Project details</label><textarea className={input + ' resize-none'} rows={4} value={draft.notes || ''} onChange={e => set('notes', e.target.value)} placeholder="What the customer wants done" /></div>
+                <div><label className={label}>Scope of work</label><textarea className={input + ' resize-none'} rows={4} value={draft.notes || ''} onChange={e => set('notes', e.target.value)} placeholder="What the customer wants done. This becomes the scope on the deal and its contracts." /></div>
                 <div className="flex gap-2"><button onClick={save} className="btn-glass px-5 py-2 rounded-xl text-sm">Save</button><button onClick={() => setEditing(false)} className="btn-ghost px-4 py-2 rounded-xl text-sm">Cancel</button></div>
               </div>
             </Card>
@@ -226,7 +228,7 @@ export default function LeadDetail({ leadId, profile, onClose, onNavigate }) {
                   <Field label="Owner" value={ownerName(lead.owner_id)} />
                   <Field label="Created" value={new Date(lead.created_at).toLocaleDateString('en-US', { day:'numeric', month:'short', year:'2-digit' })} />
                   {lead.disqualified_reason && <Field label="Disqualified" value={lead.disqualified_reason} />}
-                  {lead.notes && <Field label="Project details" value={lead.notes} />}
+                  {lead.notes && <Field label="Scope of work" value={lead.notes} />}
                 </div>
               </Card>
 

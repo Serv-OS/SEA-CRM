@@ -84,7 +84,7 @@ serve(async (req) => {
       const cardOn = !!(conn?.secret_key || Deno.env.get("STRIPE_SECRET_KEY"));
       return json({
         agreement: {
-          kind: a.kind, agreement_date: a.agreement_date, client_names: a.client_names, property_address: a.property_address,
+          kind: a.kind, agreement_date: a.agreement_date, client_names: a.client_names, property_address: a.property_address, scope_of_work: a.scope_of_work,
           payment_details: a.payment_details || s?.agreement_payment_details || null, card_fee_percent: Number(a.card_fee_percent), client2_required: a.client2_required,
           client1: { name: a.client1_name, signed_at: a.client1_signed_at, signature_url: c1 },
           client2: { name: a.client2_name, signed_at: a.client2_signed_at, signature_url: c2 },

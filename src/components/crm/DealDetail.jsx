@@ -6,6 +6,7 @@ import AssociationManager from './AssociationManager.jsx';
 import ActivityTimeline from './ActivityTimeline.jsx';
 import { DEAL_STAGE_KEYS, stageLabel } from '../../lib/dealStages';
 import { agreementStage, KIND_LABEL, usd } from '../../lib/agreements';
+import { sortScopes, currentScope, scopeChanged, scopeCaption } from '../../lib/scopeOfWork';
 
 const STAGES = DEAL_STAGE_KEYS;
 // Unknown or historical keys still read as words, never as a blank.
@@ -21,6 +22,10 @@ export default function DealDetail({ dealId, profile, onClose, onNavigate }) {
   const [projects, setProjects] = useState([]);
   const [quotes, setQuotes] = useState([]);
   const [agreements, setAgreements] = useState([]);
+  // Scope of work versions (migration 086): newest is current, older ones stay.
+  const [scopes, setScopes] = useState([]);
+  const [scopeDraft, setScopeDraft] = useState(null);
+  const [showOldScopes, setShowOldScopes] = useState(false);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState({});
 
@@ -49,6 +54,8 @@ export default function DealDetail({ dealId, profile, onClose, onNavigate }) {
     // its own; an error (migration not run yet) just shows none.
     supabase.from('agreements').select('id, kind, status, total, client_names, client1_signed_at, client2_signed_at, client2_required, seller_signed_at, paid_at')
       .eq('deal_id', dealId).order('created_at').then(r => setAgreements(r.data || []));
+    supabase.from('deal_scopes').select('id, version, body, stage, created_by, created_at')
+      .eq('deal_id', dealId).order('version', { ascending: false }).then(r => setScopes(sortScopes(r.data || [])));
     if (d.data?.company_id) setCompany(c.data?.find(co => co.id === d.data.company_id) || null);
   };
 
@@ -78,6 +85,16 @@ export default function DealDetail({ dealId, profile, onClose, onNavigate }) {
     const { data, error } = await supabase.rpc('ensure_feasibility_agreement', { p_deal_id: dealId });
     if (error) { alert('Could not create the agreement: ' + error.message); return; }
     onNavigate?.('agreement', data);
+  };
+
+  // A new scope is the next version; unsigned contracts on the deal take it too.
+  const saveScope = async () => {
+    const body = (scopeDraft || '').trim();
+    if (!body) { alert('Type the scope of work first.'); return; }
+    if (!scopeChanged(currentScope(scopes)?.body, body)) { setScopeDraft(null); return; }
+    const { error } = await supabase.rpc('add_deal_scope', { p_deal_id: dealId, p_body: body });
+    if (error) { alert('Could not save the scope of work: ' + error.message); return; }
+    setScopeDraft(null); load();
   };
 
   const startEdit = () => { setDraft({ ...deal }); setEditing(true); };
@@ -226,6 +243,36 @@ export default function DealDetail({ dealId, profile, onClose, onNavigate }) {
                   {deal.lost_reason && <Field label="Lost reason" value={deal.lost_reason} />}
                   {deal.notes && <Field label="Notes" value={deal.notes} />}
                 </div>
+              </Card>
+
+              <Card title="Scope of work" count={scopes.length || undefined}
+                action={canWrite && scopeDraft === null ? { label: scopes.length ? '+ New scope' : '+ Add scope', onClick: () => setScopeDraft(currentScope(scopes)?.body || '') } : null}>
+                {scopeDraft !== null ? (
+                  <div className="space-y-2">
+                    <textarea className={input + ' resize-none'} rows={6} value={scopeDraft} onChange={e => setScopeDraft(e.target.value)} placeholder="What the work covers at this stage" />
+                    <div className="text-[10px] text-dim">Saved as version {(currentScope(scopes)?.version || 0) + 1} at {STAGE_LABELS[deal.stage]}. Earlier versions are kept. Contracts not yet signed take this scope.</div>
+                    <div className="flex gap-2">
+                      <button onClick={saveScope} className="btn-glass px-4 py-1.5 rounded-xl text-sm">Save scope</button>
+                      <button onClick={() => setScopeDraft(null)} className="btn-ghost px-3 py-1.5 rounded-xl text-sm">Cancel</button>
+                    </div>
+                  </div>
+                ) : scopes.length ? (
+                  <div className="space-y-3">
+                    <div>
+                      <div className="text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-dim mb-0.5">{scopeCaption(scopes[0], ownerName(scopes[0].created_by))}</div>
+                      <div className="text-sm text-paper whitespace-pre-line break-words">{scopes[0].body}</div>
+                    </div>
+                    {scopes.length > 1 && (
+                      <button onClick={() => setShowOldScopes(v => !v)} className="text-xs text-ember hover:text-ember-deep font-medium">{showOldScopes ? 'Hide earlier versions' : `Show earlier versions (${scopes.length - 1})`}</button>
+                    )}
+                    {showOldScopes && scopes.slice(1).map(s => (
+                      <div key={s.id} className="pt-2 border-t border-bdr">
+                        <div className="text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-dim mb-0.5">{scopeCaption(s, ownerName(s.created_by))}</div>
+                        <div className="text-xs text-muted whitespace-pre-line break-words">{s.body}</div>
+                      </div>
+                    ))}
+                  </div>
+                ) : <Empty>No scope of work yet. It comes from the lead, or add one here.</Empty>}
               </Card>
 
               <Card title="Contract value">

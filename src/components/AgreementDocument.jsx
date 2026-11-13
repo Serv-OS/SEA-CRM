@@ -4,7 +4,7 @@ import { feasibilityBlocks, FEASIBILITY_TERMS, FEASIBILITY_CONSENT, KIND_LABEL, 
 // preview. Light paper styling so it prints the same everywhere. `slots`
 // renders under each signature line (a pad, or the drawn signature).
 export default function AgreementDocument({ a, lines, total, seller, slots = {} }) {
-  const blocks = feasibilityBlocks({ clientNames: a.client_names, propertyAddress: a.property_address });
+  const blocks = feasibilityBlocks({ clientNames: a.client_names, propertyAddress: a.property_address, scopeOfWork: a.scope_of_work });
   const accent = seller?.accent || '#b27b26';
   const sigLine = (label, who, key) => (
     <div className="flex-1 min-w-[220px]">
@@ -35,6 +35,7 @@ export default function AgreementDocument({ a, lines, total, seller, slots = {} 
             {b.h && <div className="text-base font-bold mt-4" style={{ color: accent }}>{b.h}:</div>}
             {b.h2 && <div className="font-semibold mt-3">{b.h2}</div>}
             {b.p && <p>{b.p}</p>}
+            {b.pre && <p className="whitespace-pre-line">{b.pre}</p>}
             {b.note && <p className="text-sm italic text-slate-600">{b.note}</p>}
           </div>
         ))}
