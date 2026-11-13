@@ -5,7 +5,7 @@ const GROUPS = [
   { type: 'company',  icon: '\u{1F3E2}', label: 'Companies' },
   { type: 'contact',  icon: '\u{1F464}', label: 'Contacts' },
   { type: 'location', icon: '\u{1F4CD}', label: 'Locations' },
-  { type: 'deal',     icon: '\u{1F4B0}', label: 'Deals' },
+  { type: 'deal',     icon: '\u{1F4B0}', label: 'Deal/Clients' },
   { type: 'lead',     icon: '\u{1F3AF}', label: 'Leads' },
   { type: 'ticket',   icon: '\u{1F3AB}', label: 'Tickets' },
 ];

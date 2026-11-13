@@ -19,7 +19,7 @@ const CORE = [
 const COLLAPSIBLE = [
   { id: 'sales', label: 'Sales', items: [
     ['locations', 'Locations', MapPin], ['contacts', 'Contacts', User],
-    ['leads', 'Leads', Target], ['deals', 'Deals', Banknote],
+    ['leads', 'Leads', Target], ['deals', 'Deal/Clients', Banknote],
     ['quotes', 'Quotes', FileSignature], ['invoices', 'Invoices', Receipt],
   ] },
   { id: 'pricing', label: 'Pricing', items: [

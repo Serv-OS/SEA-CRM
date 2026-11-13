@@ -160,7 +160,7 @@ export default function DealBoard({ profile, onSelectDeal, onNavigate }) {
     <div className="h-full flex flex-col">
       <div className="px-6 py-4 border-b border-bdr flex items-center justify-between">
         <div>
-          <div className="text-lg font-bold text-paper">Sales Pipeline</div>
+          <div className="text-lg font-bold text-paper">Deal/Clients</div>
           <div className="text-[10px] text-dim font-mono uppercase tracking-[0.18em]">
             {deals.length} deals / Pipeline {formatCurrency(pipelineTotal)} / Won {formatCurrency(wonTotal)}
           </div>
@@ -175,7 +175,7 @@ export default function DealBoard({ profile, onSelectDeal, onNavigate }) {
           {canWrite && (
             <button onClick={() => setShowCreate(true)}
               className="px-3 py-1.5 bg-ember text-ink text-sm font-semibold rounded hover:bg-ember-deep transition">
-              + New deal
+              + New Deal/Clients
             </button>
           )}
         </div>
