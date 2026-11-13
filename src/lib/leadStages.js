@@ -2,8 +2,8 @@
 // the board columns and the stage bar everywhere lead status is shown.
 //
 // 12 Nov 2026 (Peter): the SEA lead flow is
-//   New > Sent Initial Response Email > Follow Up > Qualified > Deals / Clients
-// The first four are lead stages. Deals / Clients is the step after: the lead
+//   New > Sent Initial Response Email > Follow Up > Qualified > Deal/Clients
+// The first four are lead stages. Deal/Clients is the step after: the lead
 // is qualified AND has its deal, which is where the customer lives from then on.
 // Migration 085 renamed the old POS stages (attempting, contacted) in the database.
 export const LEAD_STAGES = [
@@ -15,7 +15,7 @@ export const LEAD_STAGES = [
 ];
 
 /** The step after Qualified: the lead has its deal. Not a leads.stage value. */
-export const DEAL_STEP = { key: 'deal', label: 'Deals / Clients', short: 'Deals / Clients', color: '#0ea5e9' };
+export const DEAL_STEP = { key: 'deal', label: 'Deal/Clients', short: 'Deal/Clients', color: '#0ea5e9' };
 
 export const LEAD_STAGE_MAP = Object.fromEntries(LEAD_STAGES.map(s => [s.key, s]));
 
@@ -25,7 +25,7 @@ export const ACTIVE_LEAD_STAGES = LEAD_STAGES.filter(s => s.key !== 'disqualifie
 // The stage bar and the board columns, in Peter's order (Disqualified is kept apart).
 export const LEAD_FLOW = [...ACTIVE_LEAD_STAGES.map(s => s.key), DEAL_STEP.key];
 
-/** Which column or step a lead sits on: a qualified lead with a deal is on Deals / Clients. */
+/** Which column or step a lead sits on: a qualified lead with a deal is on Deal/Clients. */
 export function leadStep(lead) {
   if (!lead) return null;
   if (lead.stage === 'qualified' && lead.deal_id) return DEAL_STEP.key;

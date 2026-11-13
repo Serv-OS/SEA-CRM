@@ -6,8 +6,8 @@ import { LEAD_STAGES, LEAD_STAGE_MAP, ACTIVE_LEAD_STAGES, DEAL_STEP, leadStep } 
 import { PROJECT_SCOPES, scopeLabel } from '../../lib/projectScope.js';
 import { LEAD_SOURCES, sourceLabel } from '../../lib/leadSources.js';
 
-// Board columns: New > Sent Initial Response Email > Follow Up > Qualified > Deals / Clients,
-// then Disqualified kept apart at the end. Deals / Clients holds qualified leads with a deal.
+// Board columns: New > Sent Initial Response Email > Follow Up > Qualified > Deal/Clients,
+// then Disqualified kept apart at the end. Deal/Clients holds qualified leads with a deal.
 const COLUMNS = [...ACTIVE_LEAD_STAGES, DEAL_STEP, LEAD_STAGE_MAP.disqualified];
 
 const PRIORITY_STYLES = {
@@ -124,14 +124,14 @@ export default function LeadBoard({ profile, onNavigate, prefill, onPrefillConsu
   }, [contactSearch, contacts]);
 
   const moveStage = async (leadId, toStage) => {
-    // Dropping on Deals / Clients creates the deal; Qualified is just the stage.
+    // Dropping on Deal/Clients creates the deal; Qualified is just the stage.
     if (toStage === DEAL_STEP.key) { const lead = leads.find(l => l.id === leadId); if (lead) await makeDeal(lead); return; }
     await supabase.from('leads').update({ stage: toStage }).eq('id', leadId);
     await supabase.from('stage_history').insert({ object_type: 'lead', object_id: leadId, from_stage: leads.find(l => l.id === leadId)?.stage, to_stage: toStage, changed_by: profile.id });
     load();
   };
 
-  // Deals / Clients: a qualified lead gets its deal (once) and the deal opens.
+  // Deal/Clients: a qualified lead gets its deal (once) and the deal opens.
   const makeDeal = async (lead) => {
     if (lead.deal_id) {
       if (lead.stage !== 'qualified') {
@@ -376,11 +376,11 @@ export default function LeadBoard({ profile, onNavigate, prefill, onPrefillConsu
                         )}
                         {stage.key === 'qualified' && canWrite && (
                           <button onClick={(e) => { e.stopPropagation(); makeDeal(lead); }}
-                            className="ml-auto px-2 py-0.5 text-[9px] font-bold bg-sky-100 text-sky-700 border border-sky-200 rounded-lg hover:bg-sky-200">Make deal</button>
+                            className="ml-auto px-2 py-0.5 text-[9px] font-bold bg-sky-100 text-sky-700 border border-sky-200 rounded-lg hover:bg-sky-200">Make Deal/Clients</button>
                         )}
                         {stage.key === DEAL_STEP.key && lead.deal_id && (
                           <button onClick={(e) => { e.stopPropagation(); onNavigate?.('deal', lead.deal_id); }}
-                            className="ml-auto px-2 py-0.5 text-[9px] font-bold bg-sky-100 text-sky-700 border border-sky-200 rounded-lg hover:bg-sky-200">Open deal</button>
+                            className="ml-auto px-2 py-0.5 text-[9px] font-bold bg-sky-100 text-sky-700 border border-sky-200 rounded-lg hover:bg-sky-200">Open Deal/Clients</button>
                         )}
                         {canWrite && (
                           <button onClick={(e) => { e.stopPropagation(); disqualify(lead); }}
@@ -429,7 +429,7 @@ export default function LeadBoard({ profile, onNavigate, prefill, onPrefillConsu
                   <td className="px-3 py-3 text-xs text-muted">{ownerName(lead.owner_id)}</td>
                   <td className="px-3 py-3 text-right">
                     {!['qualified', 'disqualified'].includes(lead.stage) && canWrite && (
-                      <button onClick={(e) => { e.stopPropagation(); lead.stage === 'qualified' ? makeDeal(lead) : moveStage(lead.id, 'qualified'); }} className="px-2 py-1 text-[10px] font-bold bg-emerald-100 text-emerald-700 rounded-lg">{lead.stage === 'qualified' ? 'Make deal' : 'Qualify'}</button>
+                      <button onClick={(e) => { e.stopPropagation(); lead.stage === 'qualified' ? makeDeal(lead) : moveStage(lead.id, 'qualified'); }} className="px-2 py-1 text-[10px] font-bold bg-emerald-100 text-emerald-700 rounded-lg">{lead.stage === 'qualified' ? 'Make Deal/Clients' : 'Qualify'}</button>
                     )}
                   </td>
                 </tr>

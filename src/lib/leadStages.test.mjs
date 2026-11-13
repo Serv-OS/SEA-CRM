@@ -3,18 +3,18 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { LEAD_STAGES, LEAD_FLOW, DEAL_STEP, leadStep, primaryLead } from './leadStages.js';
 
-test('the SEA lead flow is New > Sent Initial Response Email > Follow Up > Qualified > Deals / Clients', () => {
+test('the SEA lead flow is New > Sent Initial Response Email > Follow Up > Qualified > Deal/Clients', () => {
   assert.deepEqual(LEAD_FLOW, ['new_lead', 'responded', 'follow_up', 'qualified', 'deal']);
   const byKey = Object.fromEntries(LEAD_STAGES.map((s) => [s.key, s.label]));
   assert.equal(byKey.new_lead, 'New');
   assert.equal(byKey.responded, 'Sent Initial Response Email');
   assert.equal(byKey.follow_up, 'Follow Up');
   assert.equal(byKey.qualified, 'Qualified');
-  assert.equal(DEAL_STEP.label, 'Deals / Clients');
+  assert.equal(DEAL_STEP.label, 'Deal/Clients');
   assert.ok(!('attempting' in byKey) && !('contacted' in byKey), 'the POS stage names are gone');
 });
 
-test('a qualified lead with a deal sits on Deals / Clients; without one it is still Qualified', () => {
+test('a qualified lead with a deal sits on Deal/Clients; without one it is still Qualified', () => {
   assert.equal(leadStep({ stage: 'qualified', deal_id: 'd1' }), 'deal');
   assert.equal(leadStep({ stage: 'qualified', deal_id: null }), 'qualified');
   assert.equal(leadStep({ stage: 'follow_up', deal_id: 'd1' }), 'follow_up');

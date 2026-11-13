@@ -68,7 +68,7 @@ export default function LeadDetail({ leadId, profile, onClose, onNavigate }) {
 
   const changeStage = async (s) => {
     if (s === lead.stage) return;
-    // Deals / Clients creates the deal for this lead; Qualified is just the stage.
+    // Deal/Clients creates the deal for this lead; Qualified is just the stage.
     if (s === DEAL_STEP.key) { await makeDeal(); return; }
     await supabase.from('leads').update({ stage: s }).eq('id', leadId);
     await supabase.from('stage_history').insert({ object_type: 'lead', object_id: leadId, from_stage: lead.stage, to_stage: s, changed_by: profile.id });
@@ -89,7 +89,7 @@ export default function LeadDetail({ leadId, profile, onClose, onNavigate }) {
   };
   const set = (k, v) => setDraft({ ...draft, [k]: v });
 
-  // Deals / Clients: the lead gets its deal (once), is marked qualified, and the deal opens.
+  // Deal/Clients: the lead gets its deal (once), is marked qualified, and the deal opens.
   const makeDeal = async () => {
     if (lead.deal_id) {
       if (lead.stage !== 'qualified') {
@@ -244,7 +244,7 @@ export default function LeadDetail({ leadId, profile, onClose, onNavigate }) {
             <div className="col-span-4 space-y-4">
               {ready ? (
                 <>
-                  <Card title="Deals">
+                  <Card title="Deal/Clients">
                     {deal ? (
                       <div onClick={() => onNavigate?.('deal', deal.id)} className="p-3 glass-inner rounded-xl cursor-pointer flex items-center gap-3">
                         <div className="w-9 h-9 rounded-xl bg-emerald-100 border border-emerald-200 flex items-center justify-center text-base shrink-0">{'\u{1F4B0}'}</div>
@@ -255,7 +255,7 @@ export default function LeadDetail({ leadId, profile, onClose, onNavigate }) {
                         <span className="text-dim text-xs">{'\u2192'}</span>
                       </div>
                     ) : (
-                      <Empty>No deal yet. Move the lead to Deals / Clients to create one.</Empty>
+                      <Empty>No deal yet. Move the lead to Deal/Clients to create one.</Empty>
                     )}
                   </Card>
                   <Card title="Contacts">
