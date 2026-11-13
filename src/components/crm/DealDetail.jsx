@@ -7,7 +7,6 @@ import ActivityTimeline from './ActivityTimeline.jsx';
 import { DEAL_STAGE_KEYS, stageLabel } from '../../lib/dealStages';
 import { agreementStage, KIND_LABEL, usd } from '../../lib/agreements';
 import { sortScopes, currentScope, scopeChanged, scopeCaption } from '../../lib/scopeOfWork';
-import ScopeEditor from './ScopeEditor.jsx';
 
 const STAGES = DEAL_STAGE_KEYS;
 // Unknown or historical keys still read as words, never as a blank.
@@ -229,7 +228,46 @@ export default function DealDetail({ dealId, profile, onClose, onNavigate }) {
               </div>
             </Card>
           </div>
-        ) : (
+        ) : (<>
+          <div className="max-w-[1400px] mb-4">
+            {/* Scope of work (migration 086): full width, a big box on the page itself (Peter, 13 Nov 2026). */}
+            <div className="glass-card rounded-2xl overflow-hidden">
+              <div className="px-4 py-3 border-b border-bdr flex items-center gap-2">
+                <h3 className="text-sm font-bold text-paper">Scope of work</h3>
+                {scopes.length > 0 && <span className="text-xs text-dim font-mono">(v{scopes[0].version})</span>}
+                {scopes.length > 0 && scopeDraft === null && <span className="text-xs text-muted">{scopeCaption(scopes[0], ownerName(scopes[0].created_by))}</span>}
+                {canWrite && scopeDraft === null && (
+                  <button onClick={() => setScopeDraft(currentScope(scopes)?.body || '')} className="ml-auto text-xs text-ember hover:text-ember-deep font-medium">{scopes.length ? '+ New scope' : '+ Add scope'}</button>
+                )}
+              </div>
+              <div className="p-4">
+                {scopeDraft !== null ? (
+                  <div className="space-y-3">
+                    <textarea autoFocus className={input + ' resize-y text-base leading-relaxed !px-5 !py-4'} rows={18} value={scopeDraft} onChange={e => setScopeDraft(e.target.value)}
+                      placeholder={'What the work covers. One item per line reads best, for example:\n\nKitchen remodel\nRemove the wall between the kitchen and dining room\nNew island with seating for four'} />
+                    <div className="flex items-center gap-3">
+                      <button onClick={() => saveScope(scopeDraft)} className="px-5 py-2 text-sm font-semibold rounded-xl bg-ember text-white hover:bg-ember-deep">Save scope</button>
+                      <button onClick={() => setScopeDraft(null)} className="btn-ghost px-4 py-2 rounded-xl text-sm">Cancel</button>
+                      <span className="text-xs text-dim">Saved as version {(currentScope(scopes)?.version || 0) + 1} at {STAGE_LABELS[deal.stage]}. Earlier versions are kept. Contracts not yet signed take this scope.</span>
+                    </div>
+                  </div>
+                ) : scopes.length ? (
+                  <div className="space-y-3">
+                    <div className="text-base leading-relaxed text-paper whitespace-pre-line break-words px-1">{scopes[0].body}</div>
+                    {scopes.length > 1 && (
+                      <button onClick={() => setShowOldScopes(v => !v)} className="text-xs text-ember hover:text-ember-deep font-medium">{showOldScopes ? 'Hide earlier versions' : `Show earlier versions (${scopes.length - 1})`}</button>
+                    )}
+                    {showOldScopes && scopes.slice(1).map(sc => (
+                      <div key={sc.id} className="pt-3 border-t border-bdr">
+                        <div className="text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-dim mb-1">{scopeCaption(sc, ownerName(sc.created_by))}</div>
+                        <div className="text-sm leading-relaxed text-muted whitespace-pre-line break-words px-1">{sc.body}</div>
+                      </div>
+                    ))}
+                  </div>
+                ) : <Empty>No scope of work yet. It comes from the lead, or add one here.</Empty>}
+              </div>
+            </div>
+          </div>
           <div className="grid grid-cols-12 gap-4 max-w-[1400px]">
 
             {/* LEFT: Key Info + Company + Locations */}
@@ -244,31 +282,6 @@ export default function DealDetail({ dealId, profile, onClose, onNavigate }) {
                   {deal.lost_reason && <Field label="Lost reason" value={deal.lost_reason} />}
                   {deal.notes && <Field label="Notes" value={deal.notes} />}
                 </div>
-              </Card>
-
-              <Card title="Scope of work" count={scopes.length || undefined}
-                action={canWrite && scopeDraft === null ? { label: scopes.length ? '+ New scope' : '+ Add scope', onClick: () => setScopeDraft(currentScope(scopes)?.body || '') } : null}>
-                {scopeDraft !== null && (
-                  <ScopeEditor value={scopeDraft} onSave={saveScope} onClose={() => setScopeDraft(null)}
-                    caption={`Saved as version ${(currentScope(scopes)?.version || 0) + 1} at ${STAGE_LABELS[deal.stage]}. Earlier versions are kept. Contracts not yet signed take this scope.`} />
-                )}
-                {scopes.length ? (
-                  <div className="space-y-3">
-                    <div>
-                      <div className="text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-dim mb-0.5">{scopeCaption(scopes[0], ownerName(scopes[0].created_by))}</div>
-                      <div className="text-sm text-paper whitespace-pre-line break-words">{scopes[0].body}</div>
-                    </div>
-                    {scopes.length > 1 && (
-                      <button onClick={() => setShowOldScopes(v => !v)} className="text-xs text-ember hover:text-ember-deep font-medium">{showOldScopes ? 'Hide earlier versions' : `Show earlier versions (${scopes.length - 1})`}</button>
-                    )}
-                    {showOldScopes && scopes.slice(1).map(s => (
-                      <div key={s.id} className="pt-2 border-t border-bdr">
-                        <div className="text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-dim mb-0.5">{scopeCaption(s, ownerName(s.created_by))}</div>
-                        <div className="text-xs text-muted whitespace-pre-line break-words">{s.body}</div>
-                      </div>
-                    ))}
-                  </div>
-                ) : <Empty>No scope of work yet. It comes from the lead, or add one here.</Empty>}
               </Card>
 
               <Card title="Contract value">
@@ -363,7 +376,7 @@ export default function DealDetail({ dealId, profile, onClose, onNavigate }) {
               </Card>
             </div>
           </div>
-        )}
+        </>)}
       </div>
     </div>
   );
