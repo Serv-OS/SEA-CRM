@@ -3,10 +3,12 @@
 -- The POS names attempting and contacted become responded and follow_up.
 -- Deals / Clients is not a stage: it is a qualified lead that has its deal.
 
+-- The old rule goes first, or it refuses the renamed rows.
+alter table public.leads drop constraint if exists leads_stage_check;
+
 update public.leads set stage = 'responded' where stage = 'attempting';
 update public.leads set stage = 'follow_up' where stage = 'contacted';
 
-alter table public.leads drop constraint if exists leads_stage_check;
 alter table public.leads add constraint leads_stage_check
   check (stage = any (array['new_lead'::text, 'responded'::text, 'follow_up'::text, 'qualified'::text, 'disqualified'::text]));
 
