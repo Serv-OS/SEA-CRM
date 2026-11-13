@@ -16,8 +16,9 @@ function startOfToday() { const d = new Date(); return new Date(d.getFullYear(),
 function startOfWeek() { const d = startOfToday(); const day = (d.getDay() + 6) % 7; d.setDate(d.getDate() - day); return d; } // Monday
 
 // Lead funnel stages for this CRM's pipeline (see LeadBoard).
-const LEAD_OPEN_STAGES = ['new_lead','attempting','contacted'];
-const LEAD_ENGAGED_STAGES = ['attempting','contacted'];
+const LEAD_OPEN_STAGES = ['new_lead','responded','follow_up'];
+// Old names stay for stage_history rows written before migration 085.
+const LEAD_ENGAGED_STAGES = ['responded','follow_up','attempting','contacted'];
 const LEAD_QUALIFIED_STAGES = ['qualified'];
 const LEAD_STALE_DAYS = 5;
 

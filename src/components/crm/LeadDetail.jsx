@@ -8,12 +8,11 @@ import AttachmentsCard from './AttachmentsCard.jsx';
 import CallButton from '../CallButton.jsx';
 import ScheduleMeeting from './ScheduleMeeting.jsx';
 import LeadBadge from './LeadBadge.jsx';
-import { LEAD_STAGES, LEAD_STAGE_MAP } from '../../lib/leadStages';
+import { LEAD_STAGE_MAP, LEAD_FLOW, DEAL_STEP, leadStep } from '../../lib/leadStages';
 import { FIRST_STAGE } from '../../lib/dealStages';
 import { PROJECT_SCOPES, scopeLabel } from '../../lib/projectScope.js';
 import { LEAD_SOURCES, sourceLabel } from '../../lib/leadSources.js';
 
-const STAGE_FLOW = ['new_lead', 'attempting', 'contacted', 'qualified'];
 
 export default function LeadDetail({ leadId, profile, onClose, onNavigate }) {
   const [lead, setLead] = useState(null);
@@ -69,8 +68,8 @@ export default function LeadDetail({ leadId, profile, onClose, onNavigate }) {
 
   const changeStage = async (s) => {
     if (s === lead.stage) return;
-    // Reaching "Qualified" creates the deal for this lead.
-    if (s === 'qualified') { await qualifyLead(); return; }
+    // Deals / Clients creates the deal for this lead; Qualified is just the stage.
+    if (s === DEAL_STEP.key) { await makeDeal(); return; }
     await supabase.from('leads').update({ stage: s }).eq('id', leadId);
     await supabase.from('stage_history').insert({ object_type: 'lead', object_id: leadId, from_stage: lead.stage, to_stage: s, changed_by: profile.id });
     load();
@@ -90,11 +89,13 @@ export default function LeadDetail({ leadId, profile, onClose, onNavigate }) {
   };
   const set = (k, v) => setDraft({ ...draft, [k]: v });
 
-  // Qualifying a lead creates its deal (once) and moves the lead to Qualified.
-  const qualifyLead = async () => {
+  // Deals / Clients: the lead gets its deal (once), is marked qualified, and the deal opens.
+  const makeDeal = async () => {
     if (lead.deal_id) {
-      await supabase.from('leads').update({ stage: 'qualified' }).eq('id', leadId);
-      await supabase.from('stage_history').insert({ object_type: 'lead', object_id: leadId, from_stage: lead.stage, to_stage: 'qualified', changed_by: profile.id });
+      if (lead.stage !== 'qualified') {
+        await supabase.from('leads').update({ stage: 'qualified' }).eq('id', leadId);
+        await supabase.from('stage_history').insert({ object_type: 'lead', object_id: leadId, from_stage: lead.stage, to_stage: 'qualified', changed_by: profile.id });
+      }
       onNavigate?.('deal', lead.deal_id);
       return;
     }
@@ -169,13 +170,14 @@ export default function LeadDetail({ leadId, profile, onClose, onNavigate }) {
       {/* Stage bar */}
       {canWrite && lead.stage !== 'disqualified' && (
         <div className="px-6 py-2 border-b border-bdr flex gap-0.5 overflow-x-auto items-center">
-          {STAGE_FLOW.map((s, i) => {
-            const active = lead.stage === s;
-            const past = STAGE_FLOW.indexOf(lead.stage) > i;
+          {LEAD_FLOW.map((s, i) => {
+            const here = leadStep(lead);
+            const active = here === s;
+            const past = LEAD_FLOW.indexOf(here) > i;
             return (
               <button key={s} onClick={() => changeStage(s)}
                 className={`px-2.5 py-1.5 text-[9px] font-bold uppercase rounded-xl transition whitespace-nowrap ${active ? 'bg-ember text-white' : past ? 'bg-ember/20 text-ember' : 'bg-card text-dim hover:text-paper'}`}>
-                {LEAD_STAGE_MAP[s]?.short || s}
+                {s === DEAL_STEP.key ? DEAL_STEP.short : LEAD_STAGE_MAP[s]?.label || s}
               </button>
             );
           })}
@@ -253,7 +255,7 @@ export default function LeadDetail({ leadId, profile, onClose, onNavigate }) {
                         <span className="text-dim text-xs">{'\u2192'}</span>
                       </div>
                     ) : (
-                      <Empty>No deal yet — qualifying this lead creates one.</Empty>
+                      <Empty>No deal yet. Move the lead to Deals / Clients to create one.</Empty>
                     )}
                   </Card>
                   <Card title="Contacts">

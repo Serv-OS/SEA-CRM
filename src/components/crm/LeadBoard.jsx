@@ -2,18 +2,13 @@ import { useEffect, useState, useMemo, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import DisqualifyDialog from './DisqualifyDialog.jsx';
 import { FIRST_STAGE } from '../../lib/dealStages';
+import { LEAD_STAGES, LEAD_STAGE_MAP, ACTIVE_LEAD_STAGES, DEAL_STEP, leadStep } from '../../lib/leadStages';
 import { PROJECT_SCOPES, scopeLabel } from '../../lib/projectScope.js';
 import { LEAD_SOURCES, sourceLabel } from '../../lib/leadSources.js';
 
-const STAGES = [
-  { key: 'new_lead',      label: 'New',                color: '#3b82f6' },
-  { key: 'attempting',    label: 'Attempting',         color: '#6366f1' },
-  { key: 'contacted',     label: 'Contacted/Engaged',  color: '#8b5cf6' },
-  { key: 'qualified',     label: 'Qualified',          color: '#10b981' },
-  { key: 'disqualified',  label: 'Disqualified',       color: '#ef4444' },
-];
-
-const STAGE_LABELS = { new_lead: 'New', attempting: 'Attempting', contacted: 'Contacted/Engaged', qualified: 'Qualified', disqualified: 'Disqualified' };
+// Board columns: New > Sent Initial Response Email > Follow Up > Qualified > Deals / Clients,
+// then Disqualified kept apart at the end. Deals / Clients holds qualified leads with a deal.
+const COLUMNS = [...ACTIVE_LEAD_STAGES, DEAL_STEP, LEAD_STAGE_MAP.disqualified];
 
 const PRIORITY_STYLES = {
   hot: 'bg-red-100 text-red-700 border border-red-200',
@@ -99,8 +94,8 @@ export default function LeadBoard({ profile, onNavigate, prefill, onPrefillConsu
 
   const byStage = useMemo(() => {
     const map = {};
-    STAGES.forEach(s => { map[s.key] = []; });
-    filtered.forEach(l => { if (map[l.stage]) map[l.stage].push(l); });
+    COLUMNS.forEach(s => { map[s.key] = []; });
+    filtered.forEach(l => { const k = leadStep(l); if (map[k]) map[k].push(l); });
     return map;
   }, [filtered]);
 
@@ -129,18 +124,20 @@ export default function LeadBoard({ profile, onNavigate, prefill, onPrefillConsu
   }, [contactSearch, contacts]);
 
   const moveStage = async (leadId, toStage) => {
-    // Moving a lead to "Qualified" creates its deal.
-    if (toStage === 'qualified') { const lead = leads.find(l => l.id === leadId); if (lead) await qualifyLead(lead); return; }
+    // Dropping on Deals / Clients creates the deal; Qualified is just the stage.
+    if (toStage === DEAL_STEP.key) { const lead = leads.find(l => l.id === leadId); if (lead) await makeDeal(lead); return; }
     await supabase.from('leads').update({ stage: toStage }).eq('id', leadId);
     await supabase.from('stage_history').insert({ object_type: 'lead', object_id: leadId, from_stage: leads.find(l => l.id === leadId)?.stage, to_stage: toStage, changed_by: profile.id });
     load();
   };
 
-  // Qualifying a lead creates its deal (once) and moves the lead to Qualified.
-  const qualifyLead = async (lead) => {
+  // Deals / Clients: a qualified lead gets its deal (once) and the deal opens.
+  const makeDeal = async (lead) => {
     if (lead.deal_id) {
-      await supabase.from('leads').update({ stage: 'qualified' }).eq('id', lead.id);
-      await supabase.from('stage_history').insert({ object_type: 'lead', object_id: lead.id, from_stage: lead.stage, to_stage: 'qualified', changed_by: profile.id });
+      if (lead.stage !== 'qualified') {
+        await supabase.from('leads').update({ stage: 'qualified' }).eq('id', lead.id);
+        await supabase.from('stage_history').insert({ object_type: 'lead', object_id: lead.id, from_stage: lead.stage, to_stage: 'qualified', changed_by: profile.id });
+      }
       onNavigate?.('deal', lead.deal_id);
       return;
     }
@@ -348,7 +345,7 @@ export default function LeadBoard({ profile, onNavigate, prefill, onPrefillConsu
       {viewMode === 'board' ? (
         <div className="flex-1 overflow-x-auto overflow-y-hidden">
           <div className="h-full flex gap-3 px-4 py-3 min-w-max">
-            {STAGES.map(stage => (
+            {COLUMNS.map(stage => (
               <div key={stage.key} className="w-72 shrink-0 flex flex-col glass-card rounded-2xl overflow-hidden"
                 onDragOver={onDragOver} onDrop={e => onDrop(e, stage.key)}>
                 <div className="px-3 py-2.5 border-b border-bdr" style={{ borderLeftColor: stage.color, borderLeftWidth: 3 }}>
@@ -373,9 +370,17 @@ export default function LeadBoard({ profile, onNavigate, prefill, onPrefillConsu
 
                       <div className="flex items-center gap-1 mt-2">
                         {lead.source && <span className="px-1 py-0.5 text-[8px] bg-slate-100 text-slate-600 rounded">{sourceLabel(lead.source)}</span>}
-                        {stage.key === 'contacted' && canWrite && (
-                          <button onClick={(e) => { e.stopPropagation(); qualifyLead(lead); }}
+                        {stage.key === 'follow_up' && canWrite && (
+                          <button onClick={(e) => { e.stopPropagation(); moveStage(lead.id, 'qualified'); }}
                             className="ml-auto px-2 py-0.5 text-[9px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg hover:bg-emerald-200">Qualify</button>
+                        )}
+                        {stage.key === 'qualified' && canWrite && (
+                          <button onClick={(e) => { e.stopPropagation(); makeDeal(lead); }}
+                            className="ml-auto px-2 py-0.5 text-[9px] font-bold bg-sky-100 text-sky-700 border border-sky-200 rounded-lg hover:bg-sky-200">Make deal</button>
+                        )}
+                        {stage.key === DEAL_STEP.key && lead.deal_id && (
+                          <button onClick={(e) => { e.stopPropagation(); onNavigate?.('deal', lead.deal_id); }}
+                            className="ml-auto px-2 py-0.5 text-[9px] font-bold bg-sky-100 text-sky-700 border border-sky-200 rounded-lg hover:bg-sky-200">Open deal</button>
                         )}
                         {canWrite && (
                           <button onClick={(e) => { e.stopPropagation(); disqualify(lead); }}
@@ -418,13 +423,13 @@ export default function LeadBoard({ profile, onNavigate, prefill, onPrefillConsu
                   <td className="px-3 py-3 text-xs text-muted">{companyName(lead.company_id)}</td>
                   <td className="px-3 py-3 text-xs text-muted">{contactFullName(lead.contact_id)}</td>
                   <td className="px-3 py-3 text-center"><span className={`px-1.5 py-0.5 text-[9px] font-bold uppercase rounded ${PRIORITY_STYLES[lead.priority]}`}>{lead.priority}</span></td>
-                  <td className="px-3 py-3"><span className="px-1.5 py-0.5 text-[9px] font-bold uppercase rounded bg-blue-100 text-blue-700 border border-blue-200">{STAGE_LABELS[lead.stage]}</span></td>
+                  <td className="px-3 py-3"><span className="px-1.5 py-0.5 text-[9px] font-bold uppercase rounded bg-blue-100 text-blue-700 border border-blue-200">{leadStep(lead) === DEAL_STEP.key ? DEAL_STEP.label : LEAD_STAGE_MAP[lead.stage]?.label || lead.stage}</span></td>
                   <td className="px-3 py-3 text-xs text-muted">{sourceLabel(lead.source)}</td>
                   <td className="px-3 py-3 text-xs text-muted">{scopeLabel(lead.project_scope)}</td>
                   <td className="px-3 py-3 text-xs text-muted">{ownerName(lead.owner_id)}</td>
                   <td className="px-3 py-3 text-right">
                     {!['qualified', 'disqualified'].includes(lead.stage) && canWrite && (
-                      <button onClick={(e) => { e.stopPropagation(); qualifyLead(lead); }} className="px-2 py-1 text-[10px] font-bold bg-emerald-100 text-emerald-700 rounded-lg">Qualify</button>
+                      <button onClick={(e) => { e.stopPropagation(); lead.stage === 'qualified' ? makeDeal(lead) : moveStage(lead.id, 'qualified'); }} className="px-2 py-1 text-[10px] font-bold bg-emerald-100 text-emerald-700 rounded-lg">{lead.stage === 'qualified' ? 'Make deal' : 'Qualify'}</button>
                     )}
                   </td>
                 </tr>
