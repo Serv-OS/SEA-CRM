@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { agreementTotal, cardFee, cardTotal, clientsSigned, agreementStage, feasibilityBlocks } from './agreements.js';
+import { amountDue, designBuildBlocks, KINDS, agreementTotal, cardFee, cardTotal, clientsSigned, agreementStage, feasibilityBlocks } from './agreements.js';
 
 describe('agreement money', () => {
   it('adds the lines to the cent', () => {
@@ -39,5 +39,33 @@ describe('feasibility wording', () => {
   it('shows a gap rather than nothing when a detail is missing', () => {
     expect(feasibilityBlocks({})[0].p).toContain('[Client names]');
     expect(feasibilityBlocks({})[0].p).toContain('[Property address]');
+  });
+});
+
+describe('design build agreement', () => {
+  it('asks for the retainer on the link when one is set, else the fee', () => {
+    expect(amountDue({ due_amount: 3000 }, 48000)).toBe(3000);
+    expect(amountDue({ due_amount: null }, 2500)).toBe(2500);
+    expect(amountDue({}, 2500)).toBe(2500);
+  });
+  it('fills the building department, designer, rates, retainer and validity', () => {
+    const text = JSON.stringify(designBuildBlocks({
+      clientNames: 'Krista and Larry Zitnick', propertyAddress: '12 Oak Ave, Burlingame, CA 94010',
+      details: { jurisdiction: 'City of Burlingame', interior_designer: 'Patricia McIntosh', ca_hourly: 150, revision_hourly: 250, valid_days: 30 },
+      retainer: 3000,
+    }));
+    expect(text).toContain('Krista and Larry Zitnick, \\"Client\\", hereby contracts with SEA Construction, Inc. for the following services for 12 Oak Ave, Burlingame, CA 94010');
+    expect(text).toContain('City of Burlingame Building Department');
+    expect(text).toContain('Patricia McIntosh');
+    expect(text).toContain('billed hourly at $150.00');
+    expect(text).toContain('rate of $250.00 per hour');
+    expect(text).toContain('A $3,000.00 retainer is required');
+    expect(text).toContain('valid for 30 days');
+  });
+  it('shows a gap, never a wrong city, when the building department is not set', () => {
+    expect(JSON.stringify(designBuildBlocks({}))).toContain('[City or County] Building Department');
+  });
+  it('has the wording for both kinds', () => {
+    expect(Object.keys(KINDS)).toEqual(['feasibility', 'design_build']);
   });
 });

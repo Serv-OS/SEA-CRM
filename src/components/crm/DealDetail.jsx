@@ -81,8 +81,8 @@ export default function DealDetail({ dealId, profile, onClose, onNavigate }) {
 
   // The Feasibility Agreement is made by the database when the deal reaches its
   // stage; this makes one by hand (e.g. after a void) the same way.
-  const createAgreement = async () => {
-    const { data, error } = await supabase.rpc('ensure_feasibility_agreement', { p_deal_id: dealId });
+  const createAgreement = async (kind = 'feasibility') => {
+    const { data, error } = await supabase.rpc('ensure_stage_agreement', { p_deal_id: dealId, p_kind: kind });
     if (error) { alert('Could not create the agreement: ' + error.message); return; }
     onNavigate?.('agreement', data);
   };
@@ -96,6 +96,10 @@ export default function DealDetail({ dealId, profile, onClose, onNavigate }) {
     if (error) { alert('Could not save the scope of work: ' + error.message); return; }
     setScopeDraft(null); load();
   };
+
+  // The next stage contract that can be made by hand: feasibility first, then design build.
+  const missingKinds = [{ kind: 'feasibility', label: 'Feasibility' }, { kind: 'design_build', label: 'Design Build' }]
+    .filter(k => !agreements.some(x => x.kind === k.kind && x.status !== 'void'));
 
   const startEdit = () => { setDraft({ ...deal }); setEditing(true); };
   const save = async () => {
@@ -310,7 +314,7 @@ export default function DealDetail({ dealId, profile, onClose, onNavigate }) {
             {/* RIGHT: Quotes + Projects + Stage History */}
             <div className="col-span-4 space-y-4">
               <Card title="Agreements" count={agreements.length}
-                action={canWrite && !agreements.some(x => x.kind === 'feasibility' && x.status !== 'void') ? { label: '+ Feasibility', onClick: createAgreement } : null}>
+                action={canWrite && missingKinds.length ? { label: `+ ${missingKinds[0].label}`, onClick: () => createAgreement(missingKinds[0].kind) } : null}>
                 {agreements.length > 0 ? (
                   <div className="space-y-2">
                     {agreements.map(x => (
@@ -323,7 +327,7 @@ export default function DealDetail({ dealId, profile, onClose, onNavigate }) {
                       </div>
                     ))}
                   </div>
-                ) : <div className="text-xs text-dim italic py-3 text-center">{deal?.stage === 'feasibility_agreement' ? 'Being created…' : 'Made when the deal reaches Feasibility Agreement'}</div>}
+                ) : <div className="text-xs text-dim italic py-3 text-center">{['feasibility_agreement', 'design_build_agreement'].includes(deal?.stage) ? 'Being created…' : 'Made when the deal reaches the Feasibility or Design Build Agreement stage'}</div>}
               </Card>
 
               <Card title="Quotes" count={quotes.length}

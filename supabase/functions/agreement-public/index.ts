@@ -85,6 +85,7 @@ serve(async (req) => {
       return json({
         agreement: {
           kind: a.kind, agreement_date: a.agreement_date, client_names: a.client_names, property_address: a.property_address, scope_of_work: a.scope_of_work,
+          details: a.details || {}, due_amount: a.due_amount == null ? null : Number(a.due_amount),
           payment_details: a.payment_details || s?.agreement_payment_details || null, card_fee_percent: Number(a.card_fee_percent), client2_required: a.client2_required,
           client1: { name: a.client1_name, signed_at: a.client1_signed_at, signature_url: c1 },
           client2: { name: a.client2_name, signed_at: a.client2_signed_at, signature_url: c2 },
@@ -121,9 +122,12 @@ serve(async (req) => {
       const key = conn?.secret_key || Deno.env.get("STRIPE_SECRET_KEY");
       if (!key) return json({ error: "Card payments are not set up yet. Please pay using the details shown." }, 503);
       const stripe = new Stripe(key, { apiVersion: "2023-10-16", httpClient: Stripe.createFetchHttpClient() });
-      const { total } = await linesAndTotal(supabase, a.id);
+      const { total: linesTotal } = await linesAndTotal(supabase, a.id);
+      // What the link asks for: the retainer when one is set (design build), else the fee.
+      const total = a.due_amount == null ? linesTotal : r2(Number(a.due_amount));
       if (total <= 0) return json({ error: "There is nothing to pay on this agreement yet." }, 422);
       const fee = r2(total * Number(a.card_fee_percent || 0) / 100);
+      const what = a.kind === "design_build" ? "Design/Build retainer" : "Feasibility Agreement Fee";
       const { data: contact } = a.contact_id ? await supabase.from("contacts").select("email").eq("id", a.contact_id).maybeSingle() : { data: null };
       const base = body.origin || new URL(req.url).origin;
       const session = await stripe.checkout.sessions.create({
@@ -133,11 +137,11 @@ serve(async (req) => {
         cancel_url: `${base}/a/${token}`,
         metadata: { agreement_id: a.id, fee: String(total), card_fee: String(fee) },
         line_items: [
-          { quantity: 1, price_data: { currency: "usd", unit_amount: Math.round(total * 100), product_data: { name: "Feasibility Agreement Fee" } } },
+          { quantity: 1, price_data: { currency: "usd", unit_amount: Math.round(total * 100), product_data: { name: what } } },
           ...(fee > 0 ? [{ quantity: 1, price_data: { currency: "usd", unit_amount: Math.round(fee * 100), product_data: { name: `Card processing fee (${Number(a.card_fee_percent)}%)` } } }] : []),
         ],
       }, { idempotencyKey: `agreement-${a.id}-${Math.round(total * 100)}-${Math.floor(Date.now() / 600000)}` });
-      await supabase.from("agreements").update({ stripe_checkout_id: session.id, total }).eq("id", a.id);
+      await supabase.from("agreements").update({ stripe_checkout_id: session.id, total: linesTotal }).eq("id", a.id);
       return json({ url: session.url });
     }
 

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import AgreementDocument from '../AgreementDocument.jsx';
 import SignaturePad from '../SignaturePad.jsx';
-import { agreementTotal, cardFee, cardTotal, usd, agreementStage, clientsSigned, KIND_LABEL, fmtDocDate } from '../../lib/agreements';
+import { agreementTotal, cardFee, cardTotal, usd, agreementStage, clientsSigned, KIND_LABEL, fmtDocDate, amountDue, kindOf } from '../../lib/agreements';
 
 const FN = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
 const PAY_METHODS = { check: 'Check', bank_transfer: 'Bank transfer', other: 'Other' };
@@ -77,14 +77,23 @@ export default function AgreementBuilder({ agreementId, profile, onClose, onNavi
   // Once a client has signed, the price and wording are what they agreed to.
   const locked = !canWrite || !!a.client1_signed_at || a.status === 'void';
   const total = agreementTotal(lines);
+  const isDB = a.kind === 'design_build';
+  // What the client pays on the link: the retainer on a design build, else the fee.
+  const due = amountDue(a, total);
   const set = (k, v) => setA(p => ({ ...p, [k]: v }));
+  const setD = (k, v) => setA(p => ({ ...p, details: { ...(p.details || {}), [k]: v } }));
   const setLine = (i, k, v) => setLines(p => p.map((l, j) => (j === i ? { ...l, [k]: v } : l)));
   const fillFromDeal = () => {
     const [c1, c2] = contacts;
     const names = [c1, c2].filter(Boolean).map(personName).filter(Boolean).join(' and ');
     const addr = location ? [location.address, location.city, [location.state, location.postcode].filter(Boolean).join(' ')].filter(Boolean).join(', ') : '';
     setA(p => ({ ...p, client_names: names || p.client_names, property_address: addr || p.property_address,
-      contact_id: c1?.id || p.contact_id, second_contact_id: c2?.id || null, client2_required: !!c2, location_id: location?.id || p.location_id }));
+      contact_id: c1?.id || p.contact_id, second_contact_id: c2?.id || null, client2_required: !!c2, location_id: location?.id || p.location_id,
+      // A design build also prints the client's mailing address, phone and email.
+      ...(p.kind === 'design_build' ? { details: { ...(p.details || {}),
+        mailing_address: addr || p.details?.mailing_address, client_phone: c1?.phone || p.details?.client_phone,
+        client_email: c1?.email || p.details?.client_email,
+        jurisdiction: p.details?.jurisdiction || (location?.city ? `City of ${location.city}` : '') } } : {}) }));
   };
 
   const save = async (extra = {}) => {
@@ -93,7 +102,9 @@ export default function AgreementBuilder({ agreementId, profile, onClose, onNavi
       client_names: a.client_names || null, property_address: a.property_address || null, agreement_date: a.agreement_date,
       payment_details: a.payment_details || null, card_fee_percent: Number(a.card_fee_percent) || 0,
       client2_required: !!a.client2_required, contact_id: a.contact_id || null, second_contact_id: a.second_contact_id || null,
-      location_id: a.location_id || null, total, updated_at: new Date().toISOString(), ...extra,
+      location_id: a.location_id || null, total, updated_at: new Date().toISOString(),
+      ...(locked ? {} : { details: a.details || {}, due_amount: a.due_amount === '' || a.due_amount == null ? null : Number(a.due_amount) }),
+      ...extra,
       ...(locked ? {} : { scope_of_work: a.scope_of_work || null }),
     };
     const { error } = await supabase.from('agreements').update(patch).eq('id', a.id);
@@ -118,6 +129,8 @@ export default function AgreementBuilder({ agreementId, profile, onClose, onNavi
   const getLink = async () => {
     if (!a.client_names?.trim() || !a.property_address?.trim()) { alert('Add the client names and the property address first.'); return; }
     if (total <= 0) { alert('Add the fee as a line item first.'); return; }
+    if (isDB && !(Number(a.due_amount) > 0)) { alert('Set the retainer the client pays first.'); return; }
+    if (isDB && !a.details?.jurisdiction?.trim()) { alert('Add the building department (e.g. City of Burlingame) first.'); return; }
     const ok = await save(a.status === 'draft' ? { status: 'sent', sent_at: new Date().toISOString() } : {});
     if (!ok) return;
     try { await navigator.clipboard.writeText(link); alert('Agreement link copied. Paste it into your email or text to the client.'); }
@@ -136,8 +149,8 @@ export default function AgreementBuilder({ agreementId, profile, onClose, onNavi
   };
 
   const markPaid = async () => {
-    if (!confirm(`Mark ${usd(total)} as paid by ${PAY_METHODS[payMethod].toLowerCase()}?`)) return;
-    await save({ paid_at: new Date().toISOString(), amount_paid: total, card_fee_paid: 0, paid_method: payMethod });
+    if (!confirm(`Mark ${usd(due)} as paid by ${PAY_METHODS[payMethod].toLowerCase()}?`)) return;
+    await save({ paid_at: new Date().toISOString(), amount_paid: due, card_fee_paid: 0, paid_method: payMethod });
   };
   const voidIt = async () => {
     if (!confirm('Void this agreement? The client link stops working.')) return;
@@ -194,6 +207,22 @@ export default function AgreementBuilder({ agreementId, profile, onClose, onNavi
               </div>
             </div>
 
+            {isDB && (
+              <div className="glass-card rounded-2xl p-4 space-y-3">
+                <h3 className="text-sm font-bold text-paper">Contract details</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="col-span-2"><label className={label}>Building department</label><input className={input} disabled={locked} value={a.details?.jurisdiction || ''} onChange={e => setD('jurisdiction', e.target.value)} placeholder="City of Burlingame" /></div>
+                  <div className="col-span-2"><label className={label}>Interior designer</label><input className={input} disabled={locked} value={a.details?.interior_designer || ''} onChange={e => setD('interior_designer', e.target.value)} placeholder="Patricia McIntosh" /></div>
+                  <div><label className={label}>Construction admin ($/hr)</label><input type="number" min="0" className={input} disabled={locked} value={a.details?.ca_hourly ?? ''} onChange={e => setD('ca_hourly', e.target.value === '' ? null : Number(e.target.value))} placeholder="150" /></div>
+                  <div><label className={label}>Revisions ($/hr)</label><input type="number" min="0" className={input} disabled={locked} value={a.details?.revision_hourly ?? ''} onChange={e => setD('revision_hourly', e.target.value === '' ? null : Number(e.target.value))} placeholder="250" /></div>
+                  <div><label className={label}>Offer valid (days)</label><input type="number" min="1" className={input} disabled={locked} value={a.details?.valid_days ?? ''} onChange={e => setD('valid_days', e.target.value === '' ? null : Number(e.target.value))} placeholder="30" /></div>
+                  <div className="col-span-2"><label className={label}>Client mailing address</label><input className={input} disabled={locked} value={a.details?.mailing_address || ''} onChange={e => setD('mailing_address', e.target.value)} placeholder="Defaults to the property address" /></div>
+                  <div><label className={label}>Client phone</label><input className={input} disabled={locked} value={a.details?.client_phone || ''} onChange={e => setD('client_phone', e.target.value)} /></div>
+                  <div><label className={label}>Client email</label><input className={input} disabled={locked} value={a.details?.client_email || ''} onChange={e => setD('client_email', e.target.value)} /></div>
+                </div>
+              </div>
+            )}
+
             <div className="glass-card rounded-2xl p-4 space-y-2">
               <h3 className="text-sm font-bold text-paper">Scope of work</h3>
               <div className="text-[11px] text-dim">Printed on the agreement under the opening line. Filled from the deal; a change here is saved on the deal as the next version.</div>
@@ -206,7 +235,7 @@ export default function AgreementBuilder({ agreementId, profile, onClose, onNavi
               {lines.map((l, i) => (
                 <div key={i} className="glass-inner rounded-xl p-3 space-y-2">
                   <div className="flex gap-2">
-                    <input className={input} disabled={locked} value={l.name || ''} onChange={e => setLine(i, 'name', e.target.value)} placeholder="Feasibility Agreement Fee" />
+                    <input className={input} disabled={locked} value={l.name || ''} onChange={e => setLine(i, 'name', e.target.value)} placeholder={kindOf(a).firstLine} />
                     {!locked && <button onClick={() => setLines(p => p.filter((_, j) => j !== i))} className="text-xs text-red-600 px-2">Remove</button>}
                   </div>
                   <input className={input + ' text-xs'} disabled={locked} value={l.description || ''} onChange={e => setLine(i, 'description', e.target.value)} placeholder="Description (optional, shown to the client)" />
@@ -217,8 +246,13 @@ export default function AgreementBuilder({ agreementId, profile, onClose, onNavi
                 </div>
               ))}
               {!locked && <button onClick={() => setLines(p => [...p, { name: '', description: '', qty: 1, unit_price: 0 }])} className="text-xs text-ember hover:text-ember-deep font-medium">+ Add line</button>}
-              <div className="flex justify-between text-sm font-bold text-paper pt-2 border-t border-bdr"><span>Fee</span><span className="font-mono">{usd(total)}</span></div>
-              <div className="flex justify-between text-xs text-muted"><span>Paid by card ({a.card_fee_percent}% card fee {usd(cardFee(total, a.card_fee_percent))})</span><span className="font-mono">{usd(cardTotal(total, a.card_fee_percent))}</span></div>
+              <div className="flex justify-between text-sm font-bold text-paper pt-2 border-t border-bdr"><span>{isDB ? 'Design fee' : 'Fee'}</span><span className="font-mono">{usd(total)}</span></div>
+              {isDB && (
+                <div><label className={label}>Retainer the client pays on the link ($)</label>
+                  <input type="number" min="0" step="0.01" className={input + ' !w-40'} disabled={locked} value={a.due_amount ?? ''} onChange={e => set('due_amount', e.target.value)} placeholder="3000" />
+                  <div className="text-[11px] text-dim mt-1">The design fee is billed every two weeks against this retainer.</div></div>
+              )}
+              <div className="flex justify-between text-xs text-muted"><span>{isDB ? 'Retainer paid' : 'Paid'} by card ({a.card_fee_percent}% card fee {usd(cardFee(due, a.card_fee_percent))})</span><span className="font-mono">{usd(cardTotal(due, a.card_fee_percent))}</span></div>
               <div><label className={label}>Card fee %</label><input type="number" min="0" max="10" step="0.1" className={input + ' !w-28'} disabled={locked} value={a.card_fee_percent ?? 1.4} onChange={e => set('card_fee_percent', e.target.value)} /></div>
               {locked && a.client1_signed_at && <div className="text-[11px] text-dim italic">The client has signed, so the fee and details are fixed.</div>}
             </div>

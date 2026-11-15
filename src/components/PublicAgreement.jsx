@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import AgreementDocument from './AgreementDocument.jsx';
 import SignaturePad from './SignaturePad.jsx';
-import { cardFee, cardTotal, usd, fmtDocDate } from '../lib/agreements';
+import { cardFee, cardTotal, usd, fmtDocDate, amountDue, kindOf } from '../lib/agreements';
 
 const FN = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
 
@@ -63,7 +63,10 @@ export default function PublicAgreement({ token }) {
   const accent = data.seller.accent;
   const needs = [1, ...(a.client2_required ? [2] : [])].filter(s => !a[`client${s}`].signed_at);
   const allSigned = needs.length === 0;
-  const fee = cardFee(data.total, a.card_fee_percent);
+  // What the link asks for: the retainer on a design build, the fee on a feasibility.
+  const due = amountDue(a, data.total);
+  const k = kindOf(a);
+  const fee = cardFee(due, a.card_fee_percent);
 
   const signSlot = (slot) => needs[0] === slot ? (
     <div className="w-full space-y-2 print:hidden">
@@ -91,7 +94,7 @@ export default function PublicAgreement({ token }) {
         {allSigned && a.paid_at && (
           <div className="rounded-2xl bg-emerald-50 border border-emerald-200 px-5 py-4">
             <div className="font-bold text-emerald-800">Signed and paid. Thank you.</div>
-            <div className="text-sm text-emerald-700 mt-1">{usd(a.amount_paid)} received {fmtDocDate(a.paid_at)}{a.card_fee_paid > 0 ? ` (plus ${usd(a.card_fee_paid)} card fee)` : ''}. We will be in touch to book your initial onsite meeting.</div>
+            <div className="text-sm text-emerald-700 mt-1">{usd(a.amount_paid)} received {fmtDocDate(a.paid_at)}{a.card_fee_paid > 0 ? ` (plus ${usd(a.card_fee_paid)} card fee)` : ''}. {a.kind === 'design_build' ? 'We will be in touch to start the design work.' : 'We will be in touch to book your initial onsite meeting.'}</div>
           </div>
         )}
 
@@ -99,23 +102,23 @@ export default function PublicAgreement({ token }) {
           <div className="rounded-2xl bg-white border border-slate-200 px-5 py-4 text-sm text-slate-600">Confirming your payment…</div>
         )}
 
-        {allSigned && !a.paid_at && !justPaid && data.total > 0 && (
+        {allSigned && !a.paid_at && !justPaid && due > 0 && (
           <div className="rounded-2xl bg-white border border-slate-200 p-5 space-y-4">
-            <div className="font-bold text-slate-800">Pay the Feasibility Agreement Fee</div>
-            <div className="text-sm text-slate-600">Your initial onsite meeting is booked once the fee is paid.</div>
+            <div className="font-bold text-slate-800">{k.payTitle}</div>
+            <div className="text-sm text-slate-600">{k.payNote}</div>
             <div className="grid sm:grid-cols-2 gap-4">
               {data.card_payments && (
                 <div className="rounded-xl border border-slate-200 p-4">
                   <div className="text-sm font-semibold">Pay by card</div>
-                  <div className="text-xs text-slate-500 mt-1">{usd(data.total)} + {usd(fee)} card processing fee ({a.card_fee_percent}%)</div>
+                  <div className="text-xs text-slate-500 mt-1">{usd(due)} + {usd(fee)} card processing fee ({a.card_fee_percent}%)</div>
                   <button disabled={busy} onClick={payByCard} className="mt-3 w-full py-2.5 rounded-lg text-white font-semibold text-sm disabled:opacity-50" style={{ background: accent }}>
-                    {busy ? 'Opening…' : `Pay ${usd(cardTotal(data.total, a.card_fee_percent))}`}
+                    {busy ? 'Opening…' : `Pay ${usd(cardTotal(due, a.card_fee_percent))}`}
                   </button>
                 </div>
               )}
               {a.payment_details && (
                 <div className="rounded-xl border border-slate-200 p-4">
-                  <div className="text-sm font-semibold">Pay by check or bank transfer, {usd(data.total)}</div>
+                  <div className="text-sm font-semibold">Pay by check or bank transfer, {usd(due)}</div>
                   <div className="text-sm text-slate-600 mt-1 whitespace-pre-line">{a.payment_details}</div>
                 </div>
               )}
