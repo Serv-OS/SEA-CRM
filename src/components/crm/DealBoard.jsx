@@ -111,17 +111,18 @@ export default function DealBoard({ profile, onSelectDeal, onNavigate }) {
     setNewLocation(locId);
     if (locId) {
       const loc = locations.find(l => l.id === locId);
-      if (loc) setNewCompany(loc.company_id);
+      if (loc) setNewCompany(loc.company_id || '');
     }
   };
 
   const create = async (e) => {
     e.preventDefault();
     if (!newName.trim()) { alert('Please enter a deal name.'); return; }
-    if (!newCompany) { alert('Please select a location or a company for this deal.'); return; }
+    // A homeowner's property has no company, so the property alone is enough.
+    if (!newCompany && !newLocation) { alert('Please select a location or a company for this deal.'); return; }
     const { data, error } = await supabase.from('deals').insert({
       name: newName.trim(),
-      company_id: newCompany,
+      company_id: newCompany || null,
       stage: FIRST_STAGE,
       value: newValue ? parseFloat(newValue) : null,
       owner_id: profile.id,
