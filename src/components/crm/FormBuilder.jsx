@@ -164,6 +164,15 @@ export default function FormBuilder({ formId, profile, onClose, onNavigate }) {
                   </select></div>
                 <div><label className={label}>Success message</label><textarea className={input + ' resize-none'} rows={2} value={form.settings?.success_message || ''} onChange={e => setSetting('success_message', e.target.value)} placeholder="Thanks — we'll be in touch." /></div>
                 <div><label className={label}>Redirect URL (optional)</label><input className={input} value={form.settings?.redirect_url || ''} onChange={e => setSetting('redirect_url', e.target.value)} placeholder="https://… after submit" /></div>
+                {/* Google Ads: the form's own thank-you page is /f/<slug>/thanks. Count it
+                    by URL in Ads, or set the tag and conversion here to fire it. */}
+                <div className="glass-inner rounded-xl p-3 space-y-2">
+                  <div className="text-xs font-semibold text-paper">Google Ads tracking</div>
+                  <div className="text-[11px] text-dim break-all">After sending, people land on <span className="font-mono">{window.location.origin}/f/{form.slug || 'your-form'}/thanks</span>. In Google Ads, count a conversion when the page URL contains <span className="font-mono">/f/{form.slug || 'your-form'}/thanks</span>, or fill in the two boxes below.</div>
+                  <div><label className={label}>Google tag ID</label><input className={input} value={form.settings?.google_tag_id || ''} onChange={e => setSetting('google_tag_id', e.target.value.trim())} placeholder="AW-123456789" /></div>
+                  <div><label className={label}>Conversion (send to)</label><input className={input} value={form.settings?.google_ads_send_to || ''} onChange={e => setSetting('google_ads_send_to', e.target.value.trim())} placeholder="AW-123456789/AbCdEfGhIjKl" /></div>
+                  <div className="text-[11px] text-dim">With a Redirect URL set, the thank-you page is skipped and the redirect page should carry your tag.</div>
+                </div>
                 <div><label className={label}>Default priority</label>
                   <select className={input} value={form.settings?.default_priority || (form.destination === 'support' ? 'P2' : 'warm')} onChange={e => setSetting('default_priority', e.target.value)}>
                     {form.destination === 'support'

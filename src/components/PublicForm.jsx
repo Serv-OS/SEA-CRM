@@ -8,7 +8,10 @@ export default function PublicForm({ slug }) {
   const [values, setValues] = useState({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [done, setDone] = useState(false);
+  // /f/<slug>/thanks is the form's own thank-you page, so Google Ads can count a
+  // sign up when it loads (Peter, 18 Nov 2026).
+  const isThanks = /\/thanks\/?$/.test(window.location.pathname);
+  const [done, setDone] = useState(isThanks);
   const [error, setError] = useState('');
   const recaptchaRef = useRef(null);
   const widgetId = useRef(null);
@@ -104,9 +107,17 @@ export default function PublicForm({ slug }) {
       });
       const d = await res.json();
       if (!res.ok) { setError(d.error || 'Something went wrong.'); window.grecaptcha?.reset(widgetId.current); setSubmitting(false); return; }
-      if (d.redirect_url) { window.location.href = d.redirect_url; return; }
-      setForm(f => ({ ...f, _successMessage: d.message }));
-      setDone(true);
+      // A page this form is embedded in can listen for this (gtag, its own thank-you).
+      try { window.parent?.postMessage({ type: 'servos:form_submitted', slug }, '*'); } catch { /* not embedded */ }
+      if (d.redirect_url) {
+        // Embedded: take the whole page to the redirect, where the site's own tag lives.
+        try { if (window.top !== window.self) { window.top.location.href = d.redirect_url; return; } } catch { /* blocked: stay in the frame */ }
+        window.location.href = d.redirect_url; return;
+      }
+      // A real page load of the thank-you page, so a URL conversion counts it.
+      try { sessionStorage.setItem(`form_thanks_${slug}`, String(Date.now())); } catch { /* private mode */ }
+      window.location.assign(`/f/${encodeURIComponent(slug)}/thanks`);
+      return;
     } catch {
       setError('Could not submit. Please try again.');
     }
@@ -125,13 +136,7 @@ export default function PublicForm({ slug }) {
   if (loading) return wrap(<div className="text-center text-slate-400 text-sm py-8">Loading…</div>);
   if (error && !form) return wrap(<div className="text-center text-slate-600 text-sm py-8">{error}</div>);
 
-  if (done) return wrap(
-    <div className="text-center py-6">
-      <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-2xl mx-auto mb-3">✓</div>
-      <div className="text-lg font-bold text-slate-800 mb-1">Thank you</div>
-      <div className="text-sm text-slate-500">{form?._successMessage || "We'll be in touch shortly."}</div>
-    </div>
-  );
+  if (done) return wrap(<ThanksBody form={form} slug={slug} />);
 
   const input = "w-full px-3 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent";
   const label = "block text-xs font-semibold text-slate-600 mb-1";
@@ -182,5 +187,39 @@ export default function PublicForm({ slug }) {
 
       <div className="text-center text-[10px] text-slate-300 pt-1">Powered by ServOS</div>
     </form>
+  );
+}
+
+
+// The thank-you page. When the form has a Google tag and conversion set, the
+// conversion fires once per sign up (not on a refresh, not on a direct visit).
+function ThanksBody({ form, slug }) {
+  const tag = String(form?.settings?.google_tag_id || '').replace(/[^A-Za-z0-9-]/g, '');
+  const sendTo = String(form?.settings?.google_ads_send_to || '').replace(/[^A-Za-z0-9/_-]/g, '');
+  useEffect(() => {
+    if (!tag || !form) return;
+    const key = `form_thanks_${slug}`;
+    let pending = null;
+    try { pending = sessionStorage.getItem(key); } catch { /* ignore */ }
+    window.dataLayer = window.dataLayer || [];
+    window.gtag = window.gtag || function gtag() { window.dataLayer.push(arguments); };
+    if (!document.getElementById('google-tag')) {
+      const sc = document.createElement('script');
+      sc.id = 'google-tag'; sc.async = true; sc.src = `https://www.googletagmanager.com/gtag/js?id=${tag}`;
+      document.head.appendChild(sc);
+      window.gtag('js', new Date());
+      window.gtag('config', tag);
+    }
+    if (sendTo && pending) {
+      window.gtag('event', 'conversion', { send_to: sendTo });
+      try { sessionStorage.removeItem(key); } catch { /* ignore */ }
+    }
+  }, [tag, sendTo, form, slug]);
+  return (
+    <div className="text-center py-6">
+      <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-2xl mx-auto mb-3">✓</div>
+      <div className="text-lg font-bold text-slate-800 mb-1">Thank you</div>
+      <div className="text-sm text-slate-500">{form?.settings?.success_message || "We'll be in touch shortly."}</div>
+    </div>
   );
 }
