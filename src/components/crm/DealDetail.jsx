@@ -98,7 +98,7 @@ export default function DealDetail({ dealId, profile, onClose, onNavigate }) {
   };
 
   // The next stage contract that can be made by hand: feasibility first, then design build.
-  const missingKinds = [{ kind: 'feasibility', label: 'Feasibility' }, { kind: 'design_build', label: 'Design Build' }]
+  const missingKinds = [{ kind: 'feasibility', label: 'Feasibility' }, { kind: 'design_build', label: 'Design Build' }, { kind: 'construction', label: 'Construction' }]
     .filter(k => !agreements.some(x => x.kind === k.kind && x.status !== 'void'));
 
   const startEdit = () => { setDraft({ ...deal }); setEditing(true); };
@@ -327,7 +327,7 @@ export default function DealDetail({ dealId, profile, onClose, onNavigate }) {
                       </div>
                     ))}
                   </div>
-                ) : <div className="text-xs text-dim italic py-3 text-center">{['feasibility_agreement', 'design_build_agreement'].includes(deal?.stage) ? 'Being created…' : 'Made when the deal reaches the Feasibility or Design Build Agreement stage'}</div>}
+                ) : <div className="text-xs text-dim italic py-3 text-center">{['feasibility_agreement', 'design_build_agreement', 'construction_contract'].includes(deal?.stage) ? 'Being created…' : 'Made when the deal reaches the Feasibility, Design Build or Construction Contract stage'}</div>}
               </Card>
 
               <Card title="Quotes" count={quotes.length}

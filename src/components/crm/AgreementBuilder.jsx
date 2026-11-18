@@ -78,6 +78,8 @@ export default function AgreementBuilder({ agreementId, profile, onClose, onNavi
   const locked = !canWrite || !!a.client1_signed_at || a.status === 'void';
   const total = agreementTotal(lines);
   const isDB = a.kind === 'design_build';
+  // The construction contract is billed as the work goes: nothing is paid on its link.
+  const isCC = a.kind === 'construction';
   // What the client pays on the link: the retainer on a design build, else the fee.
   const due = amountDue(a, total);
   const set = (k, v) => setA(p => ({ ...p, [k]: v }));
@@ -90,7 +92,7 @@ export default function AgreementBuilder({ agreementId, profile, onClose, onNavi
     setA(p => ({ ...p, client_names: names || p.client_names, property_address: addr || p.property_address,
       contact_id: c1?.id || p.contact_id, second_contact_id: c2?.id || null, client2_required: !!c2, location_id: location?.id || p.location_id,
       // A design build also prints the client's mailing address, phone and email.
-      ...(p.kind === 'design_build' ? { details: { ...(p.details || {}),
+      ...(p.kind === 'design_build' || p.kind === 'construction' ? { details: { ...(p.details || {}),
         mailing_address: addr || p.details?.mailing_address, client_phone: c1?.phone || p.details?.client_phone,
         client_email: c1?.email || p.details?.client_email,
         jurisdiction: p.details?.jurisdiction || (location?.city ? `City of ${location.city}` : '') } } : {}) }));
@@ -131,6 +133,8 @@ export default function AgreementBuilder({ agreementId, profile, onClose, onNavi
     if (total <= 0) { alert('Add the fee as a line item first.'); return; }
     if (isDB && !(Number(a.due_amount) > 0)) { alert('Set the retainer the client pays first.'); return; }
     if (isDB && !a.details?.jurisdiction?.trim()) { alert('Add the building department (e.g. City of Burlingame) first.'); return; }
+    if (isCC && !(Number(a.details?.completion_months) > 0)) { alert('Add the completion time in months first.'); return; }
+    if (isCC && !a.details?.exhibit_date) { alert('Add the date of the estimate and scope (Exhibit A) first.'); return; }
     const ok = await save(a.status === 'draft' ? { status: 'sent', sent_at: new Date().toISOString() } : {});
     if (!ok) return;
     try { await navigator.clipboard.writeText(link); alert('Agreement link copied. Paste it into your email or text to the client.'); }
@@ -207,6 +211,24 @@ export default function AgreementBuilder({ agreementId, profile, onClose, onNavi
               </div>
             </div>
 
+            {isCC && (
+              <div className="glass-card rounded-2xl p-4 space-y-3">
+                <h3 className="text-sm font-bold text-paper">Contract details</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><label className={label}>Estimate and scope dated (Exhibit A)</label><input type="date" className={input} disabled={locked} value={a.details?.exhibit_date || ''} onChange={e => setD('exhibit_date', e.target.value || null)} /></div>
+                  <div><label className={label}>Completion (months)</label><input type="number" min="1" className={input} disabled={locked} value={a.details?.completion_months ?? ''} onChange={e => setD('completion_months', e.target.value === '' ? null : Number(e.target.value))} placeholder="6" /></div>
+                  <div><label className={label}>Warranty (years)</label><input type="number" min="1" className={input} disabled={locked} value={a.details?.warranty_years ?? ''} onChange={e => setD('warranty_years', e.target.value === '' ? null : Number(e.target.value))} placeholder="10" /></div>
+                  <div><label className={label}>Markup on purchases (%)</label><input type="number" min="0" className={input} disabled={locked} value={a.details?.markup_percent ?? ''} onChange={e => setD('markup_percent', e.target.value === '' ? null : Number(e.target.value))} placeholder="20" /></div>
+                  <div className="col-span-2"><label className={label}>Storage</label><textarea rows={2} className={input + ' resize-none'} disabled={locked} value={a.details?.storage || ''} onChange={e => setD('storage', e.target.value)} placeholder="Construction will require the garage for storage and placement of materials to be used on the project." /></div>
+                  <div className="col-span-2"><label className={label}>Manner of payment</label><textarea rows={2} className={input + ' resize-none'} disabled={locked} value={a.details?.payment_terms || ''} onChange={e => setD('payment_terms', e.target.value)} placeholder="Billed Twice-Monthly based on Actual Percentage of Completion and Installed Labor and Materials (Due and payable upon receipt)." /></div>
+                  <div className="col-span-2"><label className={label}>Owners' mailing address</label><input className={input} disabled={locked} value={a.details?.mailing_address || ''} onChange={e => setD('mailing_address', e.target.value)} placeholder="Defaults to the property address" /></div>
+                  <div><label className={label}>Owner phone</label><input className={input} disabled={locked} value={a.details?.client_phone || ''} onChange={e => setD('client_phone', e.target.value)} /></div>
+                  <div><label className={label}>Owner email</label><input className={input} disabled={locked} value={a.details?.client_email || ''} onChange={e => setD('client_email', e.target.value)} /></div>
+                </div>
+                <div className="text-[11px] text-dim">The owners type their initials once when they sign; they print on every initialled section.</div>
+              </div>
+            )}
+
             {isDB && (
               <div className="glass-card rounded-2xl p-4 space-y-3">
                 <h3 className="text-sm font-bold text-paper">Contract details</h3>
@@ -246,17 +268,19 @@ export default function AgreementBuilder({ agreementId, profile, onClose, onNavi
                 </div>
               ))}
               {!locked && <button onClick={() => setLines(p => [...p, { name: '', description: '', qty: 1, unit_price: 0 }])} className="text-xs text-ember hover:text-ember-deep font-medium">+ Add line</button>}
-              <div className="flex justify-between text-sm font-bold text-paper pt-2 border-t border-bdr"><span>{isDB ? 'Design fee' : 'Fee'}</span><span className="font-mono">{usd(total)}</span></div>
+              <div className="flex justify-between text-sm font-bold text-paper pt-2 border-t border-bdr"><span>{isDB ? 'Design fee' : isCC ? 'Contract sum' : 'Fee'}</span><span className="font-mono">{usd(total)}</span></div>
               {isDB && (
                 <div><label className={label}>Retainer the client pays on the link ($)</label>
                   <input type="number" min="0" step="0.01" className={input + ' !w-40'} disabled={locked} value={a.due_amount ?? ''} onChange={e => set('due_amount', e.target.value)} placeholder="3000" />
                   <div className="text-[11px] text-dim mt-1">The design fee is billed every two weeks against this retainer.</div></div>
               )}
-              <div className="flex justify-between text-xs text-muted"><span>{isDB ? 'Retainer paid' : 'Paid'} by card ({a.card_fee_percent}% card fee {usd(cardFee(due, a.card_fee_percent))})</span><span className="font-mono">{usd(cardTotal(due, a.card_fee_percent))}</span></div>
-              <div><label className={label}>Card fee %</label><input type="number" min="0" max="10" step="0.1" className={input + ' !w-28'} disabled={locked} value={a.card_fee_percent ?? 1.4} onChange={e => set('card_fee_percent', e.target.value)} /></div>
+              {!isCC && <><div className="flex justify-between text-xs text-muted"><span>{isDB ? 'Retainer paid' : 'Paid'} by card ({a.card_fee_percent}% card fee {usd(cardFee(due, a.card_fee_percent))})</span><span className="font-mono">{usd(cardTotal(due, a.card_fee_percent))}</span></div>
+              <div><label className={label}>Card fee %</label><input type="number" min="0" max="10" step="0.1" className={input + ' !w-28'} disabled={locked} value={a.card_fee_percent ?? 1.4} onChange={e => set('card_fee_percent', e.target.value)} /></div></>}
+              {isCC && <div className="text-[11px] text-dim">Nothing is paid on the link: construction is billed twice a month as the work goes.</div>}
               {locked && a.client1_signed_at && <div className="text-[11px] text-dim italic">The client has signed, so the fee and details are fixed.</div>}
             </div>
 
+            {!isCC && <>
             <div className="glass-card rounded-2xl p-4 space-y-2">
               <h3 className="text-sm font-bold text-paper">Payment details</h3>
               <div className="text-[11px] text-dim">Shown to the client next to Pay by card. Filled from Settings, Agreement payment details; change it here for this agreement only.</div>
@@ -282,6 +306,7 @@ export default function AgreementBuilder({ agreementId, profile, onClose, onNavi
                 </>
               )}
             </div>
+            </>}
 
             {canWrite && a.status !== 'void' && !a.seller_signed_at && (
               <div className="glass-card rounded-2xl p-4 space-y-2">

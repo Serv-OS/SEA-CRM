@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { amountDue, designBuildBlocks, KINDS, agreementTotal, cardFee, cardTotal, clientsSigned, agreementStage, feasibilityBlocks } from './agreements.js';
+import { amountDue, designBuildBlocks, constructionBlocks, KINDS, agreementTotal, cardFee, cardTotal, clientsSigned, agreementStage, feasibilityBlocks } from './agreements.js';
 
 describe('agreement money', () => {
   it('adds the lines to the cent', () => {
@@ -65,7 +65,37 @@ describe('design build agreement', () => {
   it('shows a gap, never a wrong city, when the building department is not set', () => {
     expect(JSON.stringify(designBuildBlocks({}))).toContain('[City or County] Building Department');
   });
-  it('has the wording for both kinds', () => {
-    expect(Object.keys(KINDS)).toEqual(['feasibility', 'design_build']);
+  it('has the wording for every kind', () => {
+    expect(Object.keys(KINDS)).toEqual(['feasibility', 'design_build', 'construction']);
+  });
+});
+
+describe('construction contract', () => {
+  const blocks = constructionBlocks({
+    clientNames: 'Matt and Sarah Jados', propertyAddress: '10 Wilmington Circle, Redwood City, CA 94062',
+    details: { exhibit_date: '2026-07-30', completion_months: 6, warranty_years: 10, markup_percent: 20 }, total: 231206.78,
+  });
+  const text = JSON.stringify(blocks);
+  it('fills the sum, scope date, completion time, warranty and markup', () => {
+    expect(text).toContain('FOR THE SUM OF $231,206.78');
+    expect(text).toContain('scope dated 07/30/2026');
+    expect(text).toContain('approximately 6 months');
+    expect(text).toContain('a period of 10 years');
+    expect(text).toContain('markup all purchases 20% over invoice');
+  });
+  it('numbers all 30 sections and puts initials where SEA\'s contract does', () => {
+    expect(blocks.filter(b => b.n).map(b => b.n)).toEqual(Array.from({ length: 30 }, (_, i) => i + 1));
+    expect(blocks.filter(b => b.initials).length).toBe(28);
+  });
+  it('shows gaps, never made up numbers, when details are missing', () => {
+    const t = JSON.stringify(constructionBlocks({}));
+    expect(t).toContain('scope dated [date]');
+    expect(t).toContain('approximately [number of] months');
+  });
+  it('asks for nothing on the link and is complete once both sides sign', () => {
+    const a = { kind: 'construction', due_amount: 0, status: 'signed', client2_required: false, client1_signed_at: 'x' };
+    expect(amountDue(a, 231206.78)).toBe(0);
+    expect(agreementStage(a)).toBe('Signed, SEA to sign');
+    expect(agreementStage({ ...a, seller_signed_at: 's' })).toBe('Complete');
   });
 });

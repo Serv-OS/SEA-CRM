@@ -54,12 +54,25 @@ export default function AgreementDocument({ a, lines, total, seller, slots = {} 
         {blocks.map((b, i) => (
           <div key={i}>
             {b.h && <div className="text-base font-bold mt-4" style={{ color: accent }}>{b.h}:</div>}
-            {b.h2 && <div className="font-semibold mt-3">{b.h2}</div>}
+            {b.h2 && <div className="font-semibold mt-3">{b.n ? `${b.n}. ` : ''}{b.h2}</div>}
+            {b.parties && (
+              <div className="grid sm:grid-cols-2 gap-4 text-sm rounded-xl border border-slate-200 p-4">
+                <div><div className="text-slate-500 text-xs uppercase tracking-wide mb-1">Contractor</div>S.E.A. Construction Inc.<br />763 Polhemus Rd.<br />San Mateo, CA 94402<br />License #563320</div>
+                <div><div className="text-slate-500 text-xs uppercase tracking-wide mb-1">Property Owners</div>{b.parties.owners}<br /><span className="whitespace-pre-line">{b.parties.where}</span></div>
+              </div>
+            )}
             {b.p && <p>{b.p}</p>}
             {b.pre && <p className="whitespace-pre-line">{b.pre}</p>}
             {b.note && <p className="text-sm italic text-slate-600">{b.note}</p>}
             {b.ul && <ul className="list-disc pl-5 space-y-1.5">{b.ul.map((li, j) => <li key={j}>{li}</li>)}</ul>}
             {b.fee && feeBox}
+            {/* Owners' initials on every initialled clause, typed once when they sign. */}
+            {b.initials && (
+              <div className="text-xs text-slate-500 flex gap-6 pt-1">
+                <span>Initials: <span className="font-semibold text-slate-700 inline-block min-w-[2.5rem] border-b border-slate-300 text-center">{a.client1_initials || ''}</span></span>
+                {a.client2_required && <span className="font-semibold text-slate-700 inline-block min-w-[2.5rem] border-b border-slate-300 text-center">{a.client2_initials || ''}</span>}
+              </div>
+            )}
           </div>
         ))}
       </div>

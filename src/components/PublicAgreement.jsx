@@ -12,6 +12,7 @@ export default function PublicAgreement({ token }) {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [names, setNames] = useState({ 1: '', 2: '' });
+  const [inits, setInits] = useState({ 1: '', 2: '' });
   const pads = { 1: useRef(null), 2: useRef(null) };
   const justPaid = new URLSearchParams(window.location.search).get('paid') === '1';
 
@@ -43,9 +44,11 @@ export default function PublicAgreement({ token }) {
     const name = names[slot].trim();
     const signature = pads[slot].current?.toDataURL();
     if (!name) { setError('Please type your full name.'); return; }
+    const initials = inits[slot].trim();
+    if (data?.agreement?.kind === 'construction' && !initials) { setError('Please type your initials. They go on every section you are agreeing to.'); return; }
     if (!signature) { setError('Please draw your signature.'); return; }
     setBusy(true);
-    try { await post({ action: 'sign', slot, name, signature }); await load(); }
+    try { await post({ action: 'sign', slot, name, signature, initials }); await load(); }
     catch (e) { setError(e.message); }
     setBusy(false);
   };
@@ -72,6 +75,10 @@ export default function PublicAgreement({ token }) {
     <div className="w-full space-y-2 print:hidden">
       <input value={names[slot]} onChange={e => setNames({ ...names, [slot]: e.target.value })} placeholder="Type your full name"
         className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+      {a.kind === 'construction' && (
+        <input value={inits[slot]} maxLength={6} onChange={e => setInits({ ...inits, [slot]: e.target.value.toUpperCase() })}
+          placeholder="Your initials (placed on every section)" className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+      )}
       <SignaturePad ref={pads[slot]} height={120} />
       <button disabled={busy} onClick={() => sign(slot)} className="w-full py-2.5 rounded-lg text-white font-semibold text-sm disabled:opacity-50" style={{ background: accent }}>
         {busy ? 'Saving…' : 'Sign agreement'}

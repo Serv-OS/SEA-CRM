@@ -86,6 +86,7 @@ serve(async (req) => {
         agreement: {
           kind: a.kind, agreement_date: a.agreement_date, client_names: a.client_names, property_address: a.property_address, scope_of_work: a.scope_of_work,
           details: a.details || {}, due_amount: a.due_amount == null ? null : Number(a.due_amount),
+          client1_initials: a.client1_initials || null, client2_initials: a.client2_initials || null,
           payment_details: a.payment_details || s?.agreement_payment_details || null, card_fee_percent: Number(a.card_fee_percent), client2_required: a.client2_required,
           client1: { name: a.client1_name, signed_at: a.client1_signed_at, signature_url: c1 },
           client2: { name: a.client2_name, signed_at: a.client2_signed_at, signature_url: c2 },
@@ -102,12 +103,16 @@ serve(async (req) => {
       if (slot === 2 && !a.client2_required) return json({ error: "There is no second signature on this agreement." }, 422);
       const name = String(body.name || "").trim();
       if (!name) return json({ error: "Please type your full name." }, 422);
+      // The construction contract is initialled clause by clause: initials typed once, printed on each.
+      const initials = String(body.initials || "").trim().slice(0, 6);
+      if (a.kind === "construction" && !initials) return json({ error: "Please type your initials." }, 422);
       if (a[`client${slot}_signed_at`]) return json({ error: "This signature is already done." }, 409);
       const path = await saveSignature(supabase, a.id, `client${slot}`, body.signature);
       const now = new Date().toISOString();
       const patch: Record<string, unknown> = {
         [`client${slot}_name`]: name, [`client${slot}_signed_at`]: now, [`client${slot}_signature_path`]: path,
         [`client${slot}_ip`]: (req.headers.get("x-forwarded-for") || "").split(",")[0].trim() || null, updated_at: now,
+        ...(initials ? { [`client${slot}_initials`]: initials } : {}),
       };
       const after = { ...a, ...patch };
       if (after.client1_signed_at && (!after.client2_required || after.client2_signed_at)) patch.status = "signed";
