@@ -12,6 +12,7 @@ import { LEAD_STAGE_MAP, LEAD_FLOW, DEAL_STEP, leadStep } from '../../lib/leadSt
 import { FIRST_STAGE } from '../../lib/dealStages';
 import { PROJECT_SCOPES, scopeLabel } from '../../lib/projectScope.js';
 import { LEAD_SOURCES, sourceLabel } from '../../lib/leadSources.js';
+import HouseResearchCard from './HouseResearchCard.jsx';
 
 
 export default function LeadDetail({ leadId, profile, onClose, onNavigate }) {
@@ -232,6 +233,7 @@ export default function LeadDetail({ leadId, profile, onClose, onNavigate }) {
                 </div>
               </Card>
 
+              {location && <HouseResearchCard locationId={location.id} address={location.address} profile={profile} />}
               <AttachmentsCard subjectType="lead" subjectId={leadId} profile={profile} />
             </div>
 

@@ -14,6 +14,7 @@ import HardwareCard from './HardwareCard.jsx';
 import InvoicesCard from './InvoicesCard.jsx';
 import { primaryLead } from '../../lib/leadStages';
 import { stageLabel } from '../../lib/dealStages';
+import HouseResearchCard from './HouseResearchCard.jsx';
 
 const STATUS_OPTIONS = ['prospect', 'onboarding', 'live', 'churned'];
 const STATUS_COLORS = {
@@ -219,6 +220,7 @@ export default function LocationDetail({ locationId, profile, onClose, onNavigat
                   {location.notes && <Field label="Notes" value={location.notes} />}
                 </div>
               </Card>
+              <HouseResearchCard locationId={location.id} address={location.address} profile={profile} />
             </div>
 
             {/* MIDDLE: Activity + Contacts */}
