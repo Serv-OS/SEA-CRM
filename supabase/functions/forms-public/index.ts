@@ -131,8 +131,19 @@ serve(async (req) => {
       // The new website posts from its own server (honeypot + rate limit done
       // there) and proves it with a shared secret, so its short forms need no
       // checkbox. Everything else still passes reCAPTCHA.
-      const siteSecret = Deno.env.get("WEBSITE_FORMS_SECRET");
-      const trustedWebsite = !!siteSecret && req.headers.get("x-website-secret") === siteSecret;
+      // The secret lives in server_settings (migration 091: service role only,
+      // no browser or signed in user can read it). A function secret named
+      // WEBSITE_FORMS_SECRET works too.
+      const sentSecret = req.headers.get("x-website-secret") || "";
+      let trustedWebsite = false;
+      if (sentSecret.length >= 24) {
+        const envSecret = Deno.env.get("WEBSITE_FORMS_SECRET");
+        if (envSecret && sentSecret === envSecret) trustedWebsite = true;
+        else {
+          const { data: row } = await supabase.from("server_settings").select("value").eq("key", "website_forms_secret").maybeSingle();
+          trustedWebsite = !!row?.value && row.value === sentSecret;
+        }
+      }
       const rcSecret = Deno.env.get("RECAPTCHA_SECRET_KEY");
       if (rcSecret && !trustedWebsite) {
         const rres = await fetch("https://www.google.com/recaptcha/api/siteverify", {

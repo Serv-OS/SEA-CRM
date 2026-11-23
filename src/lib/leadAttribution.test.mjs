@@ -31,5 +31,9 @@ test('forms-public writes only the columns migration 090 adds', () => {
   const keys = fn.match(/const ATTRIBUTION_TEXT = \[([^\]]+)\]/)[1].match(/[a-z_]+/g);
   for (const k of [...keys, 'first_touch_at']) assert.ok(new RegExp(`add column if not exists ${k}\\s`).test(sql), `090 is missing ${k}`);
   assert.ok(fn.includes('x-website-secret'), 'the website secret check is in place');
+  assert.ok(fn.includes('server_settings') && fn.includes('website_forms_secret'), 'the secret is read from the server only table');
+  const sql091 = fs.readFileSync(new URL('../../supabase/migrations/091_server_settings.sql', import.meta.url), 'utf8');
+  assert.ok(/enable row level security/.test(sql091) && /revoke all on public\.server_settings from anon, authenticated/.test(sql091), '091 closes the table to browsers and staff');
+  assert.ok(!/insert into/i.test(sql091), 'the secret value is never in the repo');
   assert.ok(fs.readFileSync(new URL('../components/crm/LeadDetail.jsx', import.meta.url), 'utf8').includes('attributionLines'), 'the lead card shows it');
 });
