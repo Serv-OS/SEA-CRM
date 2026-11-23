@@ -12,6 +12,7 @@ import { LEAD_STAGE_MAP, LEAD_FLOW, DEAL_STEP, leadStep } from '../../lib/leadSt
 import { FIRST_STAGE } from '../../lib/dealStages';
 import { PROJECT_SCOPES, scopeLabel } from '../../lib/projectScope.js';
 import { LEAD_SOURCES, sourceLabel } from '../../lib/leadSources.js';
+import { attributionLines } from '../../lib/leadAttribution.js';
 import HouseResearchCard from './HouseResearchCard.jsx';
 
 
@@ -220,6 +221,7 @@ export default function LeadDetail({ leadId, profile, onClose, onNavigate }) {
               <Card title="Lead Info">
                 <div className="space-y-3">
                   <Field label="Source" value={sourceLabel(lead.source)} />
+                  {attributionLines(lead).map((l) => <Field key={l.label} label={l.label} value={l.value} />)}
                   <Field label="Priority" value={lead.priority} />
                   <Field label="Project scope" value={scopeLabel(lead.project_scope)} />
                   <Field label="Email" value={contact?.email} />

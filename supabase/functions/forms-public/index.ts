@@ -1,14 +1,15 @@
 // Public forms endpoint (no auth).
 //   GET  ?slug=...   -> returns the form definition for rendering
-//   POST { slug, data, page_url, referrer, src } -> processes a submission
-//        into a Lead or a Support ticket, with source tracking.
+//   POST { slug, data, page_url, referrer, src, attribution } -> processes a
+//        submission into a Lead or a Support ticket, with source tracking.
+//        `attribution` (ad click id, UTMs, landing page) is saved on the lead.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-website-secret",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 const json = (body: unknown, status = 200) =>
@@ -69,6 +70,22 @@ function scopeFromWebsite(text: unknown): string | null {
   return "other";
 }
 
+// Ad attribution from the website (migration 090): the Google Ads click id, the
+// UTMs, the first landing page and when. Only these keys are ever written.
+const ATTRIBUTION_TEXT = ["gclid", "gbraid", "wbraid", "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "landing_page", "referrer"];
+function attributionColumns(a: unknown, fallbackReferrer: unknown): Record<string, string> {
+  const out: Record<string, string> = {};
+  const src = (a && typeof a === "object" ? a : {}) as Record<string, unknown>;
+  for (const k of ATTRIBUTION_TEXT) {
+    const v = String(src[k] ?? "").trim().slice(0, 500);
+    if (v) out[k] = v;
+  }
+  if (!out.referrer && typeof fallbackReferrer === "string" && fallbackReferrer.trim()) out.referrer = fallbackReferrer.trim().slice(0, 500);
+  const t = Date.parse(String(src.first_touch_at ?? ""));
+  if (!Number.isNaN(t)) out.first_touch_at = new Date(t).toISOString();
+  return out;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
 
@@ -111,8 +128,13 @@ serve(async (req) => {
       if (!form.enabled) return json({ error: "This form is no longer active." }, 410);
 
       // Spam protection — verify the reCAPTCHA v2 token when a secret is set.
+      // The new website posts from its own server (honeypot + rate limit done
+      // there) and proves it with a shared secret, so its short forms need no
+      // checkbox. Everything else still passes reCAPTCHA.
+      const siteSecret = Deno.env.get("WEBSITE_FORMS_SECRET");
+      const trustedWebsite = !!siteSecret && req.headers.get("x-website-secret") === siteSecret;
       const rcSecret = Deno.env.get("RECAPTCHA_SECRET_KEY");
-      if (rcSecret) {
+      if (rcSecret && !trustedWebsite) {
         const rres = await fetch("https://www.google.com/recaptcha/api/siteverify", {
           method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
           body: new URLSearchParams({ secret: rcSecret, response: String(body.recaptcha_token || "") }),
@@ -290,7 +312,7 @@ serve(async (req) => {
       } else {
         // Create a lead
         const leadName = mapped.company_name || personName || email || form.name;
-        const { data: lead, error: lErr } = await supabase.from("leads").insert({
+        const leadRow = {
           name: leadName,
           stage: "new_lead",
           source: sourceTag,
@@ -300,9 +322,15 @@ serve(async (req) => {
           project_scope: scopeFromWebsite(mapped.project_scope || mapped.venue_type),
           priority: form.settings?.default_priority || "warm",
           notes: (mapped.message || "") + extrasNote + pageNote,
-        }).select("id").single();
-        if (lErr) {
-          submission.status = "error"; submission.error = lErr.message;
+        };
+        const attribution = attributionColumns(body.attribution, referrer);
+        let { data: lead, error: lErr } = await supabase.from("leads").insert({ ...leadRow, ...attribution }).select("id").single();
+        // Before migration 090 the columns are not there: keep the lead, drop the attribution.
+        if (lErr && Object.keys(attribution).length) {
+          ({ data: lead, error: lErr } = await supabase.from("leads").insert(leadRow).select("id").single());
+        }
+        if (lErr || !lead) {
+          submission.status = "error"; submission.error = lErr?.message || "no lead returned";
           await supabase.from("form_submissions").insert(submission);
           return json({ error: "Could not create lead" }, 500);
         }
