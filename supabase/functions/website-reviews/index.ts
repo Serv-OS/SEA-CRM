@@ -1,5 +1,5 @@
 // Google reviews for the website (read only).
-//   GET -> { ok, rating, count, url, reviews: [{ id, rating, text, author, date, url }] }
+//   GET -> { ok, rating, count, placeId, url, reviews: [{ id, rating, text, author, date, url }] }
 //
 // Uses the Places API with the GOOGLE_MAPS_API_KEY this project already has.
 // Google only hands out five reviews per call, so every review we have ever
@@ -39,9 +39,6 @@ const idFor = (author: string, when: string | number) => `g-${String(author).toL
 // deno-lint-ignore no-explicit-any
 type Any = any;
 
-/** The listing the website links to (SEA Design & Build, Polhemus Road). Google has more than one SEA listing. */
-const WANT_CID = "12268522251525320414";
-
 /** Places API (New). Returns null when the API is not enabled for the key. */
 async function fromNewApi(key: string, placeId: string, notes: string[]): Promise<Omit<Saved, "fetchedAt"> | null> {
   let id = placeId;
@@ -55,8 +52,8 @@ async function fromNewApi(key: string, placeId: string, notes: string[]): Promis
     if (!s.ok) { notes.push(`new search ${s.status}: ${sj?.error?.status || ""} ${String(sj?.error?.message || "").slice(0, 160)}`); return null; }
     const found: Any[] = sj?.places || [];
     for (const p of found) notes.push(`found: ${p.displayName?.text} | ${p.formattedAddress} | ${p.rating} (${p.userRatingCount}) | ${String(p.googleMapsUri || "").match(/cid=(\d+)/)?.[1] || ""}`);
-    const pick = found.find((p) => String(p.googleMapsUri || "").includes(`cid=${WANT_CID}`))
-      || [...found].sort((a, b) => (b.userRatingCount || 0) - (a.userRatingCount || 0))[0];
+    // Normally one listing; if Google ever returns several, take the one with the most reviews.
+    const pick = [...found].sort((a, b) => (b.userRatingCount || 0) - (a.userRatingCount || 0))[0];
     id = pick?.id || "";
     if (!id) { notes.push("new search: no place found"); return null; }
   }
@@ -143,7 +140,8 @@ serve(async (req) => {
       }
     }
     if (!saved) return json({ ok: false, reviews: [], ...(debug ? { notes } : {}) });
-    return json({ ok: true, rating: saved.rating, count: saved.count, url: saved.url, fetchedAt: new Date(saved.fetchedAt).toISOString(), reviews: saved.reviews, ...(debug ? { notes } : {}) });
+    const cid = saved.url.match(/cid=(\d+)/)?.[1];
+    return json({ ok: true, rating: saved.rating, count: saved.count, placeId: saved.placeId, url: cid ? `https://maps.google.com/?cid=${cid}` : saved.url, fetchedAt: new Date(saved.fetchedAt).toISOString(), reviews: saved.reviews, ...(debug ? { notes } : {}) });
   } catch (e) {
     return json({ ok: false, reviews: [], ...(debug ? { notes: [...notes, (e as Error).message] } : {}) });
   }
