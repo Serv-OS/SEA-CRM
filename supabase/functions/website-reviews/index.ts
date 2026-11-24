@@ -15,13 +15,13 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-website-secret",
   "Access-Control-Allow-Methods": "GET, OPTIONS",
 };
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
 
-const QUERY = "SEA Design Build, 763 Polhemus Road, San Mateo, CA 94402";
+const QUERY = "SEA Design & Build, Polhemus Road, San Mateo, CA";
 const CACHE_KEY = "google_reviews";
 const MAX_AGE_MS = 12 * 60 * 60 * 1000;
 
@@ -39,18 +39,25 @@ const idFor = (author: string, when: string | number) => `g-${String(author).toL
 // deno-lint-ignore no-explicit-any
 type Any = any;
 
+/** The listing the website links to (SEA Design & Build, Polhemus Road). Google has more than one SEA listing. */
+const WANT_CID = "12268522251525320414";
+
 /** Places API (New). Returns null when the API is not enabled for the key. */
 async function fromNewApi(key: string, placeId: string, notes: string[]): Promise<Omit<Saved, "fetchedAt"> | null> {
   let id = placeId;
   if (!id) {
     const s = await fetch("https://places.googleapis.com/v1/places:searchText", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "X-Goog-Api-Key": key, "X-Goog-FieldMask": "places.id,places.displayName" },
+      headers: { "Content-Type": "application/json", "X-Goog-Api-Key": key, "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.googleMapsUri" },
       body: JSON.stringify({ textQuery: QUERY }),
     });
     const sj: Any = await s.json().catch(() => ({}));
     if (!s.ok) { notes.push(`new search ${s.status}: ${sj?.error?.status || ""} ${String(sj?.error?.message || "").slice(0, 160)}`); return null; }
-    id = sj?.places?.[0]?.id || "";
+    const found: Any[] = sj?.places || [];
+    for (const p of found) notes.push(`found: ${p.displayName?.text} | ${p.formattedAddress} | ${p.rating} (${p.userRatingCount}) | ${String(p.googleMapsUri || "").match(/cid=(\d+)/)?.[1] || ""}`);
+    const pick = found.find((p) => String(p.googleMapsUri || "").includes(`cid=${WANT_CID}`))
+      || [...found].sort((a, b) => (b.userRatingCount || 0) - (a.userRatingCount || 0))[0];
+    id = pick?.id || "";
     if (!id) { notes.push("new search: no place found"); return null; }
   }
   const d = await fetch(`https://places.googleapis.com/v1/places/${id}`, {
@@ -107,7 +114,16 @@ serve(async (req) => {
     if (readErr) notes.push(`cache read: ${readErr.message}`);
     try { saved = row?.value ? JSON.parse(row.value) : null; } catch { saved = null; }
 
-    const fresh = saved && Date.now() - saved.fetchedAt < MAX_AGE_MS;
+    // The website's own server may ask for a fresh pull (same shared secret as the forms).
+    let force = false;
+    const sent = req.headers.get("x-website-secret") || "";
+    if (sent.length >= 24 && new URL(req.url).searchParams.get("refresh")) {
+      const { data: sec } = await supabase.from("server_settings").select("value").eq("key", "website_forms_secret").maybeSingle();
+      force = !!sec?.value && sec.value === sent;
+      // A forced pull starts again from the search, so a wrong listing can be corrected.
+      if (force && new URL(req.url).searchParams.get("refresh") === "reset") saved = null;
+    }
+    const fresh = !force && saved && Date.now() - saved.fetchedAt < MAX_AGE_MS;
     if (!fresh) {
       const key = (Deno.env.get("GOOGLE_MAPS_API_KEY") || "").trim().replace(/^["']+|["']+$/g, "");
       if (!key) notes.push("no GOOGLE_MAPS_API_KEY");
